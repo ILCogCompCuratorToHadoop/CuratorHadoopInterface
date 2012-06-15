@@ -2,10 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="463d0a17-0c84-4432-8825-f9d6123852ac" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/libraries/lib.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/CuratorHadoopInterface.iml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/HadoopInterface.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/hadoop_sample/PiEstimator.java" afterPath="$PROJECT_DIR$/hadoop_sample/PiEstimator.java" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/CuratorMapper.java" />
     </list>
     <ignored path="CuratorHadoopInterface.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -68,10 +65,10 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="HadoopInterface.java" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="HadoopInterface.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/HadoopInterface.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="148" column="12" selection-start="6184" selection-end="6184" vertical-scroll-proportion="1.5668604">
+            <state line="0" column="10" selection-start="0" selection-end="48" vertical-scroll-proportion="0.0">
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -79,10 +76,30 @@
           </provider>
         </entry>
       </file>
+      <file leaf-file-name="CuratorMapper.java" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/CuratorMapper.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="29" column="8" selection-start="1020" selection-end="1020" vertical-scroll-proportion="0.42151162">
+              <folding>
+                <element signature="imports" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="PiMapper.java" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/hadoop_sample/PiMapper.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="45" column="46" selection-start="1666" selection-end="1666" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
       <file leaf-file-name="PiEstimator.java" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/hadoop_sample/PiEstimator.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="147" column="5" selection-start="5596" selection-end="5596" vertical-scroll-proportion="0.0">
+            <state line="146" column="5" selection-start="5528" selection-end="5528" vertical-scroll-proportion="0.0">
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -108,6 +125,8 @@
         <option value="$PROJECT_DIR$/src/HadoopCuratorInterface.java" />
         <option value="$PROJECT_DIR$/hadoop_sample/PiEstimator.java" />
         <option value="$PROJECT_DIR$/src/HadoopInterface.java" />
+        <option value="$PROJECT_DIR$/src/CuratorMapper" />
+        <option value="$PROJECT_DIR$/src/CuratorMapper.java" />
       </list>
     </option>
   </component>
@@ -456,18 +475,34 @@
     <breakpoint-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/hadoop_sample/PiEstimator.java">
+    <entry file="file://$PROJECT_DIR$/src/HadoopInterface.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="147" column="5" selection-start="5596" selection-end="5596" vertical-scroll-proportion="0.0">
+        <state line="0" column="10" selection-start="0" selection-end="48" vertical-scroll-proportion="0.0">
           <folding>
             <element signature="imports" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/HadoopInterface.java">
+    <entry file="file://$PROJECT_DIR$/hadoop_sample/PiEstimator.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="148" column="12" selection-start="6184" selection-end="6184" vertical-scroll-proportion="1.5668604">
+        <state line="146" column="5" selection-start="5528" selection-end="5528" vertical-scroll-proportion="0.0">
+          <folding>
+            <element signature="imports" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/hadoop_sample/PiMapper.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="45" column="46" selection-start="1666" selection-end="1666" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/CuratorMapper.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="29" column="8" selection-start="1020" selection-end="1020" vertical-scroll-proportion="0.42151162">
           <folding>
             <element signature="imports" expanded="true" />
           </folding>
