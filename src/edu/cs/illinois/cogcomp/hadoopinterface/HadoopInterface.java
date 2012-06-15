@@ -47,10 +47,11 @@ public class HadoopInterface extends Configured implements Tool {
         // TODO: Make this user-specifiable (?)
         int numMaps = 10;
 
-        // TODO: Log errors in a standardized way
         if (args.length < 1) {
-            System.err.println( "Usage: " + getClass().getName() +
-                    " <document directory>");
+            String errorMsg = new String( "Usage: " + getClass().getName() +
+                                          "< document directory>" );
+            logger.logError( errorMsg );
+            System.err.println( errorMsg );
             ToolRunner.printGenericCommandUsage(System.err);
             return -1;
         }
@@ -119,17 +120,16 @@ public class HadoopInterface extends Configured implements Tool {
                 } finally {
                     writer.close();
                 }
-                System.out.println("Wrote input for Map #"+i);
+                logger.log( new String( "Wrote input for Map #" + i ) );
             }
 
             // Start a map/reduce job -- runJob(jobConf) takes the job
             // configuration we just set up and distributes it to Hadoop nodes
-            // TODO: Send this to a proper log file/standardized logging class
-            System.out.println("Starting Job");
+            logger.log( new String( "Starting MapReduce job" ) );
             final long startTime = System.currentTimeMillis();
             JobClient.runJob(jobConf);
             final double duration = (System.currentTimeMillis() - startTime)/1000.0;
-            System.out.println("Job Finished in " + duration + " seconds");
+            logger.log( new String( "Job finished in " + duration + " seconds" ) );
 
             // Read outputs
             Path inFile = new Path(outDir, "reduce-out");
@@ -147,4 +147,7 @@ public class HadoopInterface extends Configured implements Tool {
     /** tmp directory for input/output */
     static public final Path TMP_DIR = new Path(
             HadoopInterface.class.getSimpleName()+ "_TMP" );
+
+    // A tool to standardize error logging. Prints the log to standard out.
+    static public final ErrorLogger logger = new ErrorLogger( true );
 }
