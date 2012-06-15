@@ -26,15 +26,41 @@ import org.apache.hadoop.util.ToolRunner;
 import java.io.IOException;
 
 public class HadoopInterface extends Configured implements Tool {
+
     /**
-     * Dummy main method for launching the tool as a stand-alone command.
-     * Structure modeled after Hadoop's examples.
-     *
-     * For whatever reason, Tool demands that this throws a generic Exception.
-     * How helpfully vague.
+     * Sets up the job configuration object, which specifies (among other
+     * things) the map and reduce classes for Hadoop to use.
+     * @param numMaps The number of map tasks for Hadoop to use.
+     * @param numReduces The number of reduce tasks for Hadoop to use. The
+     *                   JobConf documentation says that the right number of
+     *                   reduces seems to be 0.95 or 1.75 multiplied by
+     *                   (num. nodes * mapreduce.tasktracker.reduce.tasks.maximum).
+     *                   Increasing the number of reduces increases the framework
+     *                   overhead, but increases load balancing and lowers the
+     *                   cost of failures.
+     * @return A job configuration object
      */
-    public static void main( String[] argv ) throws Exception {
-        System.exit(ToolRunner.run(null, new HadoopInterface(), argv));
+    private JobConf setupJob( int numMaps, int numReduces ) {
+        final JobConf jobConf = new JobConf( getConf(), getClass() );
+        jobConf.setJobName( HadoopInterface.class.getSimpleName() );
+
+        jobConf.setInputFormat( SequenceFileInputFormat.class );
+
+        // Output keys (the hashes identifying documents) will be string objects
+        jobConf.setOutputKeyClass( ObjectWritable.class );
+        jobConf.setOutputValueClass( ObjectWritable.class );
+        jobConf.setOutputFormat( SequenceFileOutputFormat.class );
+
+        jobConf.setMapperClass( CuratorMapper.class );
+        jobConf.setNumMapTasks( numMaps );
+
+        jobConf.setReducerClass( CuratorReducer.class );
+        jobConf.setNumReduceTasks( numReduces );
+
+        // Turn off speculative execution, because DFS doesn't handle
+        // multiple writers to the same file.
+        jobConf.setSpeculativeExecution( false );
+        return jobConf;
     }
 
     /**
@@ -46,45 +72,21 @@ public class HadoopInterface extends Configured implements Tool {
         // The number of map tasks we will use in this Hadoop job
         // TODO: Make this user-specifiable (?)
         int numMaps = 10;
+        int numReduces = 10;
 
-        if (args.length < 1) {
+        if( args.length < 1 ) {
             String errorMsg = new String( "Usage: " + getClass().getName() +
                                           "< document directory>" );
             logger.logError( errorMsg );
             System.err.println( errorMsg );
-            ToolRunner.printGenericCommandUsage(System.err);
+            ToolRunner.printGenericCommandUsage( System.err );
             return -1;
         }
 
         // Set up the job configuration that we will send to Hadoop
         // Javadoc for JobConf:
         //   http://hadoop.apache.org/common/docs/current/api/org/apache/hadoop/mapred/JobConf.html
-
-        // Specifies the map and reduce classes to be used (and more)
-        final JobConf jobConf = new JobConf(getConf(), getClass());
-        jobConf.setJobName(HadoopInterface.class.getSimpleName());
-
-        jobConf.setInputFormat(SequenceFileInputFormat.class);
-
-        // Output keys (the hashes identifying documents) will be string objects
-        jobConf.setOutputKeyClass(ObjectWritable.class);
-        jobConf.setOutputValueClass(ObjectWritable.class);
-        jobConf.setOutputFormat(SequenceFileOutputFormat.class);
-
-        jobConf.setMapperClass(CuratorMapper.class);
-        jobConf.setNumMapTasks(numMaps);
-
-        jobConf.setReducerClass(CuratorReducer.class);
-        // From JobConf docs: The right number of reduces seems to be 0.95 or
-        // 1.75 multiplied by
-        // (<no. of nodes> * mapreduce.tasktracker.reduce.tasks.maximum)
-        // Increasing the number of reduces increases the framework overhead, but
-        // increases load balancing and lowers the cost of failures.
-        jobConf.setNumReduceTasks(1);
-
-        // Turn off speculative execution, because DFS doesn't handle
-        // multiple writers to the same file.
-        jobConf.setSpeculativeExecution(false);
+        final JobConf jobConf = setupJob( numMaps, numReduces );
 
 
         // Set up input/output directories
@@ -96,11 +98,11 @@ public class HadoopInterface extends Configured implements Tool {
         FileOutputFormat.setOutputPath(jobConf, outDir);
 
         final FileSystem fs = FileSystem.get(jobConf);
-        if (fs.exists(TMP_DIR)) {
+        if( fs.exists(TMP_DIR) ) {
             throw new IOException("Tmp directory " + fs.makeQualified(TMP_DIR)
                     + " already exists.  Please remove it first.");
         }
-        if (!fs.mkdirs(inDir)) {
+        if( !fs.mkdirs( inDir ) ) {
             throw new IOException("Cannot create input directory " + inDir);
         }
 
@@ -120,16 +122,16 @@ public class HadoopInterface extends Configured implements Tool {
                 } finally {
                     writer.close();
                 }
-                logger.log( new String( "Wrote input for Map #" + i ) );
+                logger.log( new String("Wrote input for Map #" + i) );
             }
 
             // Start a map/reduce job -- runJob(jobConf) takes the job
             // configuration we just set up and distributes it to Hadoop nodes
-            logger.log( new String( "Starting MapReduce job" ) );
+            logger.log( new String("Starting MapReduce job") );
             final long startTime = System.currentTimeMillis();
             JobClient.runJob(jobConf);
             final double duration = (System.currentTimeMillis() - startTime)/1000.0;
-            logger.log( new String( "Job finished in " + duration + " seconds" ) );
+            logger.log( new String("Job finished in " + duration + " seconds") );
 
             // Read outputs
             Path inFile = new Path(outDir, "reduce-out");
@@ -144,7 +146,18 @@ public class HadoopInterface extends Configured implements Tool {
         return 0;
     }
 
-    /** tmp directory for input/output */
+    /**
+     * Dummy main method for launching the tool as a stand-alone command.
+     * Structure modeled after Hadoop's examples.
+     *
+     * For whatever reason, Tool demands that this throws a generic Exception.
+     * How helpfully vague.
+     */
+    public static void main( String[] argv ) throws Exception {
+        System.exit(ToolRunner.run(null, new HadoopInterface(), argv));
+    }
+
+    // Temp directory for input/output
     static public final Path TMP_DIR = new Path(
             HadoopInterface.class.getSimpleName()+ "_TMP" );
 
