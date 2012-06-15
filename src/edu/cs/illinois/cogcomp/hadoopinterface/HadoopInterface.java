@@ -38,23 +38,22 @@ public class HadoopInterface extends Configured implements Tool {
     }
 
     /**
-     * Parse arguments and then runs a map/reduce job.
-     * Print output in standard out.
+     * Parses arguments and then runs a map/reduce job.
      *
-     * @return a non-zero if there is an error.  Otherwise, return 0.
+     * @return 0 if we ran error-free, non-zero otherwise.
      */
     public int run( String[] args ) throws Exception {
+        // The number of map tasks we will use in this Hadoop job
+        // TODO: Make this user-specifiable (?)
+        int numMaps = 10;
+
         // TODO: Log errors in a standardized way
-        if (args.length != 2) {
+        if (args.length < 1) {
             System.err.println( "Usage: " + getClass().getName() +
                     " <document directory>");
             ToolRunner.printGenericCommandUsage(System.err);
             return -1;
         }
-
-        // The number of map tasks we will set
-        // TODO: Make this user-specifiable (?)
-        int numMaps = 10;
 
         // Set up the job configuration that we will send to Hadoop
         // Javadoc for JobConf:
