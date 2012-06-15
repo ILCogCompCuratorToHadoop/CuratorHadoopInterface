@@ -7,15 +7,10 @@
 
 .idea/workspace.xml
 
-CuratorHadoopInterface.iml
+# IntelliJ Idea project stuff
+*.iml
 
-.idea/artifacts/CuratorHadoopInterface_jar.xml
-
-out/production/CuratorHadoopInterface/edu/cs/illinois/cogcomp/hadoopinterface/CuratorMapper.class
-
-out/production/CuratorHadoopInterface/edu/cs/illinois/cogcomp/hadoopinterface/CuratorReducer.class
-
-out/production/CuratorHadoopInterface/edu/cs/illinois/cogcomp/hadoopinterface/HadoopInterface.class
+out/
 
 src/META-INF/MANIFEST.MF
 
