@@ -1,2 +1,8 @@
 
 .DS_Store
+
+.idea/misc.xml
+
+.idea/workspace.xml
+
+CuratorHadoopInterface.iml
