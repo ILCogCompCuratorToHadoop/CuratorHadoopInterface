@@ -43,7 +43,7 @@ public class HadoopInterface extends Configured implements Tool {
      *
      * @return a non-zero if there is an error.  Otherwise, return 0.
      */
-    public int run(String[] args) throws Exception {
+    public int run( String[] args ) throws Exception {
         // TODO: Log errors in a standardized way
         if (args.length != 2) {
             System.err.println( "Usage: " + getClass().getName() +
@@ -146,6 +146,6 @@ public class HadoopInterface extends Configured implements Tool {
     }
 
     /** tmp directory for input/output */
-    static private final Path TMP_DIR = new Path( HadoopInterface.class.getSimpleName()
-            + "_TMP_" + System.currentTimeMillis() );
+    static public final Path TMP_DIR = new Path(
+            HadoopInterface.class.getSimpleName()+ "_TMP" );
 }

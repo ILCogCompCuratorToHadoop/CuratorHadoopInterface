@@ -1,5 +1,3 @@
-
-
 /**
  * Provides the map() method to Hadoop's MapReduce.
  * Called by HadoopInterface
@@ -10,10 +8,18 @@
 
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.ObjectWritable;
+import org.apache.hadoop.mapred.MapReduceBase;
+import org.apache.hadoop.mapred.Mapper;
+import org.apache.hadoop.mapred.OutputCollector;
+import org.apache.hadoop.mapred.Reporter;
+
+import java.io.IOException;
+
 
 public class CuratorMapper extends MapReduceBase implements
-        Mapper<LongWritable, LongWritable, BooleanWritable, LongWritable> {
+        Mapper<LongWritable, LongWritable, ObjectWritable, ObjectWritable> {
 
     /**
      * The map method in a map/reduce cycle. All nodes in the Hadoop
@@ -25,7 +31,7 @@ public class CuratorMapper extends MapReduceBase implements
      */
     public void map(LongWritable offset,
                     LongWritable size,
-                    OutputCollector<BooleanWritable, LongWritable> out,
+                    OutputCollector<ObjectWritable, ObjectWritable> out,
                     Reporter reporter) throws IOException {
 
         reporter.setStatus("Beginning map phase.");
