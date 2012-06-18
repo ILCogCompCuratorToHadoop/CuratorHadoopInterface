@@ -24,22 +24,27 @@ public class CuratorMapper extends MapReduceBase implements
     /**
      * The map method in a map/reduce cycle. All nodes in the Hadoop
      * job cluster run this on their own portions of the input.
-     * @param offset samples starting from the (offset+1)th sample.
-     * @param size the number of samples for this map
+     * @param id = key 
+     * @param record = value
      * @param out output {true->numInside, false->numOutside}
-     * @param reporter TODO: Where does this come from, and how do we use it?
+     * @param reporter Where does this come from, and how do we use it?
      */
-    public void map(LongWritable offset,
-                    LongWritable size,
+    public void map(LongWritable id,
+                    Record record,
                     OutputCollector<ObjectWritable, ObjectWritable> out,
                     Reporter reporter) throws IOException {
 
         reporter.setStatus("Beginning map phase.");
 
         // Output the map results
-        // TODO: Actually map stuff.
-        String key = new String("0xdeadbeef"); // The document's hash (unique)
-        String value = new String("This is my document text.");
+
+        // TODO: write our own Record class, and modify params as needed
+        // transform input to output as (key, value) = (hash ID, Record)
+        String key = id;
+	Record value = record;
+
+        //String key = new String("0xdeadbeef"); // The document's hash (unique)
+        //String value = new String("This is my document text.");
         out.collect(new ObjectWritable( key ), new ObjectWritable( value ));
     }
 

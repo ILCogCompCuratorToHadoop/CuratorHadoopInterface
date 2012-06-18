@@ -23,7 +23,7 @@ public class CuratorReducer extends MapReduceBase
 
     /**
      * Accumulate number of points inside/outside results from the mappers.
-     * @param isInside Is the points inside?
+     * @param isInside Are the points inside?
      * @param values An iterator to a list of point counts
      * @param output dummy, not used here.
      * @param reporter
@@ -33,6 +33,13 @@ public class CuratorReducer extends MapReduceBase
                         OutputCollector<WritableComparable<?>, Writable> output,
                         Reporter reporter) throws IOException
     {
+
+        // TODO write input document to HDFS
+	Path file = ; // TODO pull filepath from addtl param
+        
+	// TODO while loop, wait for output in appropriate directory to "magically" appear
+        // (thanks to the local Curator instance)
+
         return; // TODO: We have to actually do something.
     }
 
