@@ -1,10 +1,10 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.BadCommandLineUsageException;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.IllegalModeException;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.util.ToolRunner;
-
-import java.security.InvalidParameterException;
 
 /**
  * This class is used to parse the command-line arguments used by the Hadoop
@@ -15,68 +15,114 @@ import java.security.InvalidParameterException;
  * the directory is not---we do not check here to ensure that the directory
  * actually exists and has data.
  *
- * @TODO: Allow passing in number of maps and reductions?
- *
  * @author Tyler Young
  */
 public class ArgumentParser {
-    private String[] the_args;
-
     /**
      * Constructs a parser object
      * @param args Command line arguments received by the program's main method.
      *             Contains at least the input directory in HDFS whose documents
      *             will be annotated and the annotation mode to be used.
-     * @throws InvalidParameterException
+     * @throws BadCommandLineUsageException Indicates that what we got from the
+     *                                      command line was not understood.
      */
-    public ArgumentParser(String[] args) throws InvalidParameterException
-    {
-        the_args = args;
-
+    public ArgumentParser(String[] args) throws BadCommandLineUsageException {
         if( args.length < 2 ) {
-            String errorMsg = new String( "Usage: " + getClass().getName() +
-                    "<document directory> <mode>" );
+            String errorMsg = "Usage: " + getClass().getName()
+                    + "<document directory> <mode>\n   or:\n      "
+                    + getClass().getName() + " -d <document directory> -m <mode> "
+                    + "[-maps <number of maps>] [-reduces <number of reduces>]";
             HadoopInterface.logger.logError( errorMsg );
             System.err.println( errorMsg );
             ToolRunner.printGenericCommandUsage(System.err);
 
-            throw new InvalidParameterException( "Wrong command-line usage.  "
-                    + errorMsg );
+            throw new BadCommandLineUsageException( "Wrong number of parameters "
+                    + "from command line. " + errorMsg );
         }
 
-        // TODO: Check HDFS for the indicated directory, validate the mode
+        // "Classic" usage: just directory and mode
+        if( args.length == 2 ) {
+            // Try parsing args[1] as a mode
+            try {
+                mode = AnnotationMode.fromString( args[1] );
+                directory = args[0];
+            } catch( IllegalModeException e ) {
+                // Try parsing args[0] as a mode
+                AnnotationMode.fromString( args[0] );
+                directory = args[1];
+            } // Will die if neither args 0 nor 1 make sense as a mode
+        }
 
-        // TODO: Make this more robust (allow parms in an arbitrary order using
-        //       flags like -d (for "document") and -m (for "mode")
+        // More robust usage, specifying which parms are which using CL flags
+        else {
+            for( int i = 0; i < args.length; ++i ) {
+                // Allow either -d ("directory") or -i ("input")
+                if( args[i].equals("-d") || args[i].equals("-i") ) {
+                    directory = args[ ++i ];
+                }
+                else if( args[i].equals("-m") ) {
+                    mode = AnnotationMode.fromString( args[++i] );
+                }
+                else if( args[i].equals("-maps") ) {
+                    numMaps = new Integer( args[++i] );
+                }
+                else if( args[i].equals("-reduces") ) {
+                    numReduces = new Integer( args[++i] );
+                }
+            }
+        }
     }
 
     /**
-     * Parse directory from the command line parameters
-     *
-     * @TODO: Document!
-     * @return
+     * @return The directory string from the command line parameters
      */
     public String getDirectory() {
-        // Parse directory
-
-        // TODO: Fill this method
-
-        return new String("");
-    }
-    
-    public Path getPath() {
-        return new Path( getDirectory() );
+        return directory;
     }
 
     /**
-     * Parse mode from the command line parameters
-     *
-     * @TODO: Document!
-     * @return
+     * @return The Path object parsed from the command line parameters' input
+     *         directory
+     */
+    public Path getPath() {
+        return new Path( directory );
+    }
+
+    /**
+     * @return The number of maps to be used in the job, either parsed from the
+     *         command line or the default
+     */
+    public int getNumMaps()
+    {
+        if( numMaps == null ) {
+            return 10;
+        }
+        return numMaps.intValue();
+    }
+
+    /**
+     * @return The number of reduces to be used in the job, either parsed from the
+     *         command line or the default
+     */
+    public int getNumReduces()
+    {
+        if( numReduces == null ) {
+            return 10;
+        }
+
+        return numReduces.intValue();
+    }
+
+    /**
+     * @return The annotation mode parsed from the command line parameters
+
      */
     public AnnotationMode getMode() {
-        // TODO: Fill this method
-
-        return AnnotationMode.POS;
+        return mode;
     }
+    
+    private AnnotationMode mode;
+    private String directory;
+    private Integer numMaps;
+    private Integer numReduces;
 }

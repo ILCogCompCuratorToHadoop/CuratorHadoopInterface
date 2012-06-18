@@ -6,4 +6,8 @@ package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions;
  * @author Tyler Young
  */
 public class IllegalModeException extends IllegalArgumentException {
+    public IllegalModeException(String s)
+    {
+        super(s);
+    }
 }

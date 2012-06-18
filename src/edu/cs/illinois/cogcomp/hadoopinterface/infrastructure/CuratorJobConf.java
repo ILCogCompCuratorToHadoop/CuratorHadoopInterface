@@ -27,17 +27,16 @@ public class CuratorJobConf extends JobConf {
      *                 Hadoop's Tool interface via the getClass() method)
      * @param args The command-line arguments passed ot the tool
      */
-    public CuratorJobConf( Configuration conf, Class jobClass, String[] args)
-            throws IOException {
+    public CuratorJobConf( Configuration conf, Class jobClass,
+                           String[] args) throws IOException {
         super( conf, jobClass );
 
         ArgumentParser argParser = new ArgumentParser(args);
 
         inputDirectory = argParser.getPath();
         mode = argParser.getMode();
-
-        numMaps = 10;
-        numReduces = 10;
+        numMaps = argParser.getNumMaps();
+        numReduces = argParser.getNumReduces();
 
         setInheritedFields();
 
@@ -155,6 +154,6 @@ public class CuratorJobConf extends JobConf {
     private Path inputDirectory;
     private AnnotationMode mode;
     private Path TMP_DIR = HadoopInterface.TMP_DIR;
-    private ErrorLogger logger = HadoopInterface.logger;
+    private MessageLogger logger = HadoopInterface.logger;
     private FileSystem fs;
 }

@@ -2,15 +2,14 @@
 * This program presents an interface for passing large batch jobs from the
 * Curator to a Hadoop cluster.
 *
-* TODO: Document usage
+* @example Call this tool from the command line like this:
+*          ./hadoop jar CuratorHadoopInterface.jar document_directory_in_hdfs mode
 *
 * @author Tyler A. Young
 * @author Lisa Bao
 */
 
 package edu.cs.illinois.cogcomp.hadoopinterface;
-
-// TODO: Check that we actually use all these... (We probably will not!)
 
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.*;
 import org.apache.hadoop.conf.Configured;
@@ -29,8 +28,6 @@ public class HadoopInterface extends Configured implements Tool {
      * Structure modeled after Hadoop's examples.
      *
      * @param argv The command line arguments
-     * @example Call this tool from the command line like this:
-     *          ./hadoop jar CuratorHadoopInterface.jar document_directory_in_hdfs mode
      * @throws Exception For whatever reason, the Tool interface demands that
      *                   this throw a generic Exception. How helpfully vague.
      */
@@ -89,7 +86,8 @@ public class HadoopInterface extends Configured implements Tool {
         SequenceFile.Reader reader =
                 new SequenceFile.Reader( jobConf.getFileSystem(),
                                          inFile, jobConf);
-        reader.next("Lorem ipsum"); // TODO: Oh yeah... we need real output.
+        // TODO: Oh yeah... we need real output. It's not clear how this works...
+        reader.next("Lorem ipsum");
         reader.close();
     }
 
