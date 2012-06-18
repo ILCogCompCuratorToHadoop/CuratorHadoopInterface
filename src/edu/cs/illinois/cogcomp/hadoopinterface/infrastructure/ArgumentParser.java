@@ -70,6 +70,13 @@ public class ArgumentParser {
                     numReduces = new Integer( args[++i] );
                 }
             }
+
+            if( numReduces < 1 ) {
+                throw new IllegalArgumentException( "Number of reduces must be 1 or more." );
+            }
+            if( numMaps < 1 ) {
+                throw new IllegalArgumentException( "Number of maps must be 1 or more." );
+            }
         }
     }
 
@@ -106,7 +113,7 @@ public class ArgumentParser {
      */
     public int getNumReduces()
     {
-        if( numReduces == null ) {
+        if( numReduces == null  ) {
             return 10;
         }
 
@@ -120,7 +127,7 @@ public class ArgumentParser {
     public AnnotationMode getMode() {
         return mode;
     }
-    
+
     private AnnotationMode mode;
     private String directory;
     private Integer numMaps;
