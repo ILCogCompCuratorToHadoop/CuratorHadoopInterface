@@ -11,7 +11,7 @@ public class MessageLogger
      * Constructs an ErrorLogger object. By default, the log is
      * not written to the standard output.
      */
-    public ErrorLogger() {
+    public MessageLogger() {
         printToStdOut = false;
     }
 
@@ -21,7 +21,7 @@ public class MessageLogger
      * @param alsoLogToStdOut TRUE if the log should also be sent to the
      *                        standard output
      */
-    public ErrorLogger( boolean alsoLogToStdOut ) {
+    public MessageLogger(boolean alsoLogToStdOut) {
         printToStdOut = alsoLogToStdOut;
     }
 

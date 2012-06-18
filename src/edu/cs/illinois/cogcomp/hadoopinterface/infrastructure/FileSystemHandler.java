@@ -1,7 +1,7 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
-import edu.cs.illinois.cogcomp.hadoopinterface.exceptions.*;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.*;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -29,9 +29,9 @@ public class FileSystemHandler {
     /**
      * Sets up the input and output directories for this job in the Hadoop
      * Distributed File System (HDFS).
-     * @throws IOException
+     * @throws IOException Possible IOException from file operations
      */
-    void setUpIODirectories() throws IOException {
+    public void setUpIODirectories() throws IOException {
         // Set up input/output directories. We will output the new annotation
         // to the same place in HDFS that we get the input from.
         FileInputFormat.setInputPaths(jobConf, jobConf.getInputDirectory());
@@ -47,7 +47,7 @@ public class FileSystemHandler {
      * Confirms that the required directories exist (or don't exist, as the case
      * may be) and that we have valid inputs, and throws an IO Exception if we
      * do not.
-     * @throws IOException
+     * @throws IOException Possible IOException from file operations
      */
     public void checkFileSystem( ) throws IOException {
         Path inputDirectory = jobConf.getInputDirectory();
@@ -73,7 +73,7 @@ public class FileSystemHandler {
 
     /**
      * Sets up the input files for the Map operations
-     * @throws java.io.IOException
+     * @throws IOException Possible IOException from file operations
      */
     public void createInputFilesForMaps() throws IOException {
         // Generate an input file for each map task
@@ -87,13 +87,12 @@ public class FileSystemHandler {
             final SequenceFile.Writer writer = SequenceFile.createWriter(
                     fs, jobConf, file, LongWritable.class, LongWritable.class,
                     SequenceFile.CompressionType.NONE);
-            try
-            {
+            try {
                 writer.append( offset, size );
-            } finally
-            {
+            } finally {
                 writer.close();
             }
+
             HadoopInterface.logger.log(new String("Wrote input for Map #" + i));
         }
     }

@@ -1,8 +1,6 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
-import edu.cs.illinois.cogcomp.hadoopinterface.CuratorMapper;
-import edu.cs.illinois.cogcomp.hadoopinterface.CuratorReducer;
-import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
+import edu.cs.illinois.cogcomp.hadoopinterface.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -15,6 +13,8 @@ import java.io.IOException;
 
 /**
  * A job configuration object for a Hadoop job that interfaces with the Curator.
+ * This configuration "knows" what mapper and reducer will be used, and it also
+ * knows how to access the file system for this job.
  * @author Tyler Young
  */
 public class CuratorJobConf extends JobConf {
@@ -78,7 +78,11 @@ public class CuratorJobConf extends JobConf {
     }
 
 
-    private void setInheritedFields() throws IOException {
+    /**
+     * Sets up the fields inherited from JobConf in the standard way for a
+     * Curator job.
+     */
+    private void setInheritedFields() {
         // Call all our inherited methods
         setJobName(HadoopInterface.class.getSimpleName());
 
@@ -102,26 +106,46 @@ public class CuratorJobConf extends JobConf {
         setSpeculativeExecution( false );
     }
 
+    /**
+     * @return The number of map operations to be used for this Hadoop job
+     */
     public int getNumMaps() {
         return numMaps;
     }
 
+    /**
+     * @return The number of reduce operations to be used for this Hadoop job
+     */
     public int getNumReduces() {
         return numReduces;
     }
 
+    /**
+     * @return The directory (on the Hadoop Distributed File System) from which
+     *         this Hadoop job will read its input
+     */
     public Path getInputDirectory() {
         return inputDirectory;
     }
 
+    /**
+     * @return The directory (on the Hadoop Distributed File System) to which
+     *         this Hadoop job will write its output
+     */
     public Path getOutputDirectory() {
         return inputDirectory;
     }
 
+    /**
+     * @return The annotation mode to be used on this Hadoop job
+     */
     public AnnotationMode getMode() {
         return mode;
     }
 
+    /**
+     * @return The Hadoop file system object
+     */
     public FileSystem getFileSystem() {
         return fs;
     }
