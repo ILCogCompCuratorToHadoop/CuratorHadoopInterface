@@ -1,5 +1,7 @@
-package edu.cs.illinois.cogcomp.hadoopinterface;
+package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
+import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.util.ToolRunner;
 
 import java.security.InvalidParameterException;
@@ -9,10 +11,11 @@ import java.security.InvalidParameterException;
  * interface. It hides the "business logic" of the actual way that parameters
  * get passed.
  *
- * It does not assume that its input is clean, but its output is
- * guaranteed clean (i.e., if it does not error out, you can take for granted
- * that the input directory has real input in the proper format, with the proper
- * dependencies, etc.).
+ * Note that the "mode" stored by this object is guaranteed to be valid, but
+ * the directory is not---we do not check here to ensure that the directory
+ * actually exists and has data.
+ *
+ * @TODO: Allow passing in number of maps and reductions?
  *
  * @author Tyler Young
  */
@@ -59,6 +62,10 @@ public class ArgumentParser {
         // TODO: Fill this method
 
         return new String("");
+    }
+    
+    public Path getPath() {
+        return new Path( getDirectory() );
     }
 
     /**

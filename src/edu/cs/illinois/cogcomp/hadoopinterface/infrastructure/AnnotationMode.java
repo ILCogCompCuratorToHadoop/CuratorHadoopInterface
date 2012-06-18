@@ -1,4 +1,4 @@
-package edu.cs.illinois.cogcomp.hadoopinterface;
+package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
 /**
  * Defines "modes" for the Curator-to-Hadoop interface (i.e., annotation types
@@ -6,5 +6,5 @@ package edu.cs.illinois.cogcomp.hadoopinterface;
  * @author Tyler Young
  */
 public enum AnnotationMode {
-    CHUNK, COREF, NOM_SRL, POS, TOKEN, VERB_SRL, WIKI, PARSE
+    CHUNK, COREF, NOM_SRL, POS, TOKEN, VERB_SRL, WIKI, PARSE;
 }
