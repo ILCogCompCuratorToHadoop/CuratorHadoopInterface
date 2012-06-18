@@ -66,6 +66,12 @@ public class HadoopInterface extends Configured implements Tool {
     /**
      * Parses arguments and then runs a map/reduce job.
      *
+     * @param args String arguments from the command line. Must contain a valid
+     *             directory in the Hadoop Distributed File System (HDFS), as well
+     *             as a valid mode.
+     *
+     *             The directory should contain all documents to be annotated,
+     *             complete with their dependencies for this job type.
      * @return 0 if we ran error-free, non-zero otherwise.
      */
     public int run( String[] args ) throws Exception {
@@ -74,14 +80,11 @@ public class HadoopInterface extends Configured implements Tool {
         int numMaps = 10;
         int numReduces = 10;
 
-        if( args.length < 1 ) {
-            String errorMsg = new String( "Usage: " + getClass().getName() +
-                                          "< document directory>" );
-            logger.logError( errorMsg );
-            System.err.println( errorMsg );
-            ToolRunner.printGenericCommandUsage( System.err );
-            return -1;
-        }
+        // Parse command-line arguments
+        ArgumentParser argParser = new ArgumentParser( args );
+        String docDirectory = argParser.getDirectory();
+        AnnotationMode mode = argParser.getMode();
+        
 
         // Set up the job configuration that we will send to Hadoop
         // Javadoc for JobConf:
@@ -152,6 +155,9 @@ public class HadoopInterface extends Configured implements Tool {
      *
      * For whatever reason, Tool demands that this throws a generic Exception.
      * How helpfully vague.
+     *
+     * @example Call this tool from the command line like this:
+     *          ./hadoop jar CuratorHadoopInterface.jar document_directory_in_hdfs mode
      */
     public static void main( String[] argv ) throws Exception {
         System.exit(ToolRunner.run(null, new HadoopInterface(), argv));
