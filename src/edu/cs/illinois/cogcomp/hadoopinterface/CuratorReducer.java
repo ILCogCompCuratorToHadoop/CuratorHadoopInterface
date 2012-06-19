@@ -1,6 +1,6 @@
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
-import org.apache.hadoop.mapred.Reducer;
+import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.*;
@@ -35,12 +35,20 @@ public class CuratorReducer extends MapReduceBase
     {
 
         // TODO write input document to HDFS
-	Path file = ; // TODO pull filepath from addtl param
+    	Path file = ; // TODO pull filepath from Record object
         
-	// TODO while loop, wait for output in appropriate directory to "magically" appear
+	    // TODO while loop, wait for output in appropriate directory to "magically" appear
         // (thanks to the local Curator instance)
+        bool done = false;
+        while (!done) {
+            Path output = ; // TODO check for Curator output in local dir
+            if (output == ) {
+                done = true;
+                // TODO do we need to process this Curator output before close()?
+            }
+        }
 
-        return; // TODO: We have to actually do something.
+        return; 
     }
 
     /**

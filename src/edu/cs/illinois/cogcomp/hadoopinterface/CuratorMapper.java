@@ -11,7 +11,7 @@ package edu.cs.illinois.cogcomp.hadoopinterface;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.mapred.MapReduceBase;
-import org.apache.hadoop.mapred.Mapper;
+import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reporter;
 
@@ -35,17 +35,27 @@ public class CuratorMapper extends MapReduceBase implements
                     Reporter reporter) throws IOException {
 
         reporter.setStatus("Beginning map phase.");
-
         // Output the map results
 
-        // TODO: write our own Record class, and modify params as needed
-        // transform input to output as (key, value) = (hash ID, Record)
-        String key = id;
-	Record value = record;
+        // TODO
+        // 1. write our own Record class
+        // 2. modify params of class/method
+        // 3. add writeable/comparable interfaces to id and record objs
+        // 4. change id type from String to "text"?
+
+
+        // TODO print out input that has been passed in
+
+        
+
+    	// transform input to output as (key, value) = (hash ID, Record)
+        //String key = id;
+        //Record value = record;
 
         //String key = new String("0xdeadbeef"); // The document's hash (unique)
         //String value = new String("This is my document text.");
-        out.collect(new ObjectWritable( key ), new ObjectWritable( value ));
+        
+	out.collect(new ObjectWritable(id), new ObjectWritable(record));
     }
 
 
