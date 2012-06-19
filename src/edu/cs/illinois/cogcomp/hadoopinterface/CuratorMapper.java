@@ -8,33 +8,32 @@
 
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.ObjectWritable;
-import org.apache.hadoop.mapred.MapReduceBase;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapred.OutputCollector;
-import org.apache.hadoop.mapred.Reporter;
 
 import java.io.IOException;
 
 
-public class CuratorMapper extends MapReduceBase implements
-        Mapper<LongWritable, LongWritable, ObjectWritable, ObjectWritable> {
+public class CuratorMapper extends Mapper<Text, Record, Text, Record> {
 
     /**
      * The map method in a map/reduce cycle. All nodes in the Hadoop
      * job cluster run this on their own portions of the input.
-     * @param id = key 
-     * @param record = value
-     * @param out output {true->numInside, false->numOutside}
-     * @param reporter Where does this come from, and how do we use it?
+     * @param inKey = key
+     * @param inValue = value
+     * @param context The configuration context
      */
-    public void map(LongWritable id,
-                    Record record,
-                    OutputCollector<ObjectWritable, ObjectWritable> out,
-                    Reporter reporter) throws IOException {
+    public void map( Text inKey,
+                     Record inValue,
+                     Context context ) throws IOException {
 
-        reporter.setStatus("Beginning map phase.");
+        HadoopInterface.logger.logStatus( "Beginning map phase.\n"
+                                          + "\t\tGot input key " + inKey.toString()
+                                          + "\n\t\tand input value "
+                                          + inValue.toString() );
+
+
         // Output the map results
 
         // TODO
@@ -55,7 +54,6 @@ public class CuratorMapper extends MapReduceBase implements
         //String key = new String("0xdeadbeef"); // The document's hash (unique)
         //String value = new String("This is my document text.");
         
-	out.collect(new ObjectWritable(id), new ObjectWritable(record));
     }
 
 

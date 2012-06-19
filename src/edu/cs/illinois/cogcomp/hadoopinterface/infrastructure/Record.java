@@ -92,9 +92,17 @@ public class Record implements WritableComparable< Record > {
         test1 = in.readUTF();
     }
 
+    /**
+     * @return The hash identifying the document that this record describes
+     */
     public String getDocumentHash()
     {
         return documentHash;
+    }
+
+    @Override
+    public String toString() {
+        return "Record for document whose ID is " + documentHash;
     }
 
     private String documentHash;

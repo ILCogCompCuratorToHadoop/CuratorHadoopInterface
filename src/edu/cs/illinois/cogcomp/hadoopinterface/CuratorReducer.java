@@ -1,72 +1,38 @@
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.*;
-import org.apache.hadoop.mapred.*;
 
 import java.io.IOException;
-import java.util.Iterator;
 
 /**
  * @author Tyler Young
  */
-public class CuratorReducer extends MapReduceBase
-        implements Reducer<BooleanWritable, LongWritable, WritableComparable<?>, Writable>
-{
-    /** Store job configuration. */
-    @Override
-    public void configure( JobConf job ) {
-        conf = job;
-    }
-
+public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
     /**
      * Accumulate number of points inside/outside results from the mappers.
-     * @param isInside Are the points inside?
-     * @param values An iterator to a list of point counts
-     * @param output dummy, not used here.
-     * @param reporter
+     * @param inKey
+     * @param inValue
+     * @param context
      */
-    public void reduce( BooleanWritable isInside,
-                        Iterator<LongWritable> values,
-                        OutputCollector<WritableComparable<?>, Writable> output,
-                        Reporter reporter) throws IOException
-    {
+    public void reduce( Text inKey, Record inValue, Context context)
+            throws IOException {
 
         // TODO write input document to HDFS
-    	Path file = ; // TODO pull filepath from Record object
+    	//Path file = ; // TODO pull filepath from Record object
         
 	    // TODO while loop, wait for output in appropriate directory to "magically" appear
         // (thanks to the local Curator instance)
-        bool done = false;
+        boolean done = false;
+
+        /*
         while (!done) {
             Path output = ; // TODO check for Curator output in local dir
             if (output == ) {
                 done = true;
                 // TODO do we need to process this Curator output before close()?
             }
-        }
-
-        return; 
+        }              */
     }
-
-    /**
-     * Reduce task done, write output to a file.
-     */
-    @Override
-    public void close() throws IOException {
-        // Write output to a file
-        Path outDir = new Path(HadoopInterface.TMP_DIR, "out");
-        Path outFile = new Path(outDir, "reduce-out");
-        FileSystem fileSys = FileSystem.get(conf);
-        SequenceFile.Writer writer = SequenceFile.createWriter(fileSys, conf,
-                outFile, LongWritable.class, LongWritable.class,
-                SequenceFile.CompressionType.NONE);
-        writer.append(new LongWritable(1), new LongWritable(1));
-        writer.close();
-    }
-
-    private JobConf conf; //configuration for accessing the file system
-
 }
