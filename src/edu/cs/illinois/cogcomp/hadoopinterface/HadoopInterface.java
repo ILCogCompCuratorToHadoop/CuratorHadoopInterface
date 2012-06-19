@@ -49,9 +49,8 @@ public class HadoopInterface extends Configured implements Tool {
     public int run( String[] args ) throws Exception
     {
         // Set up the job configuration that we will send to Hadoop
-        final CuratorJobConf jobConf = new CuratorJobConf( getConf(), getClass(),
-                                                           args );
-        FileSystemHandler handler = new FileSystemHandler( jobConf );
+        final CuratorJob job = new CuratorJob( getConf(), args );
+        FileSystemHandler handler = new FileSystemHandler( job );
 
         try {
             handler.setUpIODirectories();
@@ -61,12 +60,12 @@ public class HadoopInterface extends Configured implements Tool {
             // configuration we just set up and distributes it to Hadoop nodes
             logger.log( "Starting MapReduce job" );
             final long startTime = System.currentTimeMillis();
-            JobClient.runJob(jobConf);
+            JobClient.runJob( job );
             final double duration = ( System.currentTimeMillis() - startTime )
                                     / 1000.0;
             logger.log( "Job finished in " + duration + " seconds" );
 
-            readOutput( jobConf );
+            readOutput( job );
         }
         finally {
             handler.cleanUpTempFiles();
