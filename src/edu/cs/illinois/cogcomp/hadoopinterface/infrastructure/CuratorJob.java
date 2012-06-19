@@ -88,13 +88,11 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
     private void configureJob() throws IOException {
         config.set( "annotationMode", mode.toString() );
 
-        setJobName(HadoopInterface.class.getSimpleName());
+        setJobName( "Curator job" );
 
-        setJarByClass(CuratorJob.class);
+        setJarByClass( HadoopInterface.class );
 
         // Specify various job-specific parameters
-        setJobName("Curator job");
-
         setMapperClass( CuratorMapper.class );
         setReducerClass( CuratorReducer.class );
         setNumReduceTasks( numReduces );

@@ -15,7 +15,7 @@ import org.apache.hadoop.mapreduce.Mapper;
 import java.io.IOException;
 
 
-public class CuratorMapper extends Mapper<Text, Record, Text, Record> {
+public class CuratorMapper extends Mapper<Object, Text, Text, Record> {
 
     /**
      * The map method in a map/reduce cycle. All nodes in the Hadoop
@@ -24,14 +24,14 @@ public class CuratorMapper extends Mapper<Text, Record, Text, Record> {
      * @param inValue = value
      * @param context The configuration context
      */
-    public void map( Text inKey,
-                     Record inValue,
+    public void map( Object inKey,
+                     Text inValue,
                      Context context ) throws IOException {
 
         HadoopInterface.logger.logStatus( "Beginning map phase.\n"
                                           + "Attempting to acces vars." );
-        HadoopInterface.logger.logStatus( "\t\tGot input key " + inKey.toString()
-                                          + "\n\t\tand input value "
+        HadoopInterface.logger.logStatus( "\tGot input key " + inKey.toString()
+                                          + "\n\tand input value: "
                                           + inValue.toString() );
 
 

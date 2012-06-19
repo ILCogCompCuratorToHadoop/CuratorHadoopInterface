@@ -5,7 +5,6 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.BadInpu
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.EmptyInputException;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
@@ -35,11 +34,11 @@ public class FileSystemHandler {
         // Set up input/output directories. We will output the new annotation
         // to the same place in HDFS that we get the input from.
         HadoopInterface.logger.logStatus( "Adding input path." );
-        FileInputFormat.addInputPath((Job) job, job.getInputDirectory());
+        FileInputFormat.addInputPath( job, job.getInputDirectory());
         HadoopInterface.logger.logStatus( "Setting output path." );
-        FileOutputFormat.setOutputPath((Job) job, job.getOutputDirectory());
+        FileOutputFormat.setOutputPath( job, job.getOutputDirectory());
 
-        HadoopInterface.logger.logStatus( "Creating input files for map ops." );
+        //HadoopInterface.logger.logStatus( "Creating input files for map ops." );
         //createInputFilesForMaps();
     }
 
