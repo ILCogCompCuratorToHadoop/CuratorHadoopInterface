@@ -29,7 +29,8 @@ public class CuratorMapper extends Mapper<Text, Record, Text, Record> {
                      Context context ) throws IOException {
 
         HadoopInterface.logger.logStatus( "Beginning map phase.\n"
-                                          + "\t\tGot input key " + inKey.toString()
+                                          + "Attempting to acces vars." );
+        HadoopInterface.logger.logStatus( "\t\tGot input key " + inKey.toString()
                                           + "\n\t\tand input value "
                                           + inValue.toString() );
 

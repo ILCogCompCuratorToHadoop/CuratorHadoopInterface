@@ -31,7 +31,7 @@ public class MessageLogger
      */
     public void log( String s ) {
         if( printToStdOut ) {
-            System.out.println( s );
+            System.out.println( "\n" + s );
         }
     }
 
@@ -61,7 +61,7 @@ public class MessageLogger
      */
     public void logStatus( String s ) {
         if( printToStdOut ) {
-            System.out.println( "Status: " + s );
+            System.out.println( "\nStatus: " + s );
         }
     }
 

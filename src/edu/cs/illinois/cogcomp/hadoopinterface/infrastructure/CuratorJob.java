@@ -7,9 +7,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.SequenceFileInputFormat;
-import org.apache.hadoop.mapreduce.Job;
 
 import java.io.IOException;
 
@@ -21,22 +18,22 @@ import java.io.IOException;
  * @author Tyler Young
  */
 public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
-
     /**
      * Constructs a CuratorJobConf object
      * @param conf The job's Configuration (available to objects that implement
      *             Hadoop's Tool interface via the getConf() method)
      * @param args The command-line arguments passed ot the tool
      */
-    public CuratorJob( Configuration conf, String[] args)
+    public CuratorJob( Configuration conf, String[] args )
             throws IOException, ClassNotFoundException, InterruptedException {
         super( conf, "Curator runner");
 
         ArgumentParser argParser = new ArgumentParser(args);
 
         inputDirectory = argParser.getPath();
+        outputDirectory = new Path( argParser.getDirectory() + "_out"
+                                    + System.currentTimeMillis() );
         mode = argParser.getMode();
-        numMaps = argParser.getNumMaps();
         numReduces = argParser.getNumReduces();
 
         config = conf;
@@ -45,7 +42,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
 
         this.fs = FileSystem.get(conf);
 
-        logger.logStatus( "Job configuration created." );
+        logger.logStatus( "Job configuration successfully created." );
     }
 
     /**
@@ -54,7 +51,6 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
      *
      * @param conf The job's Configuration (available to objects that implement
      *             Hadoop's Tool interface via the getConf() method)
-     * @param numMaps The number of map tasks for Hadoop to use.
      * @param numReduces The number of reduce tasks for Hadoop to use. The
      *                   JobConf documentation says that the right number of
      *                   reduces seems to be 0.95 or 1.75 multiplied by
@@ -62,18 +58,17 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
      *                   Increasing the number of reduces increases the framework
      *                   overhead, but increases load balancing and lowers the
      *                   cost of failures.
+     * @param
      * @param mode The annotation mode that will be used on the document
      *             collection (i.e., the tool that will be called on each
      *             document).
      */
-    public CuratorJob( Configuration conf, int numMaps,
-                       int numReduces, Path inputDirectory,
-                       AnnotationMode mode)
+    public CuratorJob( Configuration conf, int numReduces, Path inputDirectory,
+                       Path outputDirectory, AnnotationMode mode)
             throws IOException, ClassNotFoundException, InterruptedException {
         super( conf, "Curator runner" );
 
         this.config = conf;
-        this.numMaps = numMaps;
         this.numReduces = numReduces;
         this.inputDirectory = inputDirectory;
         this.mode = mode;
@@ -90,7 +85,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
      * Sets up the fields inherited from JobConf in the standard way for a
      * Curator job.
      */
-    private void configureJob() {
+    private void configureJob() throws IOException {
         config.set( "annotationMode", mode.toString() );
 
         setJobName(HadoopInterface.class.getSimpleName());
@@ -98,18 +93,15 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
         setJarByClass(CuratorJob.class);
 
         // Specify various job-specific parameters
-        setJobName("myjob");
-
-        /* TODO: This isn't present in the API. How do we set it?
-        // At present, we output to the same place we take input from
-        setInputPath( inputDirectory );
-        setOutputPath( inputDirectory );*/
+        setJobName("Curator job");
 
         setMapperClass( CuratorMapper.class );
         setReducerClass( CuratorReducer.class );
         setNumReduceTasks( numReduces );
 
         // We output in (Text, Record) pairs
+        setMapOutputKeyClass( Text.class );
+        setMapOutputValueClass( Record.class );
         setOutputKeyClass( Text.class );
         setOutputValueClass( Record.class );
 
@@ -133,13 +125,6 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
     }
 
     /**
-     * @return The number of map operations to be used for this Hadoop job
-     */
-    public int getNumMaps() {
-        return numMaps;
-    }
-
-    /**
      * @return The number of reduce operations to be used for this Hadoop job
      */
     public int getNumReduces() {
@@ -159,7 +144,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
      *         this Hadoop job will write its output
      */
     public Path getOutputDirectory() {
-        return inputDirectory;
+        return outputDirectory;
     }
 
     /**
@@ -176,9 +161,9 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
         return fs;
     }
 
-    private int numMaps;
     private int numReduces;
     private Path inputDirectory;
+    private Path outputDirectory;
     private AnnotationMode mode;
     private Configuration config;
     private MessageLogger logger = HadoopInterface.logger;
