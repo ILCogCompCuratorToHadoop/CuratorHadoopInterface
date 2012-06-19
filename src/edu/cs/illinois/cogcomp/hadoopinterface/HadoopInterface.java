@@ -11,11 +11,12 @@
 
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
-import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.*;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.CuratorJob;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.MessageLogger;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.SequenceFile;
-import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -60,7 +61,7 @@ public class HadoopInterface extends Configured implements Tool {
             // configuration we just set up and distributes it to Hadoop nodes
             logger.log( "Starting MapReduce job" );
             final long startTime = System.currentTimeMillis();
-            JobClient.runJob( job );
+            job.start();
             final double duration = ( System.currentTimeMillis() - startTime )
                                     / 1000.0;
             logger.log( "Job finished in " + duration + " seconds" );
@@ -76,15 +77,15 @@ public class HadoopInterface extends Configured implements Tool {
 
     /**
      * Reads the output from the Reduce operation
-     * @param jobConf The job configuration for this Hadoop job
+     * @param job The job configuration for this Hadoop job
      * @throws IOException
      */
-    private void readOutput( CuratorJobConf jobConf ) throws IOException {
+    private void readOutput( CuratorJob job ) throws IOException {
         // Read outputs
-        Path inFile = new Path( jobConf.getOutputDirectory(), "reduce-out" );
+        Path inFile = new Path( job.getOutputDirectory(), "reduce-out" );
         SequenceFile.Reader reader =
-                new SequenceFile.Reader( jobConf.getFileSystem(),
-                                         inFile, jobConf);
+                new SequenceFile.Reader( job.getFileSystem(),
+                                         inFile, job.getConfiguration() );
         // TODO: Oh yeah... we need real output. It's not clear how this works...
         reader.next("Lorem ipsum");
         reader.close();

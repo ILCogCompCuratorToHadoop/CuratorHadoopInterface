@@ -74,20 +74,30 @@ public class Record implements WritableComparable< Record > {
     @Override
     public int compareTo( Record record )
     {
-        return 0;  //To change body of implemented methods use File | Settings | File Templates.
+        return getDocumentHash().compareTo( record.getDocumentHash() );
     }
 
     @Override
-    public void write(DataOutput dataOutput) throws IOException
+    public void write( DataOutput out ) throws IOException
     {
-        //To change body of implemented methods use File | Settings | File Templates.
+        // TODO: Real writing
+        out.writeUTF( "Test0 is " + test0 );
+        out.writeUTF( "Test1 is " + test1 );
     }
 
     @Override
-    public void readFields(DataInput dataInput) throws IOException
+    public void readFields( DataInput in ) throws IOException
     {
-        //To change body of implemented methods use File | Settings | File Templates.
+        test0 = in.readUTF();
+        test1 = in.readUTF();
+    }
+
+    public String getDocumentHash()
+    {
+        return documentHash;
     }
 
     private String documentHash;
+    private String test0;
+    private String test1;
 }

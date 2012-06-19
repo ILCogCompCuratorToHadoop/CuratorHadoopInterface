@@ -90,8 +90,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
      * Sets up the fields inherited from JobConf in the standard way for a
      * Curator job.
      */
-    private void configureJob()
-            throws ClassNotFoundException, IOException, InterruptedException {
+    private void configureJob() {
         config.set( "annotationMode", mode.toString() );
 
         setJobName(HadoopInterface.class.getSimpleName());
@@ -110,9 +109,6 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
         setReducerClass( CuratorReducer.class );
         setNumReduceTasks( numReduces );
 
-        // Submit the job, then poll for progress until the job is complete
-        waitForCompletion( true );
-
         // We output in (Text, Record) pairs
         setOutputKeyClass( Text.class );
         setOutputValueClass( Record.class );
@@ -120,6 +116,20 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
         // Turn off speculative execution, because DFS doesn't handle
         // multiple writers to the same file.
         setSpeculativeExecution( false );
+    }
+
+    /**
+     * Submits this job to the Hadoop cluster, then polls for progress until
+     * the job is complete
+     * @throws ClassNotFoundException . . . if the Mapper or Reducer are not
+     *                               found.
+     * @throws IOException . . . if we can't read from the filesystem.
+     * @throws InterruptedException
+     */
+    public void start()
+            throws ClassNotFoundException, IOException, InterruptedException {
+        // Submit the job, then poll for progress until the job is complete
+        waitForCompletion( true );
     }
 
     /**
