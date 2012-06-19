@@ -3,7 +3,7 @@
 * Curator to a Hadoop cluster.
 *
 * @example Call this tool from the command line like this:
-*          ./hadoop jar CuratorHadoopInterface.jar document_directory_in_hdfs mode
+*          ./hadoop jar CuratorHadoopInterface.jar <document_directory_in_hdfs> <mode>
 *
 * @author Tyler A. Young
 * @author Lisa Bao
@@ -11,55 +11,42 @@
 
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
-import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.CuratorJob;
-import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
-import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.MessageLogger;
-import org.apache.hadoop.conf.Configured;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.*;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.SequenceFile;
-import org.apache.hadoop.util.Tool;
-import org.apache.hadoop.util.ToolRunner;
 
 import java.io.IOException;
 
-public class HadoopInterface extends Configured implements Tool {
+public class HadoopInterface {
 
     /**
      * Dummy main method for launching the tool as a stand-alone command.
      * Structure modeled after Hadoop's examples.
      *
-     * @param argv The command line arguments
-     * @throws Exception For whatever reason, the Tool interface demands that
-     *                   this throw a generic Exception. How helpfully vague.
-     */
-    public static void main( String[] argv ) throws Exception {
-        System.exit(ToolRunner.run(null, new HadoopInterface(), argv));
-    }
-
-    /**
-     * Parses arguments and then runs a map/reduce job.
-     *
-     * @param args String arguments from the command line. Must contain a valid
+     * @param argv String arguments from the command line. Must contain a valid
      *             directory in the Hadoop Distributed File System (HDFS), as well
      *             as a valid mode.
      *
      *             The directory should contain all documents to be annotated,
      *             complete with their dependencies for this job type.
-     * @return Zero if we ran error-free, non-zero otherwise.
      */
-    public int run( String[] args ) throws Exception
-    {
+    public static void main( String[] argv ) throws IOException, ClassNotFoundException, InterruptedException {
+        logger.logStatus( "Setting up job.\n\n" );
+
         // Set up the job configuration that we will send to Hadoop
-        final CuratorJob job = new CuratorJob( getConf(), args );
+        final CuratorJob job = new CuratorJob( new Configuration(), argv );
         FileSystemHandler handler = new FileSystemHandler( job );
 
         try {
+            logger.logStatus( "Setting up IO directories" );
             handler.setUpIODirectories();
+            logger.logStatus( "Checking file system" );
             handler.checkFileSystem();
 
             // Start a map/reduce job -- runJob(jobConf) takes the job
             // configuration we just set up and distributes it to Hadoop nodes
-            logger.log( "Starting MapReduce job" );
+            logger.logStatus( "Starting MapReduce job" );
             final long startTime = System.currentTimeMillis();
             job.start();
             final double duration = ( System.currentTimeMillis() - startTime )
@@ -71,16 +58,14 @@ public class HadoopInterface extends Configured implements Tool {
         finally {
             handler.cleanUpTempFiles();
         }
-
-        return 0;
     }
 
     /**
      * Reads the output from the Reduce operation
      * @param job The job configuration for this Hadoop job
-     * @throws IOException
+     * @throws IOException If file not found
      */
-    private void readOutput( CuratorJob job ) throws IOException {
+    private static void readOutput(CuratorJob job) throws IOException {
         // Read outputs
         Path inFile = new Path( job.getOutputDirectory(), "reduce-out" );
         SequenceFile.Reader reader =
