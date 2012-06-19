@@ -74,6 +74,8 @@ public class CuratorJobConf extends JobConf {
         this.mode = mode;
 
         setInheritedFields();
+
+        this.fs = FileSystem.get(this);
     }
 
 

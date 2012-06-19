@@ -47,10 +47,17 @@ public class ArgumentParser {
                 mode = AnnotationMode.fromString( args[1] );
                 directory = args[0];
             } catch( IllegalModeException e ) {
-                // Try parsing args[0] as a mode
-                AnnotationMode.fromString( args[0] );
-                directory = args[1];
-            } // Will die if neither args 0 nor 1 make sense as a mode
+                try {
+                    // Try parsing args[0] as a mode
+                    mode = AnnotationMode.fromString( args[0] );
+                    directory = args[1];
+                } catch ( IllegalModeException f ) {
+                    // Die if neither args 0 nor 1 make sense as a mode
+                    throw new BadCommandLineUsageException(
+                            "Couldn't make sense of either " + args[0] + " or "
+                            + args[1] + " as an annotation mode.");
+                }
+            }
         }
 
         // More robust usage, specifying which parms are which using CL flags
@@ -71,13 +78,22 @@ public class ArgumentParser {
                 }
             }
 
-            if( numReduces < 1 ) {
-                throw new IllegalArgumentException( "Number of reduces must be 1 or more." );
+            if( numReduces != null && numReduces < 1 ) {
+                throw new IllegalArgumentException( "Number of reduce operations "
+                        + "must be 1 or more. You specified "
+                        + Integer.toString( numReduces ) + "." );
             }
-            if( numMaps < 1 ) {
-                throw new IllegalArgumentException( "Number of maps must be 1 or more." );
+            if( numMaps != null && numMaps < 1 ) {
+                throw new IllegalArgumentException( "Number of map operations "
+                        + "must be 1 or more. You specified "
+                        + Integer.toString( numReduces ) + "." );
             }
         }
+
+        logger.logStatus( "Parsed command-line arguments. Using input directory "
+                          + directory + " and annotation mode "
+                          + mode.toString() + ", with " + getNumMaps()
+                          + " map ops and " + getNumReduces() + " reduce ops.");
     }
 
     /**
@@ -102,7 +118,7 @@ public class ArgumentParser {
     public int getNumMaps()
     {
         if( numMaps == null ) {
-            return 10;
+            numMaps = new Integer(10);
         }
         return numMaps.intValue();
     }
@@ -114,7 +130,7 @@ public class ArgumentParser {
     public int getNumReduces()
     {
         if( numReduces == null  ) {
-            return 10;
+            numReduces = new Integer(10);
         }
 
         return numReduces.intValue();
@@ -132,4 +148,5 @@ public class ArgumentParser {
     private String directory;
     private Integer numMaps;
     private Integer numReduces;
+    private MessageLogger logger = HadoopInterface.logger;
 }

@@ -55,5 +55,15 @@ public class MessageLogger
         }
     }
 
+    /**
+     * Logs a program status update
+     * @param s A string detailing the warning
+     */
+    public void logStatus( String s ) {
+        if( printToStdOut ) {
+            System.out.println( "Status: " + s );
+        }
+    }
+
     private boolean printToStdOut;
 }

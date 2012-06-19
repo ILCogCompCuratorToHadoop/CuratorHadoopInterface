@@ -4,6 +4,9 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.ArgumentParser;
 import org.junit.Test;
 
+/**
+ * Test class for ArgumentParser
+ */
 public class ArgumentParserTester
 {
     public ArgumentParserTester()
@@ -87,7 +90,7 @@ public class ArgumentParserTester
         args[7] = "1";
         ArgumentParser robustStyle4 = new ArgumentParser(args);
         assert( robustStyle4.getDirectory().equals( "asdf1234" ) );
-        assert( robustStyle4.getMode() == AnnotationMode.TOKEN );
+        assert( robustStyle4.getMode() == AnnotationMode.WIKI );
         assert( robustStyle4.getNumMaps() == 1 );
         assert( robustStyle4.getNumReduces() == 3 );
     }

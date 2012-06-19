@@ -2,9 +2,6 @@ package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.IllegalModeException;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 /**
  * Defines "modes" for the Curator-to-Hadoop interface (i.e., annotation types
  * which the tool will run with.
@@ -13,58 +10,48 @@ import java.util.regex.Pattern;
 public enum AnnotationMode {
     CHUNK, COREF, NOM_SRL, POS, TOKEN, VERB_SRL, WIKI, PARSE;
 
-    public static AnnotationMode fromString( String s ) {
-        Pattern pattern = Pattern.compile( "chunk", Pattern.CASE_INSENSITIVE );
-        Matcher matcher = pattern.matcher(s);
-        if( matcher.matches() ) {
-            return CHUNK;
-        }
+    public static AnnotationMode fromString( final String s ) {
+        try { 
+            return AnnotationMode.valueOf( s );
+        } catch ( IllegalArgumentException e ) {
+            // TODO: Use regexes instead?
+            if( s.contains("hunk") || s.contains("HUNK") ) {
+                return CHUNK;
+            }
 
-        pattern = Pattern.compile("ref", Pattern.CASE_INSENSITIVE);
-        matcher = pattern.matcher(s);
-        if( matcher.matches() ) {
-            return COREF;
-        }
+            if( s.contains("oref") || s.contains("OREF") ) {
+                return COREF;
+            }
 
-        pattern = Pattern.compile("nom", Pattern.CASE_INSENSITIVE);
-        matcher = pattern.matcher(s);
-        if( matcher.matches() ) {
-            return NOM_SRL;
-        }
+            if( s.contains("nom") || s.contains("NOM") ) {
+                return NOM_SRL;
+            }
 
-        pattern = Pattern.compile("pos|part", Pattern.CASE_INSENSITIVE);
-        matcher = pattern.matcher(s);
-        if( matcher.matches() ) {
-            return POS;
-        }
+            if( s.contains("pos") || s.contains("art") || s.contains("POS")
+                    || s.contains("ART") ) {
+                return POS;
+            }
 
-        pattern = Pattern.compile("tok", Pattern.CASE_INSENSITIVE);
-        matcher = pattern.matcher(s);
-        if( matcher.matches() ) {
-            return TOKEN;
-        }
+            if( s.contains("oken") || s.contains("TOKEN") ) {
+                return TOKEN;
+            }
 
-        pattern = Pattern.compile("verb", Pattern.CASE_INSENSITIVE);
-        matcher = pattern.matcher(s);
-        if( matcher.matches() ) {
-            return VERB_SRL;
-        }
+            if( s.contains("erb") || s.contains("VERB") ) {
+                return VERB_SRL;
+            }
 
-        pattern = Pattern.compile("wiki", Pattern.CASE_INSENSITIVE);
-        matcher = pattern.matcher(s);
-        if( matcher.matches() ) {
-            return WIKI;
-        }
+            if( s.contains("iki") || s.contains("WIKI") ) {
+                return WIKI;
+            }
 
-        pattern = Pattern.compile("pars|stanford", Pattern.CASE_INSENSITIVE);
-        matcher = pattern.matcher(s);
-        if( matcher.matches() ) {
-            return PARSE;
+            if( s.contains("arse") || s.contains("PARS") ) {
+                return PARSE;
+            }
+
+            throw new IllegalModeException( "Parse mode " + s + " not recognized. "
+                                            + "Please try one of the following: \n"
+                                            + "    CHUNK, COREF, NOM_SRL, POS, TOKEN, "
+                                            + "VERB_SRL, WIKI, or PARSE." );
         }
-        
-        throw new IllegalModeException( "Parse mode " + s + " not recognized. "
-                                        + "Please try one of the following: \n"
-                                        + "    CHUNK, COREF, NOM_SRL, POS, TOKEN, "
-                                        + "VERB_SRL, WIKI, or PARSE." );
     }
 }

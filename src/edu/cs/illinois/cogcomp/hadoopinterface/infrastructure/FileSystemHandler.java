@@ -62,8 +62,7 @@ public class FileSystemHandler {
                     + fs.makeQualified( inputDirectory ) + " does not exist. "
                     + "Please create it in the Hadoop file system first." );
         }
-        // TODO: Check that we actually have input in that directory
-        if( false /* files don't actually exist */ ) {
+        if( false /* TODO: if files don't actually exist */ ) {
             throw new EmptyInputException( "Input directory "
                     + fs.makeQualified( inputDirectory ) + " has no recognized "
                     + "input.  Please create input files in the Hadoop file "
@@ -77,8 +76,7 @@ public class FileSystemHandler {
      */
     public void createInputFilesForMaps() throws IOException {
         // Generate an input file for each map task
-        // TODO: Make this actually appropriate for our task (currently taken
-        //       from the Hadoop example for approximating Pi)
+        // TODO: Make this actually appropriate for our task (currently taken from the Hadoop example for approximating Pi)
         for (int i = 0; i < jobConf.getNumMaps(); ++i)
         {
             final Path file = new Path( jobConf.getInputDirectory(), "part" + i );
