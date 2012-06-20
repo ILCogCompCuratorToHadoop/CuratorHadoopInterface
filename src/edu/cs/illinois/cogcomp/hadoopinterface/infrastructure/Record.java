@@ -52,6 +52,8 @@ public class Record implements WritableComparable< Record > {
      */
     public void addAnnotation( AnnotationMode typeOfAnnotation,
                                String annotationBody ) {
+        // Write the annotationBody to a file located at:
+        //     job_directory/document_hash/annotation_type.txt
 
     }
 

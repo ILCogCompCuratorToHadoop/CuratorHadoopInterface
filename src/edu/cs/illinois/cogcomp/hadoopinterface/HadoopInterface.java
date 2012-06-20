@@ -62,6 +62,8 @@ public class HadoopInterface {
 
     /**
      * Reads the output from the Reduce operation
+     *
+     * @TODO: Is this even necessary? (Depends on what class is responsible for moving output to the DB)
      * @param job The job configuration for this Hadoop job
      * @throws IOException If file not found
      */

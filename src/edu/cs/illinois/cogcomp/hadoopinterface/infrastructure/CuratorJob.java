@@ -111,15 +111,16 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
     /**
      * Submits this job to the Hadoop cluster, then polls for progress until
      * the job is complete
+     * @return true if job completed successfully, false otherwise
      * @throws ClassNotFoundException . . . if the Mapper or Reducer are not
      *                               found.
-     * @throws IOException . . . if we can't read from the filesystem.
+     * @throws IOException thrown if the communication with the JobTracker is lost
      * @throws InterruptedException
      */
-    public void start()
+    public boolean start()
             throws ClassNotFoundException, IOException, InterruptedException {
         // Submit the job, then poll for progress until the job is complete
-        waitForCompletion( true );
+        return waitForCompletion( true );
     }
 
     /**
