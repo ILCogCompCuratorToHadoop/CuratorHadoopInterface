@@ -87,6 +87,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
      */
     private void configureJob() throws IOException {
         config.set( "annotationMode", mode.toString() );
+        config.set( "inputDirectory", inputDirectory.toString() );
 
         setJobName( "Curator job" );
 
