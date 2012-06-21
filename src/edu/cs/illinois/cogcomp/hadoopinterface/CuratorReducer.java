@@ -1,11 +1,11 @@
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
-import java.util.List;
 import java.nio.charset.Charset;
 import java.nio.file.*;
 

@@ -1,6 +1,6 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
-import edu.cs.illinois.cogcomp.hadoopinterface.CuratorMapper;
+import edu.cs.illinois.cogcomp.hadoopinterface.TestMapper;
 import edu.cs.illinois.cogcomp.hadoopinterface.CuratorReducer;
 import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
 import org.apache.hadoop.conf.Configuration;
@@ -96,10 +96,10 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
 
         // Specify various job-specific parameters
         if( testing ) {
-            setMapperClass( TestCuratorMapper.class );
+            setMapperClass( TestMapper.class );
         }
         else {
-            setMapperClass( CuratorMapper.class );
+            setMapperClass( TestMapper.class );
         }
 
         setReducerClass( CuratorReducer.class );

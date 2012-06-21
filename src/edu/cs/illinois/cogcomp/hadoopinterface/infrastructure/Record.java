@@ -1,15 +1,16 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.WritableComparable;
 
-import java.util.*;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import org.apache.commons.io.FileUtils;
 import java.nio.file.*;
+import java.util.ArrayList;
 
 /**
  * A version of the Curator's document record, for use on the Hadoop Distributed
@@ -24,6 +25,7 @@ public class Record implements WritableComparable< Record > {
     
     private String inputDir;
     private ArrayList annotations;
+    private Configuration config;
 
     /**
      * Constructs a record object
@@ -103,44 +105,44 @@ public class Record implements WritableComparable< Record > {
      *                         document (chunking, parsing, named entity
      *                         recognition, etc.).
      */
-    public bool checkDependencies( AnnotationMode typeOfAnnotation ) {
+    public boolean checkDependencies( AnnotationMode typeOfAnnotation ) {
         String annotation = typeOfAnnotation.toString();
-        bool valid = true;
+        boolean valid = true;
         if (annotation == "CHUNK") {
-            bool token = annotations.contains("TOKEN");
-            bool pos = annotations.contains("POS");
+            boolean token = annotations.contains("TOKEN");
+            boolean pos = annotations.contains("POS");
             if ( !(token || pos) ) {
                 valid = false;
             }
         }
         else if (annotation == "COREF") {
-            bool token = annotations.contains("TOKEN");
-            bool pos = annotations.contains("POS");
-            bool ner = annotations.contains("NER");
+            boolean token = annotations.contains("TOKEN");
+            boolean pos = annotations.contains("POS");
+            boolean ner = annotations.contains("NER");
             if ( !(token || pos || ner) ) {
                 valid = false;
             }
         }
         else if ( annotation == ("NOM_SRL" || "VERB_SRL") ) {
-            bool token = annotations.contains("TOKEN");
-            bool pos = annotations.contains("POS");
-            bool chunk = annotations.contains("CHUNK");
-            book parse = annotations.contains("PARSE"); // Charniak parser
+            boolean token = annotations.contains("TOKEN");
+            boolean pos = annotations.contains("POS");
+            boolean chunk = annotations.contains("CHUNK");
+            boolean parse = annotations.contains("PARSE"); // Charniak parser
             if ( !(token || pos || chunk || parse) ) {
                 valid = false;
             }
         }
         else if ( annotation == ("PARSE" || "POS") ) {
-            bool token = annotations.contains("TOKEN");
+            boolean token = annotations.contains("TOKEN");
             if (!token) {
                 valid = false;
             }
         }
         else if (annotation == "WIKI") {
-            bool token = annotations.contains("TOKEN");
-            bool pos = annotations.contains("POS");
-            bool chunk = annotations.contains("CHUNK");
-            bool ner = annotations.contains("NER"); // Charniak parser
+            boolean token = annotations.contains("TOKEN");
+            boolean pos = annotations.contains("POS");
+            boolean chunk = annotations.contains("CHUNK");
+            boolean ner = annotations.contains("NER"); // Charniak parser
             if (!(token || pos || chunk || ner) ) {
                 valid = false;
             }
