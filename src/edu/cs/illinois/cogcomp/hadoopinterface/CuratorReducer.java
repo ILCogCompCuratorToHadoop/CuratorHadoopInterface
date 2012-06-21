@@ -31,10 +31,10 @@ public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
         Files.copy(source, dest); // Java 7 finally implements this function natively...
         
 	    // while loop, wait for output in appropriate directory to "magically" appear
-        // (thanks to the local Curator instance)
+        // (put there by the local Curator instance)
         boolean done = false;
         Path output = null;
-        while (!done) {
+        while (!done) { // TODO add time delay
             try {
                 // attempts to get java.io path to curator output, if it exists
                 output = Paths.get(System.getProperty("user.dir"), "out", "curator_out.txt");
@@ -49,9 +49,8 @@ public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
                 String text = Files.readAllLines(output, Charset.defaultCharset());
                 inValue.addAnnotation(text);
             }
-            // pass Curator output back to Hadoop as Record
-            context.write(inKey, inValue);
-            
-        }              
+        }
+        // pass Curator output back to Hadoop as Record
+        context.write(inKey, inValue);              
     }
 }

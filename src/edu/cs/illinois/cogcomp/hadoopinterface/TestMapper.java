@@ -34,7 +34,21 @@ public class CuratorMapper extends Mapper<Text, Record, Text, Record> {
         HadoopInterface.logger.logStatus( "\tGot input key " + inKey.toString()
                                           + "\n\tand input value: "
                                           + inValue.toString() );
+
+
+        // TODO write our own Record class, w/ writeable/comparable interface
+
+
+    	/*transform input to output as (key, value) = (hash ID, Record)
+          String key = id;
+          Record value = record;
+
+          String key = new String("0xdeadbeef"); // The document's hash (unique)
+          String value = new String("This is my document text.");
+        */
         
+
+        // context.write replaces out.collect()
         context.write(inKey, inValue);
         
     }
