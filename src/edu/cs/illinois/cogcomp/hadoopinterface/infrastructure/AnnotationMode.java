@@ -8,7 +8,7 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.Illegal
  * @author Tyler Young
  */
 public enum AnnotationMode {
-    CHUNK, COREF, NOM_SRL, POS, TOKEN, VERB_SRL, WIKI, PARSE;
+    CHUNK, COREF, NER, NOM_SRL, PARSE, POS, TOKEN, VERB_SRL, WIKI;
 
     public static AnnotationMode fromString( final String s ) {
         try { 
@@ -23,10 +23,18 @@ public enum AnnotationMode {
                 return COREF;
             }
 
+			if( s.contains("ner") || s.contains("NER") || s.contains("amed") || s.contains("AMED") ) {
+				return NER;
+			}
+
             if( s.contains("nom") || s.contains("NOM") ) {
                 return NOM_SRL;
             }
 
+            if( s.contains("arse") || s.contains("PARS") ) {
+                return PARSE;
+            }
+			
             if( s.contains("pos") || s.contains("art") || s.contains("POS")
                     || s.contains("ART") ) {
                 return POS;
@@ -44,14 +52,10 @@ public enum AnnotationMode {
                 return WIKI;
             }
 
-            if( s.contains("arse") || s.contains("PARS") ) {
-                return PARSE;
-            }
-
             throw new IllegalModeException( "Parse mode " + s + " not recognized. "
                                             + "Please try one of the following: \n"
                                             + "    CHUNK, COREF, NOM_SRL, POS, TOKEN, "
-                                            + "VERB_SRL, WIKI, or PARSE." );
+                                            + "VERB_SRL, WIKI, PARSE, or NER." );
         }
     }
 }
