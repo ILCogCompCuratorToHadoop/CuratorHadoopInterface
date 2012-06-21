@@ -1,5 +1,6 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.WritableComparable;
 
@@ -20,8 +21,11 @@ public class Record implements WritableComparable< Record > {
      * Constructs a record object
      * @param documentHash The hash for the document whose annotation this
      *                     record stores
+     * @param fs A filesystem object with which this Record can access the
+     *           Hadoop Distributed File System
      */
-    public Record( String documentHash ) {
+    public Record( String documentHash, FileSystem fs ) {
+        this.fs = fs;
         this.documentHash = documentHash;
 
     }
@@ -108,6 +112,8 @@ public class Record implements WritableComparable< Record > {
     }
 
     private String documentHash;
+
     private String test0;
     private String test1;
+    private FileSystem fs;
 }
