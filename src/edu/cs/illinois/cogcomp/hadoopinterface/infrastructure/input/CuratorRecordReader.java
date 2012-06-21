@@ -1,5 +1,6 @@
-package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
+package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.input;
 
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.Text;

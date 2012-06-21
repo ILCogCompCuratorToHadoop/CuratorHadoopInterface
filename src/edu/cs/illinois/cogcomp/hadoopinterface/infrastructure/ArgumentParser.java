@@ -76,6 +76,9 @@ public class ArgumentParser {
                 else if( args[i].equals("-reduces") ) {
                     numReduces = new Integer( args[++i] );
                 }
+                else if( args[i].equals("-test") ) {
+                    testing = true;
+                }
             }
 
             if( numReduces != null && numReduces < 1 ) {
@@ -136,6 +139,10 @@ public class ArgumentParser {
         return numReduces.intValue();
     }
 
+    public boolean isTesting() {
+        return testing;
+    }
+
     /**
      * @return The annotation mode parsed from the command line parameters
 
@@ -149,4 +156,5 @@ public class ArgumentParser {
     private Integer numMaps;
     private Integer numReduces;
     private MessageLogger logger = HadoopInterface.logger;
+    private boolean testing = false;
 }

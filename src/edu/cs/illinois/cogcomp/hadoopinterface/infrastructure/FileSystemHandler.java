@@ -3,10 +3,7 @@ package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.BadInputDirectoryException;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.EmptyInputException;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
@@ -160,6 +157,33 @@ public class FileSystemHandler {
         }
 
         return fullOutput;
+    }
+
+    /**
+     * Writes a string to a text file to a given location on the Hadoop
+     * Distributed File System (HDFS)
+     * @param inputText The string to be written to the text file
+     * @param locationForFile A path (complete with file name and extension) to
+     *                        which we should write. If data already exists at
+     *                        this location, it will be overwritten.
+     * @param fs The FileSystem object against which we will resolve paths
+     * @param closeFileSystemOnCompletion TRUE if the filesystem should be closed
+     *                                    when the I/O operations are finished.
+     * @throws IOException
+     */
+    public static void writeFileToHDFS( String inputText,
+                                        Path locationForFile,
+                                        FileSystem fs,
+                                        boolean closeFileSystemOnCompletion )
+            throws IOException {
+        FSDataOutputStream dos = fs.create( locationForFile, true);
+
+        dos.writeChars( inputText );
+        dos.close();
+
+        if( closeFileSystemOnCompletion ) {
+            fs.close();
+        }
     }
 
     /**

@@ -35,6 +35,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
                                     + System.currentTimeMillis() );
         mode = argParser.getMode();
         numReduces = argParser.getNumReduces();
+        testing = argParser.isTesting();
 
         config = conf;
 
@@ -94,7 +95,13 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
         setJarByClass( HadoopInterface.class );
 
         // Specify various job-specific parameters
-        setMapperClass( CuratorMapper.class );
+        if( testing ) {
+            setMapperClass( TestCuratorMapper.class );
+        }
+        else {
+            setMapperClass( CuratorMapper.class );
+        }
+
         setReducerClass( CuratorReducer.class );
         setNumReduceTasks( numReduces );
 
@@ -161,11 +168,20 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
         return fs;
     }
 
+    /**
+     * @return TRUE if the command-line arguments told us to run in test mode
+     */
+    public boolean isTesting() {
+        return testing;
+    }
+
     private int numReduces;
     private Path inputDirectory;
     private Path outputDirectory;
+    private boolean testing;
     private AnnotationMode mode;
     private Configuration config;
     private MessageLogger logger = HadoopInterface.logger;
     private FileSystem fs;
+
 }
