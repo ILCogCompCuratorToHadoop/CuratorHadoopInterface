@@ -4,7 +4,11 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.InputFormat;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.JobContext;
+import org.apache.hadoop.mapreduce.RecordReader;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -32,14 +36,15 @@ public class DirectoryInputFormat extends InputFormat< Text, Record > {
             throws IOException, InterruptedException {
         // TODO: Fill this
 
-        LinkedList<DirectorySplit> jobSplits = new LinkedList< DirectorySplit >();
+        LinkedList<InputSplit> jobSplits = new LinkedList<InputSplit>();
 
         // Get location of the input document directory from job context
         Configuration conf = context.getConfiguration();
         FileSystem fs = FileSystem.get(conf);
 
-        List<String> filesInInputDir = FileSystemHandler.
-                getFilesAndDirectoriesInDirectory( conf.get("inputDirectory") );
+        List<String> filesInInputDir =
+                FileSystemHandler.getFilesAndDirectoriesInDirectory(
+                        conf.get("inputDirectory"), fs );
 
         // For each document in the directory . . .
         for( String file : filesInInputDir ) {
@@ -50,7 +55,7 @@ public class DirectoryInputFormat extends InputFormat< Text, Record > {
         }
 
         fs.close();
-        return (List<InputSplit>) jobSplits;
+        return jobSplits;
     }
 
 
@@ -60,7 +65,8 @@ public class DirectoryInputFormat extends InputFormat< Text, Record > {
             createRecordReader( InputSplit inputSplit,
                                 TaskAttemptContext taskAttemptContext)
             throws IOException, InterruptedException {
-        // TODO: Fill this
-        return null;
+        // Because the MapReduce framework calls initialize() (i.e., the REAL
+        // constructor, we don't need to pass any params. Weird.
+        return new CuratorRecordReader();
     }
 }
