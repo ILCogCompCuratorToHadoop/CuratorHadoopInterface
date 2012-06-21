@@ -4,17 +4,16 @@ import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.BadInputDirectoryException;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.EmptyInputException;
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -75,12 +74,10 @@ public class FileSystemHandler {
                     + "information on how to structure the input directory.");
         }
 
-        /*
-        Path path = new Path(fileName);
-        boolean fileExists = fs.exists(path);
-        */
 
-        if( false /* TODO: if files don't actually exist */ ) {
+        Path originalTxt = new Path( inputDirectory, "original.txt" );
+
+        if( getFileSizeInBytes(originalTxt, fs) < 1 ) {
             throw new EmptyInputException( "Input directory "
                     + fs.makeQualified( inputDirectory ) + " has no recognized "
                     + "input.  Please create input files in the Hadoop file "
@@ -88,34 +85,11 @@ public class FileSystemHandler {
         }
     }
 
-    /**
-     * Sets up the input files for the Map operations
-     * @throws IOException Possible IOException from file operations
-     */
-    /*
-    public void createInputFilesForMaps() throws IOException {
-        // Generate an input file for each map task
-        // TODO: Make this actually appropriate for our task (currently taken from the Hadoop example for approximating Pi)
-        for (int i = 0; i < job.getNumMaps(); ++i)
-        {
-            final Path file_path = new Path( job.getInputDirectory(), "part" + i );
-            final LongWritable offset = new LongWritable(i);
-            final LongWritable size = new LongWritable(1);
-
-            HadoopInterface.logger.logStatus( "Creating Sequence file writer." );
-            final SequenceFile.Writer writer = SequenceFile.createWriter(
-                    fs, job.getConfiguration(), file_path,
-                    Text.class, Record.class, SequenceFile.CompressionType.NONE);
-            try {
-                HadoopInterface.logger.logStatus( "Appending to sequence file" );
-                writer.append( offset, size );
-            } finally {
-                writer.close();
-            }
-
-            HadoopInterface.logger.logStatus( "Wrote input for Map #" + i );
+    public void cleanUpTempFiles() throws IOException {
+        if( fs.exists( HadoopInterface.TMP_DIR ) ) {
+            fs.delete( HadoopInterface.TMP_DIR, true );
         }
-    }*/
+    }
 
     /**
      * Returns the filename from a path. For instance, if p was /foo/bar/bas.txt,
@@ -165,8 +139,8 @@ public class FileSystemHandler {
                                            boolean closeFileSystemOnCompletion )
             throws IOException {
         if ( !fileSystem.exists( locationOfFile ) ) {
-            HadoopInterface.logger.logError( "File " + locationOfFile.toString()
-                                             + " does not exists");
+            HadoopInterface.logger.logError("File " + locationOfFile.toString()
+                    + " does not exists");
             return "";
         }
 
@@ -188,10 +162,31 @@ public class FileSystemHandler {
         return fullOutput;
     }
 
-    public void cleanUpTempFiles() throws IOException {
-        if( fs.exists( HadoopInterface.TMP_DIR ) ) {
-            fs.delete( HadoopInterface.TMP_DIR, true );
+    /**
+     * Returns an array of strings naming the files and directories in the
+     * directory denoted by this abstract path name.
+     *
+     * There is no guarantee that the name strings in the resulting array will
+     * appear in any specific order; they are not, in particular, guaranteed to
+     * appear in alphabetical order.
+     *
+     * @param dir The path whose files you want a list of
+     * @param fs The filesystem that the directory should be resolved against
+     *           (before doing anything with the path, we make it fully qualified
+     *           against this filesystem).
+     * @return A list of all files and sub-directories found in the directory
+     * @throws IOException
+     */
+    public static List<String> getFilesAndDirectoriesInDirectory( Path dir,
+                                                                  FileSystem fs )
+            throws IOException {
+        ArrayList<String> listOfPaths = new ArrayList<String>();
+
+        FileStatus fileStatuses[] = fs.listStatus(dir);
+        for( FileStatus status : fileStatuses ) {
+            listOfPaths.add( status.getPath().toString() );
         }
+        return listOfPaths;
     }
 
     /**
@@ -203,29 +198,16 @@ public class FileSystemHandler {
      * appear in alphabetical order.
      *
      * @param dir The path whose files you want a list of
+     * @param fs The filesystem that the directory should be resolved against
+     *           (before doing anything with the path, we make it fully qualified
+     *           against this filesystem).
      * @return A list of all files and sub-directories found in the directory
      * @throws IOException
      */
-    public static List<String> getFilesAndDirectoriesInDirectory( Path dir )
+    public static List<String> getFilesAndDirectoriesInDirectory( String dir,
+                                                                  FileSystem fs )
             throws IOException {
-        return Arrays.asList(FileUtil.list(new File(dir.toUri())));
-    }
-
-    /**
-     * Returns an array of strings naming the files and directories in the
-     * directory denoted by this abstract path name.
-     *
-     * There is no guarantee that the name strings in the resulting array will
-     * appear in any specific order; they are not, in particular, guaranteed to
-     * appear in alphabetical order.
-     *
-     * @param dir The path whose files you want a list of
-     * @return A list of all files and sub-directories found in the directory
-     * @throws IOException
-     */
-    public static List<String> getFilesAndDirectoriesInDirectory( String dir )
-            throws IOException {
-        return getFilesAndDirectoriesInDirectory( new Path(dir) );
+        return getFilesAndDirectoriesInDirectory( new Path(dir), fs );
     }
 
     /**
@@ -250,6 +232,11 @@ public class FileSystemHandler {
     public static boolean isDir( Path path, FileSystem fs )
             throws IOException {
         return fs.getFileStatus( path ).isDir();
+    }
+
+    public static long getFileSizeInBytes(Path path, FileSystem fs)
+            throws IOException {
+        return fs.getFileStatus( path ).getLen();
     }
 
 

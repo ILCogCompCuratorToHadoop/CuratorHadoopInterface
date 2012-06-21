@@ -46,7 +46,8 @@ public class DirectorySplit extends InputSplit {
      */
     @Override
     public long getLength() throws IOException, InterruptedException {
-        return fs.getFileStatus( inputPath.suffix("original.txt") ).getLen();
+        return FileSystemHandler.
+                getFileSizeInBytes( inputPath.suffix("original.txt"), fs);
     }
 
     /**
