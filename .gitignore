@@ -54,3 +54,11 @@ ehthumbs.db
 Thumbs.db
 
 .#README.md
+
+curatorhadoopinterface.properties
+
+src/edu/cs/illinois/cogcomp/hadoopinterface/infrastructure/CuratorRecordReader.java
+
+module_curatorhadoopinterface.xml
+
+curatorhadoopinterface.xml

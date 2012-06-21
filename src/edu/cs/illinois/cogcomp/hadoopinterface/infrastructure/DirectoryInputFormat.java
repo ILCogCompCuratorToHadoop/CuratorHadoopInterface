@@ -60,7 +60,8 @@ public class DirectoryInputFormat extends InputFormat< Text, Record > {
             createRecordReader( InputSplit inputSplit,
                                 TaskAttemptContext taskAttemptContext)
             throws IOException, InterruptedException {
-        // TODO: Fill this
-        return null;
+        // Because the MapReduce framework calls initialize() (i.e., the REAL
+        // constructor, we don't need to pass any params. Weird.
+        return new CuratorRecordReader();
     }
 }
