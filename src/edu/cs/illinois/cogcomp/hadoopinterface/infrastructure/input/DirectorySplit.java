@@ -1,5 +1,6 @@
-package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
+package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.input;
 
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -47,7 +48,7 @@ public class DirectorySplit extends InputSplit {
     @Override
     public long getLength() throws IOException, InterruptedException {
         return FileSystemHandler.
-                getFileSizeInBytes( inputPath.suffix("original.txt"), fs);
+                getFileSizeInBytes(inputPath.suffix("original.txt"), fs);
     }
 
     /**

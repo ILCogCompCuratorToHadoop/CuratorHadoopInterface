@@ -12,6 +12,7 @@
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.*;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.tests.DummyInputCreator;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.SequenceFile;
@@ -37,6 +38,11 @@ public class HadoopInterface {
         // Set up the job configuration that we will send to Hadoop
         final CuratorJob job = new CuratorJob( new Configuration(), argv );
         FileSystemHandler handler = new FileSystemHandler( job );
+
+        if( job.isTesting() ) {
+            DummyInputCreator.generateDocumentDirectory( job.getInputDirectory(),
+                                                         job.getFileSystem() );
+        }
 
         try {
             logger.logStatus( "Setting up IO directories" );

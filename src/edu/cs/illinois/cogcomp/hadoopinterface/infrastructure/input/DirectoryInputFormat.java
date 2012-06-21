@@ -1,5 +1,7 @@
-package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
+package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.input;
 
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -29,7 +31,7 @@ import java.util.List;
  *
  * @author Tyler Young
  */
-public class DirectoryInputFormat extends InputFormat< Text, Record > {
+public class DirectoryInputFormat extends InputFormat< Text, Record> {
 
     @Override
     public List<InputSplit> getSplits(JobContext context)
@@ -44,7 +46,7 @@ public class DirectoryInputFormat extends InputFormat< Text, Record > {
 
         List<String> filesInInputDir =
                 FileSystemHandler.getFilesAndDirectoriesInDirectory(
-                        conf.get("inputDirectory"), fs );
+                        conf.get("inputDirectory"), fs);
 
         // For each document in the directory . . .
         for( String file : filesInInputDir ) {
