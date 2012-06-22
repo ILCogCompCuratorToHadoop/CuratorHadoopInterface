@@ -4,12 +4,11 @@ import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.BadInputDirectoryException;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.EmptyInputException;
 import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,12 +53,12 @@ public class FileSystemHandler {
     public void checkFileSystem( ) throws IOException {
         Path inputDirectory = job.getInputDirectory();
 
-        if( fs.exists(HadoopInterface.TMP_DIR) ) {
+        if( HDFSFileExists(HadoopInterface.TMP_DIR, fs) ) {
             throw new IOException( "Temp directory "
                     + fs.makeQualified(HadoopInterface.TMP_DIR)
                     + " already exists.  Please remove it first.");
         }
-        if( !fs.exists( inputDirectory ) ) {
+        if( !HDFSFileExists( inputDirectory, fs ) ) {
             throw new BadInputDirectoryException( "Input directory "
                     + fs.makeQualified( inputDirectory ) + " does not exist. "
                     + "Please create it in the Hadoop file system first." );
@@ -71,10 +70,9 @@ public class FileSystemHandler {
                     + "information on how to structure the input directory.");
         }
 
-
         Path originalTxt = new Path( inputDirectory, "original.txt" );
 
-        if( getFileSizeInBytes(originalTxt, fs) < 1 ) {
+        if( getFileSizeInBytes( originalTxt, fs ) < 1 ) {
             throw new EmptyInputException( "Input directory "
                     + fs.makeQualified( inputDirectory ) + " has no recognized "
                     + "input.  Please create input files in the Hadoop file "
@@ -101,7 +99,7 @@ public class FileSystemHandler {
     }
 
     public static String getFileNameFromPath( Path p ) {
-        return getFileNameFromPath( p.toString().trim() );
+        return getFileNameFromPath(p.toString().trim());
     }
 
     /**
@@ -160,6 +158,29 @@ public class FileSystemHandler {
     }
 
     /**
+     * Returns a string version of a file on the local file system (i.e., not in
+     * the Hadoop Distributed File System).
+     * @param locationOfFile The path of the file to be read
+     * @return A string version of the requested file
+     * @throws IOException
+     */
+    public static String readFileFromLocal( Path locationOfFile )
+            throws IOException {
+        DataInputStream in = new DataInputStream(
+                new FileInputStream( locationOfFile.toString() ) );
+        BufferedReader br = new BufferedReader(new InputStreamReader(in));
+
+        String line;
+        String fullOutput = "";
+        while (( line = br.readLine()) != null)   {
+            fullOutput = fullOutput + line + "\n";
+        }
+
+        in.close();
+        return fullOutput;
+    }
+
+    /**
      * Writes a string to a text file to a given location on the Hadoop
      * Distributed File System (HDFS)
      * @param inputText The string to be written to the text file
@@ -176,7 +197,7 @@ public class FileSystemHandler {
                                         FileSystem fs,
                                         boolean closeFileSystemOnCompletion )
             throws IOException {
-        FSDataOutputStream dos = fs.create( locationForFile, true);
+        FSDataOutputStream dos = fs.create(locationForFile, true);
 
         dos.writeChars( inputText );
         dos.close();
@@ -184,6 +205,46 @@ public class FileSystemHandler {
         if( closeFileSystemOnCompletion ) {
             fs.close();
         }
+    }
+
+    /**
+     * Writes a string to a specified file on the local (i.e., non-Hadoop
+     * Distributed) file system.
+     * @param inputText The string to be written to the file
+     * @param locationForFile A path indicating where on the local disk the data
+     *                        should be written
+     * @throws IOException
+     */
+    public static void writeFileToLocal( String inputText,
+                                         Path locationForFile )
+            throws IOException {
+        FileOutputStream oStream =
+                new FileOutputStream( locationForFile.toString() );
+
+        oStream.write(inputText.getBytes());
+
+        oStream.close();
+    }
+
+    /**
+     * Copies a file from the local file system into HDFS
+     * @param inLocalFileSystem
+     * @param inHDFS
+     * @param fs
+     * @throws IOException
+     */
+    public static void copyFileFromLocalToHDFS( Path inLocalFileSystem,
+                                                Path inHDFS,
+                                                FileSystem fs )
+            throws IOException {
+        fs.copyFromLocalFile(inLocalFileSystem, inHDFS);
+    }
+
+    public static void copyFileFromHDFSToLocal( Path inHDFS,
+                                                Path inLocalFileSystem,
+                                                FileSystem fs )
+            throws IOException {
+        fs.copyToLocalFile(inHDFS, inLocalFileSystem);
     }
 
     /**
@@ -232,6 +293,26 @@ public class FileSystemHandler {
                                                                   FileSystem fs )
             throws IOException {
         return getFilesAndDirectoriesInDirectory( new Path(dir), fs );
+    }
+
+    /**
+     * Returns TRUE if the file exists at the specified path, and false otherwise.
+     * @param fileLocation A Path to the file in question
+     * @return TRUE if and only if the specified file exists.
+     */
+    public static boolean localFileExists( Path fileLocation ) {
+        return (new File( fileLocation.toString() ) ).exists();
+    }
+
+    /**
+     * Returns TRUE if the file exists at the specified path, and false otherwise.
+     * @param fileLocation A Path to the file in question
+     * @param fs The FileSystem object against which to resolve the path
+     * @return TRUE if and only if the specified file exists.
+     */
+    public static boolean HDFSFileExists( Path fileLocation, FileSystem fs )
+            throws IOException {
+        return fs.exists(fileLocation);
     }
 
     /**
