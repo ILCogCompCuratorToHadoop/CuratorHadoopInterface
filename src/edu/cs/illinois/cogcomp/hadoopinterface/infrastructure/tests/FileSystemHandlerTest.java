@@ -19,7 +19,7 @@ public class FileSystemHandlerTest {
     }
 
     public void readsAndWritesFilesCorrectly() throws IOException {
-        logger.logStatus( "Testing that it gets file names correctly." );
+        logger.logStatus( "Testing that it reads and writes files correctly." );
 
         // Write file to HDFS
         FileSystem fs = FileSystem.get( new Configuration() );
@@ -46,6 +46,7 @@ public class FileSystemHandlerTest {
     }
 
     public void properlyCopiesFilesAround() throws IOException {
+        logger.logStatus( "Testing that it copies files around correctly." );
 
         Path inputPath = new Path( "input_"  + System.currentTimeMillis() );
         FileSystem fs = FileSystem.get( new Configuration() );
@@ -74,7 +75,7 @@ public class FileSystemHandlerTest {
     }
 
     public void properlyGetsFileNamesFromPathObjects() throws IOException {
-        logger.logStatus( "Testing that it properly reads filenames from HDFS paths." );
+        logger.logStatus( "Testing that it properly gets filenames from HDFS paths." );
 
         // Write file to HDFS
         FileSystem fs = FileSystem.get( new Configuration() );

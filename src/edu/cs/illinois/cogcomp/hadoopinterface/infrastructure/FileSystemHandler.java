@@ -3,8 +3,10 @@ package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.BadInputDirectoryException;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.EmptyInputException;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
@@ -59,7 +61,7 @@ public class FileSystemHandler {
                     + fs.makeQualified(HadoopInterface.TMP_DIR)
                     + " already exists.  Please remove it first.");
         }
-        if( !HDFSFileExists( inputDirectory, fs ) ) {
+        if( !HDFSFileExists(inputDirectory, fs) ) {
             throw new BadInputDirectoryException( "Input directory "
                     + fs.makeQualified( inputDirectory ) + " does not exist. "
                     + "Please create it in the Hadoop file system first." );
@@ -82,7 +84,7 @@ public class FileSystemHandler {
     }
 
     public void cleanUpTempFiles() throws IOException {
-        if( HDFSFileExists( HadoopInterface.TMP_DIR, fs ) ) {
+        if( HDFSFileExists(HadoopInterface.TMP_DIR, fs) ) {
             fs.delete( HadoopInterface.TMP_DIR, true );
         }
     }
@@ -111,7 +113,7 @@ public class FileSystemHandler {
      */
     public static String stripTrailingSlash( Path p ) {
         String s = p.toString();
-        if( s.lastIndexOf( Path.SEPARATOR ) == s.length() - 1 ) {
+        if( s.lastIndexOf(Path.SEPARATOR) == s.length() - 1 ) {
             return s.substring( 0, s.length() - 1 );
         }
         return s;
@@ -134,7 +136,7 @@ public class FileSystemHandler {
                                            FileSystem fileSystem,
                                            boolean closeFileSystemOnCompletion )
             throws IOException {
-        if ( !HDFSFileExists( locationOfFile, fileSystem ) ) {
+        if ( !HDFSFileExists(locationOfFile, fileSystem) ) {
             HadoopInterface.logger.logError("File " + locationOfFile.toString()
                     + " does not exists");
             return "";
@@ -143,10 +145,11 @@ public class FileSystemHandler {
         FSDataInputStream in = fileSystem.open( locationOfFile );
         BufferedReader reader = new BufferedReader( new InputStreamReader(in) );
 
-        String line;
+        String line = "";
         String fullOutput = "";
-        while ( (line = reader.readLine()) != null ) {
+        while ( line != null ) {
             fullOutput = fullOutput + line + "\n";
+            line = reader.readLine();
         }
         reader.close();
         in.close();
@@ -167,7 +170,7 @@ public class FileSystemHandler {
      */
     public static String readFileFromLocal( Path locationOfFile )
             throws IOException {
-        if ( !localFileExists( locationOfFile ) ) {
+        if ( !localFileExists(locationOfFile) ) {
             HadoopInterface.logger.logError("File " + locationOfFile.toString()
                     + " does not exists");
             return "";
@@ -175,12 +178,13 @@ public class FileSystemHandler {
 
         DataInputStream in = new DataInputStream(
                 new FileInputStream( locationOfFile.toString() ) );
-        BufferedReader br = new BufferedReader(new InputStreamReader(in));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 
-        String line;
+        String line = "";
         String fullOutput = "";
-        while (( line = br.readLine()) != null)   {
+        while ( line != null)   {
             fullOutput = fullOutput + line + "\n";
+            line = reader.readLine();
         }
 
         in.close();
@@ -194,7 +198,10 @@ public class FileSystemHandler {
      * @param locationForFile A path (complete with file name and extension) to
      *                        which we should write. If data already exists at
      *                        this location, it will be overwritten.
-     * @param fs The FileSystem object against which we will resolve paths
+     * @param fs The FileSystem object against which we will resolve paths. Note
+     *           that, technically, this need not be an HDFS path. However, if
+     *           you want to write local files, reduce the risk of error for
+     *           yourself by using #writeFileToLocal().
      * @param closeFileSystemOnCompletion TRUE if the filesystem should be closed
      *                                    when the I/O operations are finished.
      * @throws IOException
@@ -225,12 +232,18 @@ public class FileSystemHandler {
     public static void writeFileToLocal( String inputText,
                                          Path locationForFile )
             throws IOException {
-        FileOutputStream oStream =
-                new FileOutputStream( locationForFile.toString() );
+        FileSystem localFS = FileSystem.getLocal( new Configuration() );
+        Path qualifiedLoc = locationForFile.makeQualified( localFS );
 
-        oStream.write(inputText.getBytes());
+        // Check to make sure parent dir exists; if not, create it
+        if( !localFileExists( qualifiedLoc.getParent() )
+                && isDir( qualifiedLoc, localFS ) ) {
+            localFS.mkdirs( localFS,
+                            qualifiedLoc.getParent(),
+                            new FsPermission( (short)777 ) );
+        }
 
-        oStream.close();
+        writeFileToHDFS( inputText, qualifiedLoc, localFS, true );
     }
 
     /**
@@ -335,7 +348,9 @@ public class FileSystemHandler {
     }
 
     /**
-     * Checks whether a given path refers to a directory.
+     * Checks whether a given path refers to a directory. Note that the path does
+     * *not* need to actually exist---if the file is not found, we simply return
+     * false.
      * @param path The location of the file/directory in question
      * @param fs A file system object to resolve paths relative to
      * @return True if path points to a directory, false otherwise.
@@ -343,7 +358,11 @@ public class FileSystemHandler {
      */
     public static boolean isDir( Path path, FileSystem fs )
             throws IOException {
-        return fs.getFileStatus( path ).isDir();
+        try {
+            return fs.getFileStatus( path ).isDir();
+        } catch( FileNotFoundException e ) {
+            return false;
+        }
     }
 
     public static long getFileSizeInBytes(Path path, FileSystem fs)
