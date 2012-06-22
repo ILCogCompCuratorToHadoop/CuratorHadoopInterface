@@ -6,6 +6,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
+import java.lang.Thread.sleep;
 import infrastructure.*;
 
 //import java.nio.charset.Charset;
@@ -38,7 +39,14 @@ public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
         // (put there by the local Curator instance)
         boolean done = false;
         output = new Path("/temp/hadoop/curator_out.txt");
-        while (!done) { // TODO add time delay
+        while (!done) {
+            try {
+                Thread.sleep(1000); // sleep for 1 sec
+            }
+            catch {InterruptedException e} {
+                System.out.println("Time delay interrupted");
+            }
+
             if ( !localFileExists(output) ) {
                 System.out.println("Waiting on Curator output");
             }
