@@ -1,8 +1,10 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
-import edu.cs.illinois.cogcomp.hadoopinterface.TestMapper;
+import edu.cs.illinois.cogcomp.hadoopinterface.CuratorMapper;
 import edu.cs.illinois.cogcomp.hadoopinterface.CuratorReducer;
 import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
+import edu.cs.illinois.cogcomp.hadoopinterface.TestMapper;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.input.DirectoryInputFormat;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -99,11 +101,14 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
             setMapperClass( TestMapper.class );
         }
         else {
-            setMapperClass( TestMapper.class );
+            setMapperClass( CuratorMapper.class );
         }
 
         setReducerClass( CuratorReducer.class );
         setNumReduceTasks( numReduces );
+
+        // We split the input at the document directory level
+        setInputFormatClass( DirectoryInputFormat.class );
 
         // We output in (Text, Record) pairs
         setMapOutputKeyClass( Text.class );
