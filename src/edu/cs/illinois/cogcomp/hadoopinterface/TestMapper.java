@@ -24,9 +24,9 @@ public class TestMapper extends Mapper<Text, Record, Text, Record> {
     /**
      * The map method in a map/reduce cycle. All nodes in the Hadoop
      * job cluster run this on their own portions of the input.
-     * @param inKey = key
-     * @param inValue = value
-     * @param context The configuration context
+     * @param testKey = key
+     * @param testValue = value
+     * @param testContext The configuration context
      */
     public void map( Text testKey, 
                      Record testValue, 
