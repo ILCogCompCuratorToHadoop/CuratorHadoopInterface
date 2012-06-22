@@ -81,10 +81,26 @@ public class FileSystemHandler {
         }
     }
 
+    /**
+     * Removes the temp directory used by HadoopInterface
+     * @throws IOException
+     */
     public void cleanUpTempFiles() throws IOException {
-        if( HDFSFileExists(HadoopInterface.TMP_DIR, fs) ) {
-            fs.delete( HadoopInterface.TMP_DIR, true );
+        if( HDFSFileExists( HadoopInterface.TMP_DIR, fs) ) {
+            delete( HadoopInterface.TMP_DIR, fs );
         }
+    }
+
+    /**
+     * Deletes a file or directory from a file system.
+     * @param fileOrDirectoryToDelete The location of the thing to be deleted
+     * @param fs The file system object against which we should resolve the path.
+     *           May be constructed as either a local or HDFS file system.
+     * @throws IOException
+     */
+    public static void delete( Path fileOrDirectoryToDelete, FileSystem fs )
+            throws IOException {
+        fs.delete( fileOrDirectoryToDelete, true );
     }
 
     /**
@@ -191,7 +207,8 @@ public class FileSystemHandler {
 
     /**
      * Writes a string to a text file to a given location on the Hadoop
-     * Distributed File System (HDFS)
+     * Distributed File System (HDFS). Note that this will overwrite anything
+     * currently present at the location.
      * @param inputText The string to be written to the text file
      * @param locationForFile A path (complete with file name and extension) to
      *                        which we should write. If data already exists at
@@ -209,19 +226,49 @@ public class FileSystemHandler {
                                         FileSystem fs,
                                         boolean closeFileSystemOnCompletion )
             throws IOException {
-        FSDataOutputStream dos = fs.create(locationForFile, true);
+        writeFileToHDFS( inputText, locationForFile, fs,
+                         closeFileSystemOnCompletion, false);
+    }
+
+    /**
+     * Writes a string to a text file to a given location on the Hadoop
+     * Distributed File System (HDFS)
+     * @param inputText The string to be written to the text file
+     * @param locationForFile A path (complete with file name and extension) to
+     *                        which we should write. If data already exists at
+     *                        this location, it will be overwritten.
+     * @param fs The FileSystem object against which we will resolve paths. Note
+     *           that, technically, this need not be an HDFS path. However, if
+     *           you want to write local files, reduce the risk of error for
+     *           yourself by using #writeFileToLocal().
+     * @param closeFileSystemOnCompletion TRUE if the filesystem should be closed
+     *                                    when the I/O operations are finished.
+     * @param appendInsteadOfOverwriting TRUE if we should append to whatever
+     *                                   currently exists at the location, FALSE
+     *                                   if it is okay to overwrite it.
+     * @throws IOException
+     */
+    public static void writeFileToHDFS( String inputText,
+                                        Path locationForFile,
+                                        FileSystem fs,
+                                        boolean closeFileSystemOnCompletion,
+                                        boolean appendInsteadOfOverwriting )
+            throws IOException {
+        FSDataOutputStream dos = fs.create( locationForFile,
+                                            !appendInsteadOfOverwriting);
 
         dos.writeChars( inputText );
         dos.close();
 
         if( closeFileSystemOnCompletion ) {
-            fs.close();  // TODO: Should we allow this?
+            fs.close();  // TODO: We should probably only allow this for local files
         }
     }
 
     /**
      * Writes a string to a specified file on the local (i.e., non-Hadoop
-     * Distributed) file system.
+     * Distributed) file system. Note that this method overwrites any data
+     * previously present in the requested location.
      * @param inputText The string to be written to the file
      * @param locationForFile A path indicating where on the local disk the data
      *                        should be written
@@ -230,8 +277,33 @@ public class FileSystemHandler {
     public static void writeFileToLocal( String inputText,
                                          Path locationForFile )
             throws IOException {
+        writeFileToLocal( inputText, locationForFile, false );
+    }
+
+    /**
+     * Writes a string to a specified file on the local (i.e., non-Hadoop
+     * Distributed) file system.
+     * @param inputText The string to be written to the file
+     * @param locationForFile A path indicating where on the local disk the data
+     *                        should be written
+     * @param appendInsteadOfOverwriting TRUE if we should append to whatever
+     *                                   currently exists at the location, FALSE
+     *                                   if it is okay to overwrite it.
+     * @throws IOException
+     */
+    public static void writeFileToLocal( String inputText,
+                                         Path locationForFile,
+                                         boolean appendInsteadOfOverwriting )
+            throws IOException {
         FileSystem localFS = FileSystem.getLocal( new Configuration() );
-        Path qualifiedLoc = locationForFile.makeQualified( localFS );
+        Path qualifiedLoc;
+        if( locationForFile != null ) {
+            qualifiedLoc = locationForFile.makeQualified( localFS );
+        }
+        else {
+            throw new NullPointerException( "Undefined location for file with "
+                + "contents \"" + inputText + "\".");
+        }
 
         // Check to make sure parent dir exists; if not, create it
         if( !localFileExists( qualifiedLoc.getParent() )
@@ -241,7 +313,8 @@ public class FileSystemHandler {
                             new FsPermission( (short)777 ) );
         }
 
-        writeFileToHDFS( inputText, qualifiedLoc, localFS, true );
+        writeFileToHDFS( inputText, qualifiedLoc,
+                         localFS, true, appendInsteadOfOverwriting);
     }
 
     /**

@@ -33,7 +33,7 @@ public class DummyInputCreator {
                           + "consectetur.\n\n"
                           + getRandomString() + "\n\n" + getRandomString();
         Path originalPath = new Path( jobDirectory, "original.txt" );
-        FileSystemHandler.writeFileToHDFS( original, originalPath, fs, false );
+        FileSystemHandler.writeFileToHDFS((String) original, (Path) originalPath, (FileSystem) fs, (boolean) false);
 
         // Create annotation files
         for( AnnotationMode mode : AnnotationMode.values() ) {
@@ -44,15 +44,15 @@ public class DummyInputCreator {
                     + "consectetur.";
             Path annotationPath = new Path( jobDirectory,
                     mode.toString() + ".txt" );
-            FileSystemHandler.writeFileToHDFS( annotation, annotationPath,
-                    fs, false );
+            FileSystemHandler.writeFileToHDFS((String) annotation, (Path) annotationPath,
+                    (FileSystem) fs, (boolean) false);
         }
     }
 
     public static String getRandomString()
     {
         Random rng = new Random();
-        int length = rng.nextInt( 1000 );
+        int length = rng.nextInt(1000);
         String characters = "abcdefghijklmnopqrstuvwxyz \n"
                             + "ABCDEFGHIJKLMNOPQRSTUVWXYZ[]().!?!@#$%^&*()_+=-";
 

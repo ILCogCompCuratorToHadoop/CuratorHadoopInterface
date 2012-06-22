@@ -32,8 +32,8 @@ public class FileSystemHandlerTest {
                 + UUID.randomUUID().toString()
                 + UUID.randomUUID().toString();
 
-        FileSystemHandler.writeFileToHDFS( randomString, inputPath, fs, false );
-        FileSystemHandler.writeFileToLocal( randomString, inputPath );
+        FileSystemHandler.writeFileToHDFS((String) randomString, (Path) inputPath, (FileSystem) fs, (boolean) false);
+        FileSystemHandler.writeFileToLocal((String) randomString, (Path) inputPath);
 
         logger.log("The file is here: " + inputPath.toString());
 
@@ -65,8 +65,8 @@ public class FileSystemHandlerTest {
         // Copy file from local to HDFS
         Path test = new Path( "local.txt" );
         Path testInHDFS = new Path( "local.txt" );
-        FileSystemHandler.writeFileToLocal("lorem ipsum dolar sit amet",
-                test );
+        FileSystemHandler.writeFileToLocal((String) "lorem ipsum dolar sit amet",
+                (Path) test);
         FileSystemHandler.copyFileFromLocalToHDFS( test, testInHDFS, fs );
 
         HDFSVersion = FileSystemHandler.readFileFromHDFS( testInHDFS, fs, false );

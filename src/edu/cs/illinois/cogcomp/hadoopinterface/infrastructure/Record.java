@@ -85,7 +85,7 @@ public class Record implements WritableComparable< Record > {
         }
         else {
             Path path = new Path(inputDir + Path.SEPARATOR + documentHash + Path.SEPARATOR + annotation + ".txt");
-            writeFileToHDFS(annotationBody, path, fs, true);
+            writeFileToHDFS((String) annotationBody, (Path) path, (FileSystem) fs, (boolean) true);
             annotations.add(annotation);
         }
     }
