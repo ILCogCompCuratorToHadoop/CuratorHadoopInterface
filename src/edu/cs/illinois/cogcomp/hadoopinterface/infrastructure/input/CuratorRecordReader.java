@@ -40,7 +40,9 @@ public class CuratorRecordReader extends RecordReader {
         if( progress < 0.9 ) {
             // Read the next key, value pair from the input split
             // Effectively, construct the Record that we will pass out as a value
-            nextRecord = new Record( nextKey.toString(), FileSystem.get( config ) );
+            nextRecord = new Record( nextKey.toString(),
+                                     FileSystem.get( config ),
+                                     config );
             return true;
         }
         return false;

@@ -28,7 +28,7 @@ public class TestMapper extends Mapper<Text, Record, Text, Record> {
      */
     public void map( Text inKey, 
                      Record inValue, 
-                     Context context) throws IOException {
+                     Context context) throws IOException, InterruptedException {
     
         HadoopInterface.logger.logStatus( "Beginning map phase.\n"
                                           + "Attempting to acces vars." );
