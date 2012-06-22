@@ -1,5 +1,6 @@
 /**
- * Provides the map() method to Hadoop's MapReduce.
+ * Provides the map() method to Hadoop's MapReduce. 
+ * TESTING VERSION
  * Called by HadoopInterface
  * 
  * @author Tyler A. Young
@@ -15,7 +16,7 @@ import org.apache.hadoop.mapreduce.Mapper;
 import java.io.IOException;
 
 
-public class CuratorMapper extends Mapper<Text, Record, Text, Record> {
+public class TestMapper extends Mapper<Text, Record, Text, Record> {
 
 
     /**
@@ -35,20 +36,6 @@ public class CuratorMapper extends Mapper<Text, Record, Text, Record> {
                                           + "\n\tand input value: "
                                           + inValue.toString() );
 
-
-        // TODO write our own Record class, w/ writeable/comparable interface
-
-
-    	/*transform input to output as (key, value) = (hash ID, Record)
-          String key = id;
-          Record value = record;
-
-          String key = new String("0xdeadbeef"); // The document's hash (unique)
-          String value = new String("This is my document text.");
-        */
-        
-
-        // context.write replaces out.collect()
         context.write(inKey, inValue);
         
     }
