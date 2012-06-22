@@ -27,6 +27,8 @@ public class ArgumentParser {
      *                                      command line was not understood.
      */
     public ArgumentParser(String[] args) throws BadCommandLineUsageException {
+        logger = HadoopInterface.logger;
+
         if( args.length < 2 ) {
             String errorMsg = "Usage: " + getClass().getName()
                     + "<document directory> <mode>\n   or:\n      "
@@ -81,6 +83,18 @@ public class ArgumentParser {
                 }
             }
 
+            if( mode == null ) {
+                throw new BadCommandLineUsageException( "No mode specified. "
+                        + "Since you're using the robust means of specifying "
+                        + "parameters, add -m < some mode > to your argument "
+                        + "list.");
+            }
+            if( directory == null ) {
+                throw new BadCommandLineUsageException( "No directory specified."
+                        + "Since you're using the robust means of specifying "
+                        + "parameters, add -d < some directory > to your "
+                        + "argument list.");
+            }
             if( numReduces != null && numReduces < 1 ) {
                 throw new IllegalArgumentException( "Number of reduce operations "
                         + "must be 1 or more. You specified "
@@ -155,6 +169,6 @@ public class ArgumentParser {
     private String directory;
     private Integer numMaps;
     private Integer numReduces;
-    private MessageLogger logger = HadoopInterface.logger;
+    private MessageLogger logger;
     private boolean testing = false;
 }
