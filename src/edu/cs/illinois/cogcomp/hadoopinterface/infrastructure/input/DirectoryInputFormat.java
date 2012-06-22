@@ -1,5 +1,6 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.input;
 
+import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
 import org.apache.hadoop.conf.Configuration;
@@ -36,13 +37,13 @@ public class DirectoryInputFormat extends InputFormat< Text, Record> {
     @Override
     public List<InputSplit> getSplits(JobContext context)
             throws IOException, InterruptedException {
-        // TODO: Fill this
-
         LinkedList<InputSplit> jobSplits = new LinkedList<InputSplit>();
 
         // Get location of the input document directory from job context
         Configuration conf = context.getConfiguration();
         FileSystem fs = FileSystem.get(conf);
+
+        HadoopInterface.logger.log("Input dir is " + conf.get("inputDirectory"));
 
         List<String> filesInInputDir =
                 FileSystemHandler.getFilesAndDirectoriesInDirectory(
@@ -56,7 +57,6 @@ public class DirectoryInputFormat extends InputFormat< Text, Record> {
             }
         }
 
-        fs.close();
         return jobSplits;
     }
 

@@ -22,24 +22,20 @@ import java.io.IOException;
 public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
     /**
      * Constructs a CuratorJobConf object
-     * @param conf The job's Configuration (available to objects that implement
-     *             Hadoop's Tool interface via the getConf() method)
      * @param args The command-line arguments passed ot the tool
      */
-    public CuratorJob( Configuration conf, String[] args )
+    public CuratorJob( String[] args )
             throws IOException, ClassNotFoundException, InterruptedException {
-        super( conf, "Curator runner");
+        super( getBaselineConfiguration( args ), "Curator runner");
 
         ArgumentParser argParser = new ArgumentParser(args);
 
-        inputDirectory = argParser.getPath();
-        outputDirectory = new Path( argParser.getDirectory() + "_out"
-                                    + System.currentTimeMillis() );
-        mode = argParser.getMode();
+        inputDirectory = new Path( getConfiguration().get("inputDirectory") );
+        outputDirectory = new Path( getConfiguration().get("outputDirectory") );
+        mode = AnnotationMode.fromString(
+                getConfiguration().get("annotationMode") );
         numReduces = argParser.getNumReduces();
         testing = argParser.isTesting();
-
-        config = conf;
 
         configureJob();
 
@@ -49,49 +45,10 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
     }
 
     /**
-     * Sets up the job configuration object, which specifies (among other
-     * things) the map and reduce classes for Hadoop to use.
-     *
-     * @param conf The job's Configuration (available to objects that implement
-     *             Hadoop's Tool interface via the getConf() method)
-     * @param numReduces The number of reduce tasks for Hadoop to use. The
-     *                   JobConf documentation says that the right number of
-     *                   reduces seems to be 0.95 or 1.75 multiplied by
-     *                   (num. nodes * mapreduce.tasktracker.reduce.tasks.maximum).
-     *                   Increasing the number of reduces increases the framework
-     *                   overhead, but increases load balancing and lowers the
-     *                   cost of failures.
-     * @param
-     * @param mode The annotation mode that will be used on the document
-     *             collection (i.e., the tool that will be called on each
-     *             document).
-     */
-    public CuratorJob( Configuration conf, int numReduces, Path inputDirectory,
-                       Path outputDirectory, AnnotationMode mode)
-            throws IOException, ClassNotFoundException, InterruptedException {
-        super( conf, "Curator runner" );
-
-        this.config = conf;
-        this.numReduces = numReduces;
-        this.inputDirectory = inputDirectory;
-        this.mode = mode;
-
-        configureJob();
-
-        this.fs = FileSystem.get(conf);
-
-        logger.logStatus( "Job configuration created." );
-    }
-
-
-    /**
      * Sets up the fields inherited from JobConf in the standard way for a
      * Curator job.
      */
     private void configureJob() throws IOException {
-        config.set( "annotationMode", mode.toString() );
-        config.set( "inputDirectory", inputDirectory.toString() );
-
         setJobName( "Curator job" );
 
         setJarByClass( HadoopInterface.class );
@@ -180,12 +137,35 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
         return testing;
     }
 
+    /**
+     * After calling the superclass constructor, the configuration can't be
+     * modified. Thus, we get build the configuration here before passing it to
+     * the superclass constructor.
+     * @param args The command line arguments, from which we take the annotation
+     *             mode and I/O directories.
+     * @return A configured Configuration option.
+     */
+    private static Configuration getBaselineConfiguration( String[] args ) {
+        Configuration config = new Configuration();
+
+        ArgumentParser argParser = new ArgumentParser(args);
+
+        String inputDirectory = argParser.getDirectory();
+        String outputDirectory = argParser.getDirectory() + "_out"
+                + System.currentTimeMillis();
+        AnnotationMode mode = argParser.getMode();
+
+        config.set( "annotationMode", mode.toString() );
+        config.set( "inputDirectory", inputDirectory );
+        config.set( "outputDirectory", outputDirectory );
+        return config;
+    }
+
     private int numReduces;
     private Path inputDirectory;
     private Path outputDirectory;
     private boolean testing;
     private AnnotationMode mode;
-    private Configuration config;
     private MessageLogger logger = HadoopInterface.logger;
     private FileSystem fs;
 
