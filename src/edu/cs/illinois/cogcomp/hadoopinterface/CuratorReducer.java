@@ -6,8 +6,10 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.*;
+import infrastructure.*;
+
+//import java.nio.charset.Charset;
+//import java.nio.file.*;
 
 
 /**
@@ -27,29 +29,26 @@ public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
 
         // write input document to local dir
         Path source = inValue.getAnnotation(); // pulls Hadoop-HDFS filepath from Record object
-        Path dest = Paths.get(System.getProperty("user.dir"), "out", "curator_in.txt");
-        Files.copy(source, dest); // Java 7 finally implements this function natively...
+        FileSystem fs = FileSystem.get(context.getConfiguration());
+        String text = readFileFromHDFS(source, fs, true);
+        Path dest = new Path("/temp/hadoop/curator_in.txt");
+        writeFileToLocal(text, dest);
         
 	    // while loop, wait for output in appropriate directory to "magically" appear
         // (put there by the local Curator instance)
         boolean done = false;
-        Path output = null;
+        output = new Path("/temp/hadoop/curator_out.txt");
         while (!done) { // TODO add time delay
-            try {
-                // attempts to get java.io path to curator output, if it exists
-                output = Paths.get(System.getProperty("user.dir"), "out", "curator_out.txt");
-                //output = FileSystems.getDefault().getPath("out", "curator_out.txt");
-            } 
-            catch (IOException e) {
+            if ( !localFileExists(output) ) {
                 System.out.println("Waiting on Curator output");
-            } 
-            if (output != null) {
+            }
+            else { // only if output file exists, read file from path to a string
                 done = true;
-                // read output file from path to string
-                String text = Files.readAllLines(output, Charset.defaultCharset());
+                text = readFileFromLocal(output);
                 inValue.addAnnotation(text);
             }
         }
+        
         // pass Curator output back to Hadoop as Record
         context.write(inKey, inValue);              
     }
