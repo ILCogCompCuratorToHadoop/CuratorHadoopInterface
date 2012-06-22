@@ -81,7 +81,7 @@ public class FileSystemHandler {
     }
 
     public void cleanUpTempFiles() throws IOException {
-        if( fs.exists( HadoopInterface.TMP_DIR ) ) {
+        if( HDFSFileExists( HadoopInterface.TMP_DIR, fs ) ) {
             fs.delete( HadoopInterface.TMP_DIR, true );
         }
     }
@@ -110,7 +110,7 @@ public class FileSystemHandler {
      */
     public static String stripTrailingSlash( Path p ) {
         String s = p.toString();
-        if( s.toString().lastIndexOf( Path.SEPARATOR ) == s.length() - 1 ) {
+        if( s.lastIndexOf( Path.SEPARATOR ) == s.length() - 1 ) {
             return s.substring( 0, s.length() - 1 );
         }
         return s;
@@ -133,7 +133,7 @@ public class FileSystemHandler {
                                            FileSystem fileSystem,
                                            boolean closeFileSystemOnCompletion )
             throws IOException {
-        if ( !fileSystem.exists( locationOfFile ) ) {
+        if ( !HDFSFileExists( locationOfFile, fileSystem ) ) {
             HadoopInterface.logger.logError("File " + locationOfFile.toString()
                     + " does not exists");
             return "";
@@ -166,6 +166,12 @@ public class FileSystemHandler {
      */
     public static String readFileFromLocal( Path locationOfFile )
             throws IOException {
+        if ( !localFileExists( locationOfFile ) ) {
+            HadoopInterface.logger.logError("File " + locationOfFile.toString()
+                    + " does not exists");
+            return "";
+        }
+
         DataInputStream in = new DataInputStream(
                 new FileInputStream( locationOfFile.toString() ) );
         BufferedReader br = new BufferedReader(new InputStreamReader(in));
@@ -301,7 +307,7 @@ public class FileSystemHandler {
      * @return TRUE if and only if the specified file exists.
      */
     public static boolean localFileExists( Path fileLocation ) {
-        return (new File( fileLocation.toString() ) ).exists();
+        return ( new File( fileLocation.toString() ) ).exists();
     }
 
     /**
@@ -312,7 +318,7 @@ public class FileSystemHandler {
      */
     public static boolean HDFSFileExists( Path fileLocation, FileSystem fs )
             throws IOException {
-        return fs.exists(fileLocation);
+        return fs.exists( fileLocation );
     }
 
     /**
