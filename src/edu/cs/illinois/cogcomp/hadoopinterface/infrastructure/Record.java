@@ -21,7 +21,6 @@ import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemH
  *
  * Implements WritableComparable so that it can be used as a key or value in a
  * MapReduce job.
- * @author Tyler Young
  * @author Lisa Bao
  */
 public class Record implements WritableComparable< Record > {
@@ -109,14 +108,14 @@ public class Record implements WritableComparable< Record > {
     public boolean checkDependencies( AnnotationMode typeOfAnnotation ) {
         String annotation = typeOfAnnotation.toString();
         boolean valid = true;
-        if (annotation.equals("CHUNK") {
+        if ( annotation.equals("CHUNK") ) {
             boolean token = annotations.contains("TOKEN");
             boolean pos = annotations.contains("POS");
             if ( !(token || pos) ) {
                 valid = false;
             }
         }
-        else if (annotation.equals("COREF") {
+        else if ( annotation.equals("COREF") ) {
             boolean token = annotations.contains("TOKEN");
             boolean pos = annotations.contains("POS");
             boolean ner = annotations.contains("NER");
@@ -124,7 +123,7 @@ public class Record implements WritableComparable< Record > {
                 valid = false;
             }
         }
-        else if ( (annotation.equals("NOM_SRL") || (annotation.equals("VERB_SRL") ) {
+        else if ( annotation.equals("NOM_SRL") || (annotation.equals("VERB_SRL") ) ) {
             boolean token = annotations.contains("TOKEN");
             boolean pos = annotations.contains("POS");
             boolean chunk = annotations.contains("CHUNK");
@@ -133,13 +132,13 @@ public class Record implements WritableComparable< Record > {
                 valid = false;
             }
         }
-        else if ( (annotation.equals("PARSE") || (annotation.equals("POS") ) {
+        else if ( annotation.equals("PARSE") || (annotation.equals("POS") ) ) {
             boolean token = annotations.contains("TOKEN");
             if (!token) {
                 valid = false;
             }
         }
-        else if (annotation.equals("WIKI") {
+        else if ( annotation.equals("WIKI") ) {
             boolean token = annotations.contains("TOKEN");
             boolean pos = annotations.contains("POS");
             boolean chunk = annotations.contains("CHUNK");
