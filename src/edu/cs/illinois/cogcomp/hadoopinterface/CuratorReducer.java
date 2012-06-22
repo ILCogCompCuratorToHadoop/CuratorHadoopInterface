@@ -1,13 +1,15 @@
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
-import java.lang.Thread.sleep;
-import infrastructure.*;
+
+import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.*;
 
 //import java.nio.charset.Charset;
 //import java.nio.file.*;
@@ -26,10 +28,11 @@ public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
      */
     public void reduce( Text inKey, 
                         Record inValue, 
-                        Context context ) throws IOException {
+                        Context context ) throws IOException, InterruptedException {
 
         // write input document to local dir
-        Path source = inValue.getAnnotation(); // pulls Hadoop-HDFS filepath from Record object
+        String annotation = context.getConfiguration().get("annotationMode");
+        Path source = inValue.getAnnotation(AnnotationMode.fromString(annotation)); // pulls Hadoop-HDFS filepath from Record object
         FileSystem fs = FileSystem.get(context.getConfiguration());
         String text = readFileFromHDFS(source, fs, true);
         Path dest = new Path("/temp/hadoop/curator_in.txt");
@@ -38,12 +41,12 @@ public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
 	    // while loop, wait for output in appropriate directory to "magically" appear
         // (put there by the local Curator instance)
         boolean done = false;
-        output = new Path("/temp/hadoop/curator_out.txt");
+        Path output = new Path("/temp/hadoop/curator_out.txt");
         while (!done) {
             try {
                 Thread.sleep(1000); // sleep for 1 sec
             }
-            catch {InterruptedException e} {
+            catch (InterruptedException e) {
                 System.out.println("Time delay interrupted");
             }
 
@@ -53,11 +56,11 @@ public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
             else { // only if output file exists, read file from path to a string
                 done = true;
                 text = readFileFromLocal(output);
-                inValue.addAnnotation(text);
+                inValue.addAnnotation(AnnotationMode.fromString(annotation), text);
             }
         }
         
         // pass Curator output back to Hadoop as Record
-        context.write(inKey, inValue);              
+        context.write(inKey, inValue);
     }
 }

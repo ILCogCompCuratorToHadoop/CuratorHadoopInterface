@@ -1,6 +1,6 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
-import org.apache.commons.io.FileUtils;
+//import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -11,6 +11,9 @@ import java.io.DataOutput;
 import java.io.IOException;
 //import java.nio.file.*;
 import java.util.ArrayList;
+
+import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.*;
+
 
 /**
  * A version of the Curator's document record, for use on the Hadoop Distributed
@@ -26,9 +29,7 @@ public class Record implements WritableComparable< Record > {
     private String inputDir;
     private ArrayList annotations;
     private Configuration config;
-
     private String documentHash;
-
     private String test0;
     private String test1;
     private FileSystem fs;
@@ -59,7 +60,7 @@ public class Record implements WritableComparable< Record > {
      */
     public Path getAnnotation( AnnotationMode typeOfAnnotation ) {
         String annotation = typeOfAnnotation.toString();
-        Path path = new Path(inputDir + Path.SEPARATOR + documentHas + Path.SEPARATOR + annotation + ".txt");
+        Path path = new Path(inputDir + Path.SEPARATOR + documentHash + Path.SEPARATOR + annotation + ".txt");
         // NOTE: annotation filenames must conform to enumerated type names in all caps
         if (!annotations.contains(annotation)) {    
             System.out.println("Error: No existing annotation at this path!");
@@ -78,9 +79,9 @@ public class Record implements WritableComparable< Record > {
      * @param annotationBody The text of the annotation being provided
      */
     public void addAnnotation( AnnotationMode typeOfAnnotation,
-                               String annotationBody ) {
+                               String annotationBody ) throws IOException {
         String annotation = typeOfAnnotation.toString();
-        Path path = new Path(inputDir + Path.SEPARATOR + documentHas + Path.SEPARATOR + annotation + ".txt");
+        Path path = new Path(inputDir + Path.SEPARATOR + documentHash + Path.SEPARATOR + annotation + ".txt");
         writeFileToHDFS(annotationBody, path, fs, true);
         annotations.add(annotation);
     }
@@ -108,14 +109,14 @@ public class Record implements WritableComparable< Record > {
     public boolean checkDependencies( AnnotationMode typeOfAnnotation ) {
         String annotation = typeOfAnnotation.toString();
         boolean valid = true;
-        if (annotation == "CHUNK") {
+        if (annotation.equals("CHUNK") {
             boolean token = annotations.contains("TOKEN");
             boolean pos = annotations.contains("POS");
             if ( !(token || pos) ) {
                 valid = false;
             }
         }
-        else if (annotation == "COREF") {
+        else if (annotation.equals("COREF") {
             boolean token = annotations.contains("TOKEN");
             boolean pos = annotations.contains("POS");
             boolean ner = annotations.contains("NER");
@@ -123,7 +124,7 @@ public class Record implements WritableComparable< Record > {
                 valid = false;
             }
         }
-        else if ( annotation == ("NOM_SRL" || "VERB_SRL") ) {
+        else if ( (annotation.equals("NOM_SRL") || (annotation.equals("VERB_SRL") ) {
             boolean token = annotations.contains("TOKEN");
             boolean pos = annotations.contains("POS");
             boolean chunk = annotations.contains("CHUNK");
@@ -132,13 +133,13 @@ public class Record implements WritableComparable< Record > {
                 valid = false;
             }
         }
-        else if ( annotation == ("PARSE" || "POS") ) {
+        else if ( (annotation.equals("PARSE") || (annotation.equals("POS") ) {
             boolean token = annotations.contains("TOKEN");
             if (!token) {
                 valid = false;
             }
         }
-        else if (annotation == "WIKI") {
+        else if (annotation.equals("WIKI") {
             boolean token = annotations.contains("TOKEN");
             boolean pos = annotations.contains("POS");
             boolean chunk = annotations.contains("CHUNK");
