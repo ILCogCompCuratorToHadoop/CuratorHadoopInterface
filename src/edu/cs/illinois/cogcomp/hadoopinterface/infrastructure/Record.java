@@ -108,6 +108,26 @@ public class Record implements WritableComparable< Record > {
         }
     }
 
+	/**
+	 * Removes an annotation and its corresponding HDFS file from the Record.
+	 * For use when forcing Curator to reprocess an annotation regardless of cache.
+	 *
+     * @param typeOfAnnotation The type of annotation to retrieve for the
+     *                         document (chunking, parsing, named entity
+     *                         recognition, etc.).
+	 */
+	public void removeAnnotation( AnnotationMode typeofAnnotation ) {
+	    String annotation = typeOfAnnotation.toString();
+		if (!annotations.contains(annotation)) {
+		    System.out.println("Error: This annotation does not exist; not removing");
+		}
+		else {
+		    Path path = new Path(inputDir + Path.SEPARATOR + documentHash + Path.SEPARATOR + annotation + ".txt");
+			delete(path, fs);
+			annotations.remove(annotation);
+		}
+	}
+	
     /**
      * Prints a list of the available annotations
      * as stored in ArrayList annotations.
