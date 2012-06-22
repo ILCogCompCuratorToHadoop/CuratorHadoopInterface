@@ -11,9 +11,10 @@
 
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
-import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.*;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.CuratorJob;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.MessageLogger;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.tests.DummyInputCreator;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.SequenceFile;
 
@@ -36,7 +37,7 @@ public class HadoopInterface {
         logger.logStatus( "Setting up job.\n\n" );
 
         // Set up the job configuration that we will send to Hadoop
-        final CuratorJob job = new CuratorJob( new Configuration(), argv );
+        final CuratorJob job = new CuratorJob( argv );
         FileSystemHandler handler = new FileSystemHandler( job );
 
         if( job.isTesting() ) {
@@ -58,10 +59,7 @@ public class HadoopInterface {
             final double duration = ( System.currentTimeMillis() - startTime )
                                     / 1000.0;
             logger.log( "Job finished in " + duration + " seconds" );
-
-            readOutput( job );
-        }
-        finally {
+        } finally {
             handler.cleanUpTempFiles();
         }
     }

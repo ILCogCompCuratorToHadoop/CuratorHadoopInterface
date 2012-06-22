@@ -6,6 +6,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import java.io.IOException;
+import java.util.Random;
 
 /**
  * Generates text files to simulate input to the Hadoop interface.
@@ -29,7 +30,8 @@ public class DummyInputCreator {
         String original = "Lorem ipsum dolor sit amet, consectetur adipiscing "
                           + "elit. Nullam eu mauris odio. Vivamus id fermentum"
                           + "elit. Quisque placerat arcu in nibh tincidunt "
-                          + "consectetur.";
+                          + "consectetur.\n\n"
+                          + getRandomString() + "\n\n" + getRandomString();
         Path originalPath = new Path( jobDirectory, "original.txt" );
         FileSystemHandler.writeFileToHDFS( original, originalPath, fs, false );
 
@@ -45,6 +47,21 @@ public class DummyInputCreator {
             FileSystemHandler.writeFileToHDFS( annotation, annotationPath,
                     fs, false );
         }
+    }
+
+    public static String getRandomString()
+    {
+        Random rng = new Random();
+        int length = rng.nextInt( 1000 );
+        String characters = "abcdefghijklmnopqrstuvwxyz \n"
+                            + "ABCDEFGHIJKLMNOPQRSTUVWXYZ[]().!?!@#$%^&*()_+=-";
+
+        char[] text = new char[length];
+        for (int i = 0; i < length; i++)
+        {
+            text[i] = characters.charAt(rng.nextInt(characters.length()));
+        }
+        return new String(text);
     }
 
 }

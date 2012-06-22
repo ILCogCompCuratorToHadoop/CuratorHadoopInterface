@@ -40,11 +40,9 @@ public class FileSystemHandler {
         // to the same place in HDFS that we get the input from.
         HadoopInterface.logger.logStatus( "Adding input path." );
         FileInputFormat.addInputPath( job, job.getInputDirectory());
+
         HadoopInterface.logger.logStatus( "Setting output path." );
         FileOutputFormat.setOutputPath( job, job.getOutputDirectory());
-
-        //HadoopInterface.logger.logStatus( "Creating input files for map ops." );
-        //createInputFilesForMaps();
     }
 
     /**
@@ -155,7 +153,7 @@ public class FileSystemHandler {
         in.close();
 
         if( closeFileSystemOnCompletion ) {
-            fileSystem.close();
+            fileSystem.close();       // TODO: Should we allow this?
         }
 
         return fullOutput;
@@ -217,7 +215,7 @@ public class FileSystemHandler {
         dos.close();
 
         if( closeFileSystemOnCompletion ) {
-            fs.close();
+            fs.close();  // TODO: Should we allow this?
         }
     }
 
@@ -312,6 +310,10 @@ public class FileSystemHandler {
     public static List<String> getFilesAndDirectoriesInDirectory( String dir,
                                                                   FileSystem fs )
             throws IOException {
+        if( dir == null || dir.equals("") ) {
+            throw new IllegalArgumentException(
+                    "The empty string is not a valid path." );
+        }
         return getFilesAndDirectoriesInDirectory( new Path(dir), fs );
     }
 
