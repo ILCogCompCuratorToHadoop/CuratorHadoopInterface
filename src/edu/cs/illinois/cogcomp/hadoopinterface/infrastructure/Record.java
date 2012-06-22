@@ -9,7 +9,7 @@ import org.apache.hadoop.io.WritableComparable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.nio.file.*;
+//import java.nio.file.*;
 import java.util.ArrayList;
 
 /**
@@ -26,6 +26,12 @@ public class Record implements WritableComparable< Record > {
     private String inputDir;
     private ArrayList annotations;
     private Configuration config;
+
+    private String documentHash;
+
+    private String test0;
+    private String test1;
+    private FileSystem fs;
 
     /**
      * Constructs a record object
@@ -53,10 +59,11 @@ public class Record implements WritableComparable< Record > {
      */
     public Path getAnnotation( AnnotationMode typeOfAnnotation ) {
         String annotation = typeOfAnnotation.toString();
-        Path path = Paths.get(inputDir, documentHash, annotation + ".txt");
+        Path path = new Path(inputDir + Path.SEPARATOR + documentHas + Path.SEPARATOR + annotation + ".txt");
         // NOTE: annotation filenames must conform to enumerated type names in all caps
         if (!annotations.contains(annotation)) {    
             System.out.println("Error: No existing annotation at this path!");
+            // path = null;
         }
         return path;
     }
@@ -73,28 +80,21 @@ public class Record implements WritableComparable< Record > {
     public void addAnnotation( AnnotationMode typeOfAnnotation,
                                String annotationBody ) {
         String annotation = typeOfAnnotation.toString();
-        Path path = Paths.get(inputDir, documentHash, annotation + ".txt");
-        File file = path.toFile();
-        FileUtils.writeStringToFile(file, annotationBody);
+        Path path = new Path(inputDir + Path.SEPARATOR + documentHas + Path.SEPARATOR + annotation + ".txt");
+        writeFileToHDFS(annotationBody, path, fs, true);
         annotations.add(annotation);
     }
 
     /**
      * Adds an already-existing annotation for a document in HDFS
-     * by copying it to the appropriate directory.
+     * to the Record's arraylist of available annotations.
      *
      * @param typeOfAnnotation The type of annotation to retrieve for the
      *                         document (chunking, parsing, named entity
      *                         recognition, etc.).
-     * @param annotationLocation The location in HDFS of the annotation being
-     *                           added
      */
-    public void addAnnotation( AnnotationMode typeOfAnnotation,
-                               Path annotationLocation ) {
+    public void informAnnotation( AnnotationMode typeOfAnnotation ) {
         String annotation = typeOfAnnotation.toString();
-        Path source = annotationLocation;
-        Path dest = Paths.get(inputDir, documentHash, annotation + ".txt");
-        Files.copy(source, dest);
         annotations.add(annotation);
     }
 
@@ -185,9 +185,4 @@ public class Record implements WritableComparable< Record > {
         return "Record for document whose ID is " + documentHash;
     }
 
-    private String documentHash;
-
-    private String test0;
-    private String test1;
-    private FileSystem fs;
-}
+} // THE END
