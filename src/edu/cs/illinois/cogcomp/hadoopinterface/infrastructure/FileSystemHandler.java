@@ -15,6 +15,7 @@ import java.util.List;
 /**
  * A class to handle all the filesystem interactions in the Hadoop interface.
  *
+ * @TODO: Non-static versions of the static methods requiring a filesystem obj
  * @author Tyler Young
  */
 public class FileSystemHandler {

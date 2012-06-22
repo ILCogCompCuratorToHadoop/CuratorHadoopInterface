@@ -18,7 +18,7 @@ public class FileSystemHandlerTest {
         logger = new MessageLogger( true );
     }
 
-    public void getsFileNamesCorrectly() throws IOException {
+    public void readsAndWritesFilesCorrectly() throws IOException {
         logger.logStatus( "Testing that it gets file names correctly." );
 
         // Write file to HDFS
@@ -26,26 +26,55 @@ public class FileSystemHandlerTest {
 
         Path inputPath = new Path( "input_"  + System.currentTimeMillis()
                 + Path.SEPARATOR + "bogus.txt" );
-        FSDataOutputStream dos = fs.create( inputPath, true);
 
         String randomString = UUID.randomUUID().toString()
                 + UUID.randomUUID().toString()
                 + UUID.randomUUID().toString()
                 + UUID.randomUUID().toString();
 
-        dos.writeChars(randomString);
-        dos.close();
+        FileSystemHandler.writeFileToHDFS( randomString, inputPath, fs, false );
+        FileSystemHandler.writeFileToLocal( randomString, inputPath );
 
-        logger.log("The file is here: " + inputPath.toString() );
+        logger.log("The file is here: " + inputPath.toString());
 
         // Read it back
         String readVersion = FileSystemHandler.readFileFromHDFS( inputPath,
                 fs, true );
+        String readVersionLocal = FileSystemHandler.readFileFromLocal( inputPath );
         assert( readVersion.equals( randomString ));
+        assert( readVersionLocal.equals( readVersion) );
     }
 
-    public void properlyReadsFilesFromHDFS() throws IOException {
-        logger.logStatus( "Testing that it properly reads from HDFS." );
+    public void properlyCopiesFilesAround() throws IOException {
+
+        Path inputPath = new Path( "input_"  + System.currentTimeMillis() );
+        FileSystem fs = FileSystem.get( new Configuration() );
+        DummyInputCreator.generateDocumentDirectory( inputPath, fs );
+
+        // Copy file from HDFS to local
+        Path origTxt = new Path( inputPath, "original.txt" );
+        Path origTxtLocal = new Path( "originalFromHDFS.txt" );
+        FileSystemHandler.copyFileFromHDFSToLocal( origTxt, origTxtLocal, fs );
+
+        String HDFSVersion = FileSystemHandler.readFileFromHDFS( origTxt, fs,
+                false);
+        String localVersion = FileSystemHandler.readFileFromLocal( origTxtLocal );
+        assert( HDFSVersion.equals(localVersion) );
+
+        // Copy file from local to HDFS
+        Path test = new Path( "local.txt" );
+        Path testInHDFS = new Path( "local.txt" );
+        FileSystemHandler.writeFileToLocal("lorem ipsum dolar sit amet",
+                test );
+        FileSystemHandler.copyFileFromLocalToHDFS( test, testInHDFS, fs );
+
+        HDFSVersion = FileSystemHandler.readFileFromHDFS( testInHDFS, fs, false );
+        localVersion = FileSystemHandler.readFileFromLocal( test );
+        assert( HDFSVersion.equals(localVersion) );
+    }
+
+    public void properlyGetsFileNamesFromPathObjects() throws IOException {
+        logger.logStatus( "Testing that it properly reads filenames from HDFS paths." );
 
         // Write file to HDFS
         FileSystem fs = FileSystem.get( new Configuration() );
@@ -104,8 +133,9 @@ public class FileSystemHandlerTest {
     public static void main( String[] args ) throws IOException {
         FileSystemHandlerTest tester = new FileSystemHandlerTest();
 
-        tester.getsFileNamesCorrectly();
-        tester.properlyReadsFilesFromHDFS();
+        tester.readsAndWritesFilesCorrectly();
+        tester.properlyCopiesFilesAround();
+        tester.properlyGetsFileNamesFromPathObjects();
         tester.knowsWhatsADirectoryAndWhatIsnt();
         tester.getsRightNumOfFilesAndDirectories();
     }
