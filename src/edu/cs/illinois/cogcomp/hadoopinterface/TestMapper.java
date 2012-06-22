@@ -11,6 +11,7 @@ package edu.cs.illinois.cogcomp.hadoopinterface;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 

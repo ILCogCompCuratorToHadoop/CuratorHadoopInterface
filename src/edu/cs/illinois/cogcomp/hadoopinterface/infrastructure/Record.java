@@ -80,7 +80,7 @@ public class Record implements WritableComparable< Record > {
     public void addAnnotation( AnnotationMode typeOfAnnotation,
                                String annotationBody ) throws IOException {
         String annotation = typeOfAnnotation.toString();
-        if (annotations.contains(annotation) {
+        if ( annotations.contains(annotation) ) {
             System.out.println("Error: This annotation already exists; not adding");
         }
         else {
@@ -100,7 +100,7 @@ public class Record implements WritableComparable< Record > {
      */
     public void informAnnotation( AnnotationMode typeOfAnnotation ) {
         String annotation = typeOfAnnotation.toString();
-        if (annotations.contains(annotation) {
+        if (annotations.contains(annotation) ) {
             System.out.println("Error: This annotation already exists; not informing");
         }
         else {
@@ -113,8 +113,8 @@ public class Record implements WritableComparable< Record > {
      * as stored in ArrayList annotations.
      */
     public void listAnnotations() {
-        for (int i = 0; i < annotations.length(); i++) {
-            System.out.println(annotations[i] + " ");
+        for (int i = 0; i < annotations.size(); i++) {
+            System.out.println(annotations.get(i) + " ");
         }
     }
 
