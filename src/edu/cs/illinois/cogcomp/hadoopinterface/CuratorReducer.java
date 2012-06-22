@@ -36,7 +36,7 @@ public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
         FileSystem fs = FileSystem.get(context.getConfiguration());
         String text = readFileFromHDFS(source, fs, true);
         Path dest = new Path("/temp/hadoop/curator_in.txt");
-        writeFileToLocal(text, dest);
+        writeFileToLocal((String) text, (Path) dest);
         
 	    // while loop, wait for output in appropriate directory to "magically" appear
         // (put there by the local Curator instance)

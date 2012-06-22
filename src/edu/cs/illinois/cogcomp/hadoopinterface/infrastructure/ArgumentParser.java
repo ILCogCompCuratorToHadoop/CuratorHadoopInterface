@@ -6,6 +6,8 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.Illegal
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.util.ToolRunner;
 
+import java.io.IOException;
+
 /**
  * This class is used to parse the command-line arguments used by the Hadoop
  * interface. It hides the "business logic" of the actual way that parameters
@@ -26,7 +28,8 @@ public class ArgumentParser {
      * @throws BadCommandLineUsageException Indicates that what we got from the
      *                                      command line was not understood.
      */
-    public ArgumentParser(String[] args) throws BadCommandLineUsageException {
+    public ArgumentParser(String[] args)
+            throws BadCommandLineUsageException, IOException {
         logger = HadoopInterface.logger;
 
         if( args.length < 2 ) {

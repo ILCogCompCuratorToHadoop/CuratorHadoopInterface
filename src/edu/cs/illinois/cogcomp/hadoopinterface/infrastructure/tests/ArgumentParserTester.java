@@ -4,6 +4,8 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.ArgumentParser;
 import org.junit.Test;
 
+import java.io.IOException;
+
 /**
  * Test class for ArgumentParser
  */
@@ -15,8 +17,7 @@ public class ArgumentParserTester
     }
 
     @Test
-    public void parsesPlainInputCorrectly()
-    {
+    public void parsesPlainInputCorrectly() throws IOException {
         String[] args = new String[2];
         args[0] = "some_folder_name";
         args[1] = "Verb SRL";
@@ -41,8 +42,7 @@ public class ArgumentParserTester
 
 
     @Test
-    public void parsesRobustInputCorrectly()
-    {
+    public void parsesRobustInputCorrectly() throws IOException {
         String[] args;
         args = new String[4];
         args[0] = "-d";

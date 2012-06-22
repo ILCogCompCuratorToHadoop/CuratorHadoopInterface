@@ -144,8 +144,10 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
      * @param args The command line arguments, from which we take the annotation
      *             mode and I/O directories.
      * @return A configured Configuration option.
+     * @throws IOException If status/error logging fails
      */
-    private static Configuration getBaselineConfiguration( String[] args ) {
+    private static Configuration getBaselineConfiguration( String[] args )
+            throws IOException {
         Configuration config = new Configuration();
 
         ArgumentParser argParser = new ArgumentParser(args);
