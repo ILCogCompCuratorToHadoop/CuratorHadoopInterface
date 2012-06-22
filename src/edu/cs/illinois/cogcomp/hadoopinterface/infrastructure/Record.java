@@ -80,9 +80,14 @@ public class Record implements WritableComparable< Record > {
     public void addAnnotation( AnnotationMode typeOfAnnotation,
                                String annotationBody ) throws IOException {
         String annotation = typeOfAnnotation.toString();
-        Path path = new Path(inputDir + Path.SEPARATOR + documentHash + Path.SEPARATOR + annotation + ".txt");
-        writeFileToHDFS(annotationBody, path, fs, true);
-        annotations.add(annotation);
+        if (annotations.contains(annotation) {
+            System.out.println("Error: This annotation already exists; not adding");
+        }
+        else {
+            Path path = new Path(inputDir + Path.SEPARATOR + documentHash + Path.SEPARATOR + annotation + ".txt");
+            writeFileToHDFS(annotationBody, path, fs, true);
+            annotations.add(annotation);
+        }
     }
 
     /**
@@ -95,8 +100,24 @@ public class Record implements WritableComparable< Record > {
      */
     public void informAnnotation( AnnotationMode typeOfAnnotation ) {
         String annotation = typeOfAnnotation.toString();
-        annotations.add(annotation);
+        if (annotations.contains(annotation) {
+            System.out.println("Error: This annotation already exists; not informing");
+        }
+        else {
+            annotations.add(annotation);
+        }
     }
+
+    /**
+     * Prints a list of the available annotations
+     * as stored in ArrayList annotations.
+     */
+    public void listAnnotations() {
+        for (int i = 0; i < annotations.length(); i++) {
+            System.out.println(annotations[i] + " ");
+        }
+    }
+
 
     /**
      * Validates the required dependencies for a particular annotation.

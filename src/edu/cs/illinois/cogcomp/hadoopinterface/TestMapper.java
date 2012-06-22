@@ -9,6 +9,7 @@
 
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -26,17 +27,29 @@ public class TestMapper extends Mapper<Text, Record, Text, Record> {
      * @param inValue = value
      * @param context The configuration context
      */
-    public void map( Text inKey, 
-                     Record inValue, 
-                     Context context) throws IOException, InterruptedException {
+    public void map( Text testKey, 
+                     Record testValue, 
+                     Context testContext) throws IOException, InterruptedException {
     
         HadoopInterface.logger.logStatus( "Beginning map phase.\n"
-                                          + "Attempting to acces vars." );
-        HadoopInterface.logger.logStatus( "\tGot input key " + inKey.toString()
-                                          + "\n\tand input value: "
-                                          + inValue.toString() );
+                                          + "Attempting to access vars." );
+        HadoopInterface.logger.logStatus( "\tGot test key " + testKey.toString()
+                                          + "\n\tand test value: "
+                                          + testValue.toString() );
 
-        context.write(inKey, inValue);
+        testValue.addAnnotation(AnnotationMode.fromString("POS"), "This is the POS annotation body.");
+        testValue.informAnnotation(AnnotationMode.fromString("NER")); // should throw a dependencies error
+        Path pos = testValue.getAnnotation(AnnotationMode.fromString("POS"));
+        Path ner = testValue.getAnnotation(AnnotationMode.fromString("NER"));
+        System.out.println(pos.toString() + "\n");
+        System.out.println(ner.toString() + "\n");
+        testValue.listAnnotations();
+        Boolean pos_bool = testValue.checkDependencies(AnnotationMode.fromString("POS"));
+        Boolean ner_bool = testValue.checkDependencies(AnnotationMode.fromString("NER"));
+        System.out.println("Dependencies for POS: " + pos_bool.toString());
+        System.out.println("Dependencies for NER: " + ner_bool.toString());
+
+        testContext.write(testKey, testValue);
         
     }
 
