@@ -3,6 +3,8 @@ package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 import org.apache.hadoop.fs.Path;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * An object which standardizes the logging of errors and warnings across the
@@ -36,7 +38,7 @@ public class MessageLogger
      * @param s A string containing the message
      */
     public void log( String s ) throws IOException {
-        write( s );
+        write( getCurrentTime() + s );
     }
 
     /**
@@ -44,7 +46,7 @@ public class MessageLogger
      * @param s A string detailing the error
      */
     public void logError( String s ) throws IOException {
-        write("Error: " + s);
+        write( getCurrentTime() + "  Error: " + s);
     }
 
     /**
@@ -52,7 +54,7 @@ public class MessageLogger
      * @param s A string detailing the warning
      */
     public void logWarning( String s ) throws IOException {
-        write( "Warning: " + s );
+        write( getCurrentTime() + "  Warning: " + s );
     }
 
     /**
@@ -60,7 +62,7 @@ public class MessageLogger
      * @param s A string detailing the warning
      */
     public void logStatus( String s ) throws IOException {
-        write( "\nStatus: " + s );
+        write( "\n" + getCurrentTime() + "  Status: " + s );
     }
 
     private void write( String message ) throws IOException {
@@ -69,6 +71,10 @@ public class MessageLogger
         }
 
         FileSystemHandler.writeFileToLocal( message, logLocation, true );
+    }
+
+    private String getCurrentTime() {
+        return ( new SimpleDateFormat("hh:mm:ss a") ).format( new Date() );
     }
 
     private boolean printToStdOut;

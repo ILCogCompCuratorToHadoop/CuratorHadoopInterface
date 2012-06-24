@@ -254,8 +254,13 @@ public class FileSystemHandler {
                                         boolean closeFileSystemOnCompletion,
                                         boolean appendInsteadOfOverwriting )
             throws IOException {
-        FSDataOutputStream dos = fs.create( locationForFile,
-                                            !appendInsteadOfOverwriting);
+        FSDataOutputStream dos;
+        if( appendInsteadOfOverwriting && HDFSFileExists(locationForFile, fs) ) {
+            dos = fs.append( locationForFile );
+        }
+        else {
+            dos = fs.create( locationForFile, true);
+        }
 
         dos.writeChars( inputText );
         dos.close();
