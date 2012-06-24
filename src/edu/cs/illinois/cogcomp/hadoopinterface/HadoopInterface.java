@@ -41,8 +41,8 @@ public class HadoopInterface {
         FileSystemHandler handler = new FileSystemHandler( job );
 
         if( job.isTesting() ) {
-            DummyInputCreator.generateDocumentDirectory( job.getInputDirectory(),
-                                                         job.getFileSystem() );
+            DummyInputCreator.generateDocumentDirectories(job.getInputDirectory(),
+                                                          job.getFileSystem() );
         }
 
         try {

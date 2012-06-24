@@ -71,13 +71,16 @@ public class FileSystemHandler {
                     + "information on how to structure the input directory.");
         }
 
-        Path originalTxt = new Path( inputDirectory, "original.txt" );
+        List<Path> dirsInInput = getSubdirectories(inputDirectory, fs);
+        for( Path dir : dirsInInput ) {
+            Path originalTxt = new Path( dir, "original.txt" );
 
-        if( getFileSizeInBytes( originalTxt, fs ) < 1 ) {
-            throw new EmptyInputException( "Input directory "
-                    + fs.makeQualified( inputDirectory ) + " has no recognized "
-                    + "input.  Please create input files in the Hadoop file "
-                    + "system before starting this program.");
+            if( getFileSizeInBytes( originalTxt, fs ) < 1 ) {
+                throw new EmptyInputException( "Input in document directory "
+                        + fs.makeQualified( inputDirectory ) + " has no "
+                        + "recognized input.  Please create input files in the "
+                        + "Hadoop file system before starting this program.");
+            }
         }
     }
 
@@ -151,8 +154,8 @@ public class FileSystemHandler {
                                            boolean closeFileSystemOnCompletion )
             throws IOException {
         if ( !HDFSFileExists(locationOfFile, fileSystem) ) {
-            HadoopInterface.logger.logError("File " + locationOfFile.toString()
-                    + " does not exists");
+            HadoopInterface.logger.logError( "File " + locationOfFile.toString()
+                    + " does not exists" );
             return "";
         }
 
@@ -161,9 +164,15 @@ public class FileSystemHandler {
 
         String line = "";
         String fullOutput = "";
-        while ( line != null ) {
-            fullOutput = fullOutput + line + "\n";
-            line = reader.readLine();
+        try {
+            while ( line != null ) {
+                fullOutput = fullOutput + line + "\n";
+                line = reader.readLine();
+            }
+        } catch ( OutOfMemoryError e ) {
+            HadoopInterface.logger.logError( "Ran out of memory while writing "
+                    + "file " + locationOfFile.toString() + ".");
+            throw e;
         }
         reader.close();
         in.close();
@@ -232,7 +241,9 @@ public class FileSystemHandler {
 
     /**
      * Writes a string to a text file to a given location on the Hadoop
-     * Distributed File System (HDFS)
+     * Distributed File System (HDFS). Note that this is not thread-safe; Hadoop
+     * recommends you not try to have multiple nodes writing to the same file,
+     * ever.
      * @param inputText The string to be written to the text file
      * @param locationForFile A path (complete with file name and extension) to
      *                        which we should write. If data already exists at
@@ -254,15 +265,21 @@ public class FileSystemHandler {
                                         boolean closeFileSystemOnCompletion,
                                         boolean appendInsteadOfOverwriting )
             throws IOException {
-        FSDataOutputStream dos;
         if( appendInsteadOfOverwriting && HDFSFileExists(locationForFile, fs) ) {
-            dos = fs.append( locationForFile );
-        }
-        else {
-            dos = fs.create( locationForFile, true);
+            // Append is *not* supported in Hadoop r1.0.3. Damn.
+            // TODO: When 2.0 is final, change to use FileSystem.append() instead
+            // dos = fs.append( locationForFile );
+
+            String old = readFileFromHDFS( locationForFile, fs, false );
+            inputText = old + inputText;
+            delete( locationForFile, fs );
         }
 
-        dos.writeChars( inputText );
+        FSDataOutputStream dos = fs.create( locationForFile, true);
+        // NOTE: Writing using FSDataOutputStream's writeChars() or writeUTF()
+        //       methods writes megabytes worth of invisible control characters,
+        //       very quickly leading to hundred megabyte log files. BAD.
+        dos.write( inputText.getBytes() );
         dos.close();
 
         if( closeFileSystemOnCompletion ) {
@@ -312,14 +329,15 @@ public class FileSystemHandler {
 
         // Check to make sure parent dir exists; if not, create it
         if( !localFileExists( qualifiedLoc.getParent() )
-                && isDir( qualifiedLoc, localFS ) ) {
+                && !isDir( qualifiedLoc.getParent(), localFS ) ) {
             localFS.mkdirs( localFS,
                             qualifiedLoc.getParent(),
                             new FsPermission( (short)777 ) );
         }
 
-        writeFileToHDFS( inputText, qualifiedLoc,
-                         localFS, true, appendInsteadOfOverwriting);
+        // TODO: Should we be closing the FS when we're finished?
+        writeFileToHDFS(inputText, qualifiedLoc,
+                localFS, false, appendInsteadOfOverwriting);
     }
 
     /**
@@ -393,6 +411,29 @@ public class FileSystemHandler {
                     "The empty string is not a valid path." );
         }
         return getFilesAndDirectoriesInDirectory( new Path(dir), fs );
+    }
+
+    /**
+     * Gets a list of Paths that contains all subdirectories in the directory in
+     * question.
+     * @param dir The directory whose subdirectories we shall get the list of.
+     * @param fs The file system against which the path will be resolved
+     * @return A list of Paths which point to the subdirectories of the input
+     *         directory.
+     * @throws IOException
+     */
+    public static List<Path> getSubdirectories( Path dir, FileSystem fs )
+            throws IOException {
+        List<Path> listOfPaths = new ArrayList<Path>();
+
+        FileStatus fileStatuses[] = fs.listStatus(dir);
+        for( FileStatus status : fileStatuses ) {
+            if( status.isDir() ) {
+                listOfPaths.add( status.getPath() );
+            }
+        }
+        return listOfPaths;
+
     }
 
     /**

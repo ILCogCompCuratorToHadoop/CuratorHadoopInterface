@@ -50,7 +50,7 @@ public class FileSystemHandlerTest {
 
         Path inputPath = new Path( "input_"  + System.currentTimeMillis() );
         FileSystem fs = FileSystem.get( new Configuration() );
-        DummyInputCreator.generateDocumentDirectory( inputPath, fs );
+        DummyInputCreator.createDocumentDirectory( inputPath, fs );
 
         // Copy file from HDFS to local
         Path origTxt = new Path( inputPath, "original.txt" );

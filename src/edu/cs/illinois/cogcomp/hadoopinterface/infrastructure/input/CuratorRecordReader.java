@@ -1,5 +1,6 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.input;
 
+import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -21,6 +22,7 @@ public class CuratorRecordReader extends RecordReader {
     @Override
     public void initialize(InputSplit split, TaskAttemptContext context)
             throws IOException, InterruptedException {
+        HadoopInterface.logger.log( "Initializing record reader" );
         config = context.getConfiguration();
         nextKey = new Text( split.toString() );
         progress = 0.0f;
@@ -37,6 +39,7 @@ public class CuratorRecordReader extends RecordReader {
      */
     @Override
     public boolean nextKeyValue() throws IOException, InterruptedException {
+        HadoopInterface.logger.log( "Checking next KV in RecordReader" );
         if( progress < 0.9 ) {
             // Read the next key, value pair from the input split
             // Effectively, construct the Record that we will pass out as a value

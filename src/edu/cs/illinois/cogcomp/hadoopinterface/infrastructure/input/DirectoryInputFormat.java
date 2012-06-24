@@ -7,11 +7,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.InputFormat;
-import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.JobContext;
-import org.apache.hadoop.mapreduce.RecordReader;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.*;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -37,6 +33,7 @@ public class DirectoryInputFormat extends InputFormat< Text, Record> {
     @Override
     public List<InputSplit> getSplits(JobContext context)
             throws IOException, InterruptedException {
+        HadoopInterface.logger.logStatus( "Getting splits." );
         LinkedList<InputSplit> jobSplits = new LinkedList<InputSplit>();
 
         // Get location of the input document directory from job context
@@ -45,22 +42,24 @@ public class DirectoryInputFormat extends InputFormat< Text, Record> {
 
         HadoopInterface.logger.log("Input dir is " + conf.get("inputDirectory"));
 
-        List<String> filesInInputDir =
-                FileSystemHandler.getFilesAndDirectoriesInDirectory(
-                        conf.get("inputDirectory"), fs);
+        List<Path> subDirsOfInputDirs = FileSystemHandler.getSubdirectories(
+                new Path( conf.get("inputDirectory") ), fs);
 
-        // For each document in the directory . . .
-        for( String file : filesInInputDir ) {
-            if( FileSystemHandler.isDir( file, fs ) ) {
-                // Add a directory split for this document directory
-                jobSplits.add( new DirectorySplit( new Path(file), fs ) );
-            }
+        HadoopInterface.logger.log( "Found " + subDirsOfInputDirs.size()
+                + " documents in the input directory. "
+                + " These are as follows: "
+                + HadoopInterface.logger.getPrettifiedList(subDirsOfInputDirs) );
+
+
+        // For each document directory in the directory . . .
+        for( Path filePath : subDirsOfInputDirs ) {
+            // Add a directory split for this document directory
+            jobSplits.add( new DirectorySplit( filePath, fs ) );
         }
+        HadoopInterface.logger.log( "Finished creating splits." );
 
         return jobSplits;
     }
-
-
 
     @Override
     public RecordReader<Text, Record>
@@ -69,6 +68,8 @@ public class DirectoryInputFormat extends InputFormat< Text, Record> {
             throws IOException, InterruptedException {
         // Because the MapReduce framework calls initialize() (i.e., the REAL
         // constructor, we don't need to pass any params. Weird.
+        HadoopInterface.logger.log( "Returning record reader." );
         return new CuratorRecordReader();
     }
+
 }

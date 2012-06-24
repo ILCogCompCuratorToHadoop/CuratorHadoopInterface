@@ -1,6 +1,7 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
 //import org.apache.commons.io.FileUtils;
+import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -9,10 +10,12 @@ import org.apache.hadoop.io.WritableComparable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-//import java.nio.file.*;
 import java.util.ArrayList;
 
-import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.*;
+import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.delete;
+import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.writeFileToHDFS;
+
+//import java.nio.file.*;
 
 
 /**
@@ -41,12 +44,16 @@ public class Record implements WritableComparable< Record > {
      *           Hadoop Distributed File System
      * @param config Hadoop Configuration for this job containing HDFS file path
      */
-    public Record( String documentHash, FileSystem fs, Configuration config ) {
+    public Record( String documentHash, FileSystem fs, Configuration config )
+            throws IOException {
         this.fs = fs;
         this.documentHash = documentHash;
         this.config = config;
         inputDir = config.get("inputDirectory");
         annotations = new ArrayList();
+
+        HadoopInterface.logger.log( "Created record for document with hash "
+                                    + documentHash + "." );
     }
 
     /**
@@ -116,7 +123,8 @@ public class Record implements WritableComparable< Record > {
      *                         document (chunking, parsing, named entity
      *                         recognition, etc.).
 	 */
-	public void removeAnnotation( AnnotationMode typeofAnnotation ) {
+	public void removeAnnotation( AnnotationMode typeOfAnnotation )
+            throws IOException {
 	    String annotation = typeOfAnnotation.toString();
 		if (!annotations.contains(annotation)) {
 		    System.out.println("Error: This annotation does not exist; not removing");
@@ -146,7 +154,10 @@ public class Record implements WritableComparable< Record > {
      *                         document (chunking, parsing, named entity
      *                         recognition, etc.).
      */
-    public boolean checkDependencies( AnnotationMode typeOfAnnotation ) {
+    public boolean checkDependencies( AnnotationMode typeOfAnnotation )
+            throws IOException {
+        HadoopInterface.logger.log( "Checking deps for " + getDocumentHash() );
+
         String annotation = typeOfAnnotation.toString();
         boolean valid = true;
         if ( annotation.equals("CHUNK") ) {
@@ -193,22 +204,28 @@ public class Record implements WritableComparable< Record > {
     }
 
     @Override
-    public int compareTo( Record record )
-    {
+    public int compareTo( Record record ) {
+        try {
+            HadoopInterface.logger.log( "Comparing rec for " + getDocumentHash()
+                + "to rec for " + getDocumentHash() );
+        } catch (IOException e) {
+            throw new Error("Couldn't log. Damn.");
+        }
         return getDocumentHash().compareTo( record.getDocumentHash() );
     }
 
     @Override
-    public void write( DataOutput out ) throws IOException
-    {
+    public void write( DataOutput out ) throws IOException {
+        HadoopInterface.logger.log( "Writing data output for " + getDocumentHash() );
+
         // TODO: Real writing
         out.writeUTF( "Test0 is " + test0 );
         out.writeUTF( "Test1 is " + test1 );
     }
 
     @Override
-    public void readFields( DataInput in ) throws IOException
-    {
+    public void readFields( DataInput in ) throws IOException {
+        HadoopInterface.logger.log( "Reading fields for " + getDocumentHash() );
         test0 = in.readUTF();
         test1 = in.readUTF();
     }
@@ -216,14 +233,13 @@ public class Record implements WritableComparable< Record > {
     /**
      * @return The hash identifying the document that this record describes
      */
-    public String getDocumentHash()
-    {
+    public String getDocumentHash() {
         return documentHash;
     }
 
     @Override
     public String toString() {
-        return "Record for document whose ID is " + documentHash;
+        return getDocumentHash();
     }
 
 } // THE END

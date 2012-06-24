@@ -15,25 +15,44 @@ import java.util.Random;
 public class DummyInputCreator {
 
     /**
-     * Generates a document directory, complete with an original.txt file and
+     * Generates a job directory and many document directions therein,
+     * complete with an original.txt file and
      * dummy annotation files for all required annotation types.
      * @param jobDirectory The directory which was given as input by the user
      *                     to be the root input directory
      */
-    public static void generateDocumentDirectory( Path jobDirectory,
-                                                  FileSystem fs )
+    public static void generateDocumentDirectories( Path jobDirectory,
+                                                    FileSystem fs )
             throws IOException {
         // Create doc directory
+        if( FileSystemHandler.isDir( jobDirectory, fs ) ) {
+            FileSystemHandler.delete( jobDirectory, fs );
+        }
         fs.mkdirs( jobDirectory );
 
+        for( int i = 0; i < 10; i++ ) {
+            createDocumentDirectory(
+                    new Path( jobDirectory, "doc" + Integer.toString(i) ), fs );
+        }
+    }
+
+    /**
+     * Creates the text files for a single document.
+     * @param docDir The path to the document directory
+     * @param fs The file system against which to resolve the paths
+     * @throws IOException
+     */
+    public static void createDocumentDirectory( Path docDir,
+                                                FileSystem fs )
+            throws IOException {
         // Create original.txt file
         String original = "Lorem ipsum dolor sit amet, consectetur adipiscing "
-                          + "elit. Nullam eu mauris odio. Vivamus id fermentum"
-                          + "elit. Quisque placerat arcu in nibh tincidunt "
-                          + "consectetur.\n\n"
-                          + getRandomString() + "\n\n" + getRandomString();
-        Path originalPath = new Path( jobDirectory, "original.txt" );
-        FileSystemHandler.writeFileToHDFS((String) original, (Path) originalPath, (FileSystem) fs, (boolean) false);
+                + "elit. Nullam eu mauris odio. Vivamus id fermentum"
+                + "elit. Quisque placerat arcu in nibh tincidunt "
+                + "consectetur.\n\n"
+                + getRandomString() + "\n\n" + getRandomString();
+        Path originalPath = new Path( docDir, "original.txt" );
+        FileSystemHandler.writeFileToHDFS( original, originalPath, fs, false);
 
         // Create annotation files
         for( AnnotationMode mode : AnnotationMode.values() ) {
@@ -42,11 +61,12 @@ public class DummyInputCreator {
                     + "adipiscing elit. Nullam eu mauris odio. Vivamus id "
                     + "fermentum elit. Quisque placerat arcu in nibh tincidunt "
                     + "consectetur.";
-            Path annotationPath = new Path( jobDirectory,
+            Path annotationPath = new Path( docDir,
                     mode.toString() + ".txt" );
-            FileSystemHandler.writeFileToHDFS((String) annotation, (Path) annotationPath,
-                    (FileSystem) fs, (boolean) false);
+            FileSystemHandler.writeFileToHDFS( annotation, annotationPath,
+                    fs, false);
         }
+
     }
 
     public static String getRandomString()
@@ -63,5 +83,4 @@ public class DummyInputCreator {
         }
         return new String(text);
     }
-
 }

@@ -62,3 +62,7 @@ src/edu/cs/illinois/cogcomp/hadoopinterface/infrastructure/CuratorRecordReader.j
 module_curatorhadoopinterface.xml
 
 curatorhadoopinterface.xml
+
+.MessageLog.txt.crc
+
+MessageLog.txt

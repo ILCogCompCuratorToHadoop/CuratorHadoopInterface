@@ -5,6 +5,7 @@ import org.apache.hadoop.fs.Path;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 /**
  * An object which standardizes the logging of errors and warnings across the
@@ -19,7 +20,9 @@ public class MessageLogger
      */
     public MessageLogger() {
         printToStdOut = false;
-        logLocation = new Path( "MessageLog.txt" );
+        Path logDir = new Path( "logs" );
+        logLocation = new Path( logDir, "0_curator_interface_log_" +
+                getCurrentTimeNoSpaces() + ".txt" );
     }
 
     /**
@@ -28,9 +31,11 @@ public class MessageLogger
      * @param alsoLogToStdOut TRUE if the log should also be sent to the
      *                        standard output
      */
-    public MessageLogger(boolean alsoLogToStdOut) {
+    public MessageLogger( boolean alsoLogToStdOut ) {
         printToStdOut = alsoLogToStdOut;
-        logLocation = new Path( "MessageLog.txt" );
+        Path logDir = new Path( "logs" );
+        logLocation = new Path( logDir, "0_curator_interface_log_" +
+                getCurrentTimeNoSpaces() + ".txt" );
     }
 
     /**
@@ -38,7 +43,7 @@ public class MessageLogger
      * @param s A string containing the message
      */
     public void log( String s ) throws IOException {
-        write( getCurrentTime() + s );
+        write( getCurrentTime() + "  " + s );
     }
 
     /**
@@ -65,6 +70,22 @@ public class MessageLogger
         write( "\n" + getCurrentTime() + "  Status: " + s );
     }
 
+    /**
+     * Gets a prettified string version of a list. Useful for outputting the
+     * contents of the list to the log.
+     * @param l The list to prettify
+     * @return A string version of the list, with newlines and tabs inserted
+     *         as appropriate.
+     */
+    public String getPrettifiedList( List l ) {
+        String pretty = "\n\t";
+        for( Object item : l ) {
+            pretty = pretty + item.toString() + "\n\t";
+        }
+
+        return pretty;
+    }
+
     private void write( String message ) throws IOException {
         if( printToStdOut ) {
             System.out.println( message );
@@ -75,6 +96,10 @@ public class MessageLogger
 
     private String getCurrentTime() {
         return ( new SimpleDateFormat("hh:mm:ss a") ).format( new Date() );
+    }
+
+    private String getCurrentTimeNoSpaces() {
+        return ( new SimpleDateFormat("hh.mm.ss.a") ).format( new Date() );
     }
 
     private boolean printToStdOut;

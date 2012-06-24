@@ -1,5 +1,6 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.input;
 
+import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
@@ -29,11 +30,14 @@ public class DirectorySplit extends InputSplit {
      *            original.txt and an < annotation name >.txt for each dependency.
      * @param fs The filesystem associated with this job
      */
-    public  DirectorySplit( Path locationOfDocDirectoryInHDFS, FileSystem fs ) {
+    public  DirectorySplit( Path locationOfDocDirectoryInHDFS, FileSystem fs )
+            throws IOException {
         inputPath = locationOfDocDirectoryInHDFS;
 
         hash = FileSystemHandler.getFileNameFromPath(
                 FileSystemHandler.stripTrailingSlash(inputPath));
+
+        HadoopInterface.logger.log("Creating directory split for " + hash);
 
         this.fs = fs;
     }
@@ -47,8 +51,12 @@ public class DirectorySplit extends InputSplit {
      */
     @Override
     public long getLength() throws IOException, InterruptedException {
+        Path origTxt = new Path( inputPath, "original.txt" );
+        String msg = "Getting length of split for " + toString() + ". Requesting "
+                + "size for file at " + origTxt.toString();
+        HadoopInterface.logger.log( msg );
         return FileSystemHandler.
-                getFileSizeInBytes(inputPath.suffix("original.txt"), fs);
+                getFileSizeInBytes( origTxt, fs);
     }
 
     /**
@@ -62,6 +70,7 @@ public class DirectorySplit extends InputSplit {
      */
     @Override
     public String[] getLocations() throws IOException, InterruptedException {
+        HadoopInterface.logger.log( "Getting locations for " + toString() + "." );
         FileStatus status = fs.getFileStatus(inputPath);
 
         BlockLocation[] blockLocs = fs.getFileBlockLocations( status, 0,

@@ -29,6 +29,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
         super( getBaselineConfiguration( args ), "Curator runner");
 
         ArgumentParser argParser = new ArgumentParser(args);
+        argParser.logResultsOfParsing();
 
         inputDirectory = new Path( getConfiguration().get("inputDirectory") );
         outputDirectory = new Path( getConfiguration().get("outputDirectory") );

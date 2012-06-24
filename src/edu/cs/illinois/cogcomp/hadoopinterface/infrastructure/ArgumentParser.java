@@ -30,8 +30,6 @@ public class ArgumentParser {
      */
     public ArgumentParser(String[] args)
             throws BadCommandLineUsageException, IOException {
-        logger = HadoopInterface.logger;
-
         if( args.length < 2 ) {
             String errorMsg = "Usage: " + getClass().getName()
                     + "<document directory> <mode>\n   or:\n      "
@@ -109,11 +107,17 @@ public class ArgumentParser {
                         + Integer.toString( numReduces ) + "." );
             }
         }
+    }
 
-        logger.logStatus( "Parsed command-line arguments. Using input directory "
-                          + directory + " and annotation mode "
-                          + mode.toString() + ", with " + getNumMaps()
-                          + " map ops and " + getNumReduces() + " reduce ops.");
+    public void logResultsOfParsing() throws IOException {
+        String alertOfTesting = "";
+        if( isTesting() ) {
+            alertOfTesting = "\n\tJob started in test mode.";
+        }
+        HadoopInterface.logger.logStatus( "Parsed command-line arguments. "
+                + "Using input directory " + directory + " and annotation mode "
+                + mode.toString() + ", with " + getNumReduces() + " reduce ops."
+                + alertOfTesting );
     }
 
     /**
@@ -172,6 +176,5 @@ public class ArgumentParser {
     private String directory;
     private Integer numMaps;
     private Integer numReduces;
-    private MessageLogger logger;
     private boolean testing = false;
 }
