@@ -36,6 +36,10 @@ public class Record implements WritableComparable< Record > {
     private String test1;
     private FileSystem fs;
 
+    public Record() throws IOException {
+        HadoopInterface.logger.logError("Someone called the Record's zero-arg constructor.");
+    }
+
     /**
      * Constructs a record object
      * @param documentHash The hash for the document whose annotation this
@@ -92,7 +96,7 @@ public class Record implements WritableComparable< Record > {
         }
         else {
             Path path = new Path(inputDir + Path.SEPARATOR + documentHash + Path.SEPARATOR + annotation + ".txt");
-            writeFileToHDFS((String) annotationBody, (Path) path, (FileSystem) fs, (boolean) true);
+            writeFileToHDFS( annotationBody, path, fs );
             annotations.add(annotation);
         }
     }

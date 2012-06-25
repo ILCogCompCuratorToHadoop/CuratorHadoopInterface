@@ -69,7 +69,7 @@ public class DirectoryInputFormat extends InputFormat< Text, Record> {
             throws IOException, InterruptedException {
         // Because the MapReduce framework calls initialize() (i.e., the REAL
         // constructor, we don't need to pass any params. Weird.
-        HadoopInterface.logger.log( "Returning record reader." );
+        //HadoopInterface.logger.log( "Returning record reader." );
         return new CuratorRecordReader();
     }
 

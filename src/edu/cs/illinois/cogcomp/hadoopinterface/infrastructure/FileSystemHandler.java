@@ -18,6 +18,8 @@ import java.util.List;
  * A class to handle all the filesystem interactions in the Hadoop interface.
  *
  * @TODO: Non-static versions of the static methods requiring a filesystem obj
+ * @bug Writing files does *not* work when called from the
+ *      InputSplit (DirectorySplit)
  * @author Tyler Young
  */
 public class FileSystemHandler {
@@ -101,9 +103,11 @@ public class FileSystemHandler {
      *           May be constructed as either a local or HDFS file system.
      * @throws IOException
      */
-    public static void delete( Path fileOrDirectoryToDelete, FileSystem fs )
+    public static void delete(Path fileOrDirectoryToDelete, FileSystem fs)
             throws IOException {
-        fs.delete( fileOrDirectoryToDelete, true );
+        if( HDFSFileExists( fileOrDirectoryToDelete, fs ) ) {
+            fs.delete( fileOrDirectoryToDelete, true );
+        }
     }
 
     /**
@@ -226,17 +230,13 @@ public class FileSystemHandler {
      *           that, technically, this need not be an HDFS path. However, if
      *           you want to write local files, reduce the risk of error for
      *           yourself by using #writeFileToLocal().
-     * @param closeFileSystemOnCompletion TRUE if the filesystem should be closed
-     *                                    when the I/O operations are finished.
      * @throws IOException
      */
     public static void writeFileToHDFS( String inputText,
                                         Path locationForFile,
-                                        FileSystem fs,
-                                        boolean closeFileSystemOnCompletion )
+                                        FileSystem fs )
             throws IOException {
-        writeFileToHDFS( inputText, locationForFile, fs,
-                         closeFileSystemOnCompletion, false);
+        writeFileToHDFS( inputText, locationForFile, fs, false);
     }
 
     /**
@@ -252,17 +252,16 @@ public class FileSystemHandler {
      *           that, technically, this need not be an HDFS path. However, if
      *           you want to write local files, reduce the risk of error for
      *           yourself by using #writeFileToLocal().
-     * @param closeFileSystemOnCompletion TRUE if the filesystem should be closed
-     *                                    when the I/O operations are finished.
      * @param appendInsteadOfOverwriting TRUE if we should append to whatever
      *                                   currently exists at the location, FALSE
      *                                   if it is okay to overwrite it.
+     * @bug Writing files does *not* work when called from the
+     *      InputSplit (DirectorySplit)
      * @throws IOException
      */
     public static void writeFileToHDFS( String inputText,
                                         Path locationForFile,
                                         FileSystem fs,
-                                        boolean closeFileSystemOnCompletion,
                                         boolean appendInsteadOfOverwriting )
             throws IOException {
         if( appendInsteadOfOverwriting && HDFSFileExists(locationForFile, fs) ) {
@@ -282,9 +281,7 @@ public class FileSystemHandler {
         dos.write( inputText.getBytes() );
         dos.close();
 
-        if( closeFileSystemOnCompletion ) {
-            fs.close();  // TODO: We should probably only allow this for local files
-        }
+        fs.setPermission( locationForFile, new FsPermission( (short)777 ) );
     }
 
     /**
@@ -335,9 +332,10 @@ public class FileSystemHandler {
                             new FsPermission( (short)777 ) );
         }
 
-        // TODO: Should we be closing the FS when we're finished?
-        writeFileToHDFS(inputText, qualifiedLoc,
-                localFS, false, appendInsteadOfOverwriting);
+        writeFileToHDFS( inputText,
+                         qualifiedLoc,
+                         localFS,
+                         appendInsteadOfOverwriting );
     }
 
     /**

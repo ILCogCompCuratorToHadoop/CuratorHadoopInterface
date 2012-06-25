@@ -11,6 +11,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 
 import java.io.IOException;
+import java.util.Random;
 
 /**
  * A job configuration object for a Hadoop job that interfaces with the Curator.
@@ -153,8 +154,13 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
 
         ArgumentParser argParser = new ArgumentParser(args);
 
+        Random rng = new Random();
         String inputDirectory = argParser.getDirectory();
-        String outputDirectory = argParser.getDirectory() + "_out"
+        if( argParser.isTesting() ) {
+            inputDirectory = inputDirectory + "_"
+                    + Integer.toString( rng.nextInt(1000) );
+        }
+        String outputDirectory = inputDirectory + "_out"
                 + System.currentTimeMillis();
         AnnotationMode mode = argParser.getMode();
 

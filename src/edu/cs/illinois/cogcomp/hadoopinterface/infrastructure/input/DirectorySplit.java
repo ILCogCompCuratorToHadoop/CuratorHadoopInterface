@@ -99,23 +99,24 @@ public class DirectorySplit extends InputSplit implements Writable {
 
     @Override
     public void write(DataOutput dataOutput) throws IOException {
+        HadoopInterface.logger.logStatus( "Writing to data output in dir split" );
+        System.out.println( "Writing to data output in dir split" );
         // Serialize our data
         String stringRep = toString() + "\n";
         dataOutput.write(stringRep.getBytes());
         // Have the configuration serialize its data
         config.write( dataOutput );
 
-        HadoopInterface.logger.logStatus( "Wrote to data output in dir split" );
     }
 
     @Override
     public void readFields(DataInput dataInput) throws IOException {
+        HadoopInterface.logger.logStatus( "Reading from data input in dir split" );
+        System.out.println( "Reading data input in dir split" );
         hash = dataInput.readLine();
         config = new Configuration();
         config.readFields( dataInput );
         fs = FileSystem.get(config);
-
-        HadoopInterface.logger.logStatus( "Read from data input in dir split" );
     }
 
     /**

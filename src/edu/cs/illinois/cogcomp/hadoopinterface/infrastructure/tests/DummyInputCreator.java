@@ -52,7 +52,7 @@ public class DummyInputCreator {
                 + "consectetur.\n\n"
                 + getRandomString() + "\n\n" + getRandomString();
         Path originalPath = new Path( docDir, "original.txt" );
-        FileSystemHandler.writeFileToHDFS( original, originalPath, fs, false);
+        FileSystemHandler.writeFileToHDFS( original, originalPath, fs );
 
         // Create annotation files
         for( AnnotationMode mode : AnnotationMode.values() ) {
@@ -63,8 +63,7 @@ public class DummyInputCreator {
                     + "consectetur.";
             Path annotationPath = new Path( docDir,
                     mode.toString() + ".txt" );
-            FileSystemHandler.writeFileToHDFS( annotation, annotationPath,
-                    fs, false);
+            FileSystemHandler.writeFileToHDFS( annotation, annotationPath, fs );
         }
 
     }

@@ -34,6 +34,7 @@ public class HadoopInterface {
      *             complete with their dependencies for this job type.
      */
     public static void main( String[] argv ) throws IOException, ClassNotFoundException, InterruptedException {
+        logger.beginWritingToDisk();
         logger.logStatus( "Setting up job.\n\n" );
 
         // Set up the job configuration that we will send to Hadoop
@@ -55,11 +56,13 @@ public class HadoopInterface {
             // configuration we just set up and distributes it to Hadoop nodes
             logger.logStatus( "Starting MapReduce job" );
             final long startTime = System.currentTimeMillis();
+            logger.delayWritingToDisk();
             job.start();
             final double duration = ( System.currentTimeMillis() - startTime )
                                     / 1000.0;
             logger.log( "Job finished in " + duration + " seconds" );
         } finally {
+            logger.continueWritingToDisk();
             handler.cleanUpTempFiles();
         }
     }
