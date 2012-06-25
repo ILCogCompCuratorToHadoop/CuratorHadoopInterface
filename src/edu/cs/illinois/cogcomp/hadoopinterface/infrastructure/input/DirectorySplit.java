@@ -2,37 +2,49 @@ package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.input;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.InputSplit;
 
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 
 /**
- * A file in the input directory. Returned by DirectoryInputFormat.getSplits()
- * and passed to DirectoryInputFormat.createRecordReader().
+ * A document directory within the input directory.
+ * Returned by DirectoryInputFormat.getSplits() and passed to
+ * DirectoryInputFormat.createRecordReader().  Note that a split doesn’t contain
+ * the input data, but is just a reference to the data.
  *
  * Represents the data to be processed by an individual Map process.
  * @author Tyler Young
  */
-public class DirectorySplit extends InputSplit {
+public class DirectorySplit extends InputSplit implements Writable {
+    public DirectorySplit() throws IOException {
+        HadoopInterface.logger.logError("Who the hell called the zero-arg constructor?");
+    }
+
     /**
      * Constructs a DirectorySplit object
-     * @param locationOfDocDirectoryInHDFS The location (in HDFS) of the
-     *            document's directory, complete with all annotations).
+     * @param docDirectoryInHDFS The location (in HDFS) of the
+     *            document's directory, complete with all annotations.
      *
      *            This directory should
      *            be named with the document's hash, and should contain both an
      *            original.txt and an < annotation name >.txt for each dependency.
      * @param fs The filesystem associated with this job
      */
-    public  DirectorySplit( Path locationOfDocDirectoryInHDFS, FileSystem fs )
+    public  DirectorySplit( Path docDirectoryInHDFS, FileSystem fs,
+                            Configuration config )
             throws IOException {
-        inputPath = locationOfDocDirectoryInHDFS;
+        this.config = config;
+        this.inputPath = docDirectoryInHDFS;
 
         hash = FileSystemHandler.getFileNameFromPath(
                 FileSystemHandler.stripTrailingSlash(inputPath));
@@ -43,9 +55,9 @@ public class DirectorySplit extends InputSplit {
     }
 
     /**
-     * Get the size of the split so that the input splits can be sorted by size.
-     * Here, we calculate the size to be the number of bytes in the original
-     * document (i.e., ignoring all annotations).
+     * Get the size of this split so that the input splits can be sorted by
+     * size. Here, we calculate the size to be the number of bytes in the
+     * original document (i.e., ignoring all annotations).
      *
      * @return The number of characters in the original document
      */
@@ -55,12 +67,11 @@ public class DirectorySplit extends InputSplit {
         String msg = "Getting length of split for " + toString() + ". Requesting "
                 + "size for file at " + origTxt.toString();
         HadoopInterface.logger.log( msg );
-        return FileSystemHandler.
-                getFileSizeInBytes( origTxt, fs);
+        return FileSystemHandler.getFileSizeInBytes(origTxt, fs);
     }
 
     /**
-     * Get the list of nodes by name where the data for the split would be local.
+     * Get the list of nodes where the data for this split would be local.
      * This list includes all nodes that contain any of the required data---it's
      * up to Hadoop to decide which one to use.
      *
@@ -81,7 +92,30 @@ public class DirectorySplit extends InputSplit {
             allBlockHosts.addAll( Arrays.asList( blockLoc.getHosts() ) );
         }
 
-        return (String[])allBlockHosts.toArray();
+        // Passing the String array causes toArray() to return an array of the
+        // same type
+        return allBlockHosts.toArray( new String[0] );
+    }
+
+    @Override
+    public void write(DataOutput dataOutput) throws IOException {
+        // Serialize our data
+        String stringRep = toString() + "\n";
+        dataOutput.write(stringRep.getBytes());
+        // Have the configuration serialize its data
+        config.write( dataOutput );
+
+        HadoopInterface.logger.logStatus( "Wrote to data output in dir split" );
+    }
+
+    @Override
+    public void readFields(DataInput dataInput) throws IOException {
+        hash = dataInput.readLine();
+        config = new Configuration();
+        config.readFields( dataInput );
+        fs = FileSystem.get(config);
+
+        HadoopInterface.logger.logStatus( "Read from data input in dir split" );
     }
 
     /**
@@ -92,6 +126,7 @@ public class DirectorySplit extends InputSplit {
     }
 
     private Path inputPath;
+    private Configuration config;
     private String hash;
     private FileSystem fs;
 }

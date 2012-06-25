@@ -32,7 +32,8 @@ public class DirectoryInputFormat extends InputFormat< Text, Record> {
 
     @Override
     public List<InputSplit> getSplits(JobContext context)
-            throws IOException, InterruptedException {
+                throws IOException, InterruptedException {
+
         HadoopInterface.logger.logStatus( "Getting splits." );
         LinkedList<InputSplit> jobSplits = new LinkedList<InputSplit>();
 
@@ -54,7 +55,7 @@ public class DirectoryInputFormat extends InputFormat< Text, Record> {
         // For each document directory in the directory . . .
         for( Path filePath : subDirsOfInputDirs ) {
             // Add a directory split for this document directory
-            jobSplits.add( new DirectorySplit( filePath, fs ) );
+            jobSplits.add( new DirectorySplit( filePath, fs, conf ) );
         }
         HadoopInterface.logger.log( "Finished creating splits." );
 
