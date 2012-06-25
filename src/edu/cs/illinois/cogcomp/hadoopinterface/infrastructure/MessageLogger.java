@@ -151,7 +151,7 @@ public class MessageLogger
                         + "\n Backlog truncated here due to excessive length.";
             }
             if( !backlogIsTruncated ) {
-                backlog = backlog + message;
+                backlog = backlog + message + "\n";
             }
         }
     }
@@ -170,7 +170,8 @@ public class MessageLogger
      *         message backlog.
      */
     private double backlogMemUsageInMegabytes() {
-        return 8 * (int) (((( backlog.length() ) * 2) + 45) / 8);
+        long estUsageInBytes =  8 * (int) (((( backlog.length() ) * 2) + 45) / 8);
+        return ((double)estUsageInBytes / 1024.0 / 1024.0);
     }
 
     private boolean printToStdOut;

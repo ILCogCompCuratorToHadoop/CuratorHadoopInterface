@@ -45,13 +45,9 @@ public class DirectorySplit extends InputSplit implements Writable {
             throws IOException {
         this.config = config;
         this.inputPath = docDirectoryInHDFS;
-
+        this.fs = fs;
         hash = FileSystemHandler.getFileNameFromPath(
                 FileSystemHandler.stripTrailingSlash(inputPath));
-
-        HadoopInterface.logger.log("Creating directory split for " + hash);
-
-        this.fs = fs;
     }
 
     /**
@@ -64,9 +60,6 @@ public class DirectorySplit extends InputSplit implements Writable {
     @Override
     public long getLength() throws IOException, InterruptedException {
         Path origTxt = new Path( inputPath, "original.txt" );
-        String msg = "Getting length of split for " + toString() + ". Requesting "
-                + "size for file at " + origTxt.toString();
-        HadoopInterface.logger.log( msg );
         return FileSystemHandler.getFileSizeInBytes(origTxt, fs);
     }
 
@@ -81,7 +74,6 @@ public class DirectorySplit extends InputSplit implements Writable {
      */
     @Override
     public String[] getLocations() throws IOException, InterruptedException {
-        HadoopInterface.logger.log( "Getting locations for " + toString() + "." );
         FileStatus status = fs.getFileStatus(inputPath);
 
         BlockLocation[] blockLocs = fs.getFileBlockLocations( status, 0,
@@ -99,8 +91,6 @@ public class DirectorySplit extends InputSplit implements Writable {
 
     @Override
     public void write(DataOutput dataOutput) throws IOException {
-        HadoopInterface.logger.logStatus( "Writing to data output in dir split" );
-        System.out.println( "Writing to data output in dir split" );
         // Serialize our data
         String stringRep = toString() + "\n";
         dataOutput.write(stringRep.getBytes());
@@ -111,8 +101,6 @@ public class DirectorySplit extends InputSplit implements Writable {
 
     @Override
     public void readFields(DataInput dataInput) throws IOException {
-        HadoopInterface.logger.logStatus( "Reading from data input in dir split" );
-        System.out.println( "Reading data input in dir split" );
         hash = dataInput.readLine();
         config = new Configuration();
         config.readFields( dataInput );

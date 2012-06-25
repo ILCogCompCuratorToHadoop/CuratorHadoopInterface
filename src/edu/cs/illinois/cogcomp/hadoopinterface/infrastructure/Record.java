@@ -1,6 +1,5 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
-//import org.apache.commons.io.FileUtils;
 import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -14,8 +13,6 @@ import java.util.ArrayList;
 
 import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.delete;
 import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.writeFileToHDFS;
-
-//import java.nio.file.*;
 
 
 /**
@@ -222,16 +219,13 @@ public class Record implements WritableComparable< Record > {
     public void write( DataOutput out ) throws IOException {
         HadoopInterface.logger.log( "Writing data output for " + getDocumentHash() );
 
-        // TODO: Real writing
-        out.writeUTF( "Test0 is " + test0 );
-        out.writeUTF( "Test1 is " + test1 );
+        out.write( (getDocumentHash() + "\n").getBytes() );
     }
 
     @Override
     public void readFields( DataInput in ) throws IOException {
         HadoopInterface.logger.log( "Reading fields for " + getDocumentHash() );
-        test0 = in.readUTF();
-        test1 = in.readUTF();
+        documentHash = in.readLine();
     }
 
     /**
