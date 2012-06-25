@@ -10,6 +10,7 @@
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.MessageLogger;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
@@ -31,12 +32,11 @@ public class TestMapper extends Mapper<Text, Record, Text, Record> {
     public void map( Text testKey, 
                      Record testValue, 
                      Context testContext) throws IOException, InterruptedException {
-    
-        HadoopInterface.logger.logStatus( "Beginning map phase.\n"
-                                          + "Attempting to access vars." );
-        HadoopInterface.logger.logStatus( "\tGot test key " + testKey.toString()
-                                          + "\n\tand test value: "
-                                          + testValue.toString() );
+
+        MessageLogger logger = new MessageLogger(true);
+        logger.logStatus( "Beginning map phase.\nAttempting to access vars." );
+        logger.logStatus( "\tGot test key " + testKey.toString()
+                          + "\n\tand test value: " + testValue.toString() );
 
         testValue.addAnnotation(AnnotationMode.fromString("POS"), "This is the POS annotation body.");
         testValue.informAnnotation(AnnotationMode.fromString("NER")); // should throw a dependencies error
@@ -51,7 +51,8 @@ public class TestMapper extends Mapper<Text, Record, Text, Record> {
         System.out.println("Dependencies for NER: " + ner_bool.toString());
 
         testContext.write(testKey, testValue);
-        
+
+        logger.beginWritingToDisk();
     }
 
 
