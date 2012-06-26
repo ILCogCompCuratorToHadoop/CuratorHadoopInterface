@@ -145,17 +145,11 @@ public class FileSystemHandler {
      * (HDFS).
      * @param locationOfFile The file's path
      * @param fileSystem The FileSystem object to resolve paths against
-     * @param closeFileSystemOnCompletion True if we should close the file system
-     *                                    object after reading, false otherwise.
-     *                                    If you are still working with this FS
-     *                                    object, you probably want to set this
-     *                                    to false.
      * @return A string version of the requested file
      * @throws IOException
      */
     public static String readFileFromHDFS( Path locationOfFile,
-                                           FileSystem fileSystem,
-                                           boolean closeFileSystemOnCompletion )
+                                           FileSystem fileSystem )
             throws IOException {
         if ( !HDFSFileExists(locationOfFile, fileSystem) ) {
             HadoopInterface.logger.logError( "File " + locationOfFile.toString()
@@ -180,10 +174,6 @@ public class FileSystemHandler {
         }
         reader.close();
         in.close();
-
-        if( closeFileSystemOnCompletion ) {
-            fileSystem.close();       // TODO: Should we allow this?
-        }
 
         return fullOutput;
     }
@@ -269,7 +259,7 @@ public class FileSystemHandler {
             // TODO: When 2.0 is final, change to use FileSystem.append() instead
             // dos = fs.append( locationForFile );
 
-            String old = readFileFromHDFS( locationForFile, fs, false );
+            String old = readFileFromHDFS( locationForFile, fs );
             inputText = old + inputText;
             delete( locationForFile, fs );
         }

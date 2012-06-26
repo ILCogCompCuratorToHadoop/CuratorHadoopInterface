@@ -33,7 +33,8 @@ public class HadoopInterface {
      *             The directory should contain all documents to be annotated,
      *             complete with their dependencies for this job type.
      */
-    public static void main( String[] argv ) throws IOException, ClassNotFoundException, InterruptedException {
+    public static void main( String[] argv )
+            throws IOException, ClassNotFoundException, InterruptedException {
         logger.beginWritingToDisk();
         logger.logStatus( "Setting up job.\n\n" );
 

@@ -38,8 +38,7 @@ public class FileSystemHandlerTest {
         logger.log("The file is here: " + inputPath.toString());
 
         // Read it back
-        String readVersion = FileSystemHandler.readFileFromHDFS( inputPath,
-                fs, true );
+        String readVersion = FileSystemHandler.readFileFromHDFS( inputPath, fs );
         String readVersionLocal = FileSystemHandler.readFileFromLocal( inputPath );
         assert( readVersion.equals( randomString ));
         assert( readVersionLocal.equals( readVersion) );
@@ -57,8 +56,7 @@ public class FileSystemHandlerTest {
         Path origTxtLocal = new Path( "originalFromHDFS.txt" );
         FileSystemHandler.copyFileFromHDFSToLocal( origTxt, origTxtLocal, fs );
 
-        String HDFSVersion = FileSystemHandler.readFileFromHDFS( origTxt, fs,
-                false);
+        String HDFSVersion = FileSystemHandler.readFileFromHDFS( origTxt, fs );
         String localVersion = FileSystemHandler.readFileFromLocal( origTxtLocal );
         assert( HDFSVersion.equals(localVersion) );
 
@@ -69,7 +67,7 @@ public class FileSystemHandlerTest {
                 (Path) test);
         FileSystemHandler.copyFileFromLocalToHDFS( test, testInHDFS, fs );
 
-        HDFSVersion = FileSystemHandler.readFileFromHDFS( testInHDFS, fs, false );
+        HDFSVersion = FileSystemHandler.readFileFromHDFS( testInHDFS, fs );
         localVersion = FileSystemHandler.readFileFromLocal( test );
         assert( HDFSVersion.equals(localVersion) );
     }

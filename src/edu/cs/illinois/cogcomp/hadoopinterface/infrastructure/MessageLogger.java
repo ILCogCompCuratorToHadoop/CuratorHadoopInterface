@@ -25,7 +25,7 @@ public class MessageLogger
      * Constructs an ErrorLogger object. By default, the log is
      * not written to the standard output and the log is not written to disk.
      */
-    public MessageLogger() throws IOException {
+    public MessageLogger()  {
         initializeCommonVars( false );
     }
 
@@ -52,7 +52,7 @@ public class MessageLogger
      * Logs a generic message
      * @param s A string containing the message
      */
-    public void log( String s ) throws IOException {
+    public void log( String s )  {
         write( getCurrentTime() + "  " + s );
     }
 
@@ -60,7 +60,7 @@ public class MessageLogger
      * Logs an error
      * @param s A string detailing the error
      */
-    public void logError( String s ) throws IOException {
+    public void logError( String s )  {
         write( getCurrentTime() + "  Error: " + s);
     }
 
@@ -68,7 +68,7 @@ public class MessageLogger
      * Logs a warning
      * @param s A string detailing the warning
      */
-    public void logWarning( String s ) throws IOException {
+    public void logWarning( String s )  {
         write( getCurrentTime() + "  Warning: " + s );
     }
 
@@ -76,7 +76,7 @@ public class MessageLogger
      * Logs a program status update
      * @param s A string detailing the warning
      */
-    public void logStatus( String s ) throws IOException {
+    public void logStatus( String s ) {
         write( "\n" + getCurrentTime() + "  Status: " + s );
     }
 
@@ -104,7 +104,7 @@ public class MessageLogger
      * Turns off disk writes until you call continueWritingToDisk(). Useful for
      * getting around bugs in the underlying file system writer.
      */
-    public void delayWritingToDisk() throws IOException {
+    public void delayWritingToDisk() {
         logStatus( "Delaying further disk writes." );
         delayWritingToDisk = true;
     }
@@ -112,9 +112,8 @@ public class MessageLogger
     /**
      * Enables disk writing once again, and writes whatever backlog has been
      * generated to the disk.
-     * @throws IOException
      */
-    public void continueWritingToDisk() throws IOException {
+    public void continueWritingToDisk() {
         beginWritingToDisk();
 
         logStatus( "Re-enabled disk writes. Backlog follows." );
@@ -136,13 +135,17 @@ public class MessageLogger
         logStatus( "End of backlog." );
     }
 
-    private void write( String message ) throws IOException {
+    private void write( String message ) {
         if( printToStdOut ) {
             System.out.println( message );
         }
 
         if( !delayWritingToDisk ) {
-            FileSystemHandler.writeFileToLocal( message, logLocation, true );
+            try {
+                FileSystemHandler.writeFileToLocal( message, logLocation, true );
+            } catch( IOException e ) {
+                System.out.println("I/O error in logging to file!");
+            }
         }
         else {
             if( backlogMemUsageInMegabytes() > 20.0 && !backlogIsTruncated ) {

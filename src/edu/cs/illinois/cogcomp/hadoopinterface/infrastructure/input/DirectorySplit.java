@@ -27,7 +27,8 @@ import java.util.HashSet;
  */
 public class DirectorySplit extends InputSplit implements Writable {
     public DirectorySplit() throws IOException {
-        HadoopInterface.logger.logError("Who the hell called the zero-arg constructor?");
+        HadoopInterface.logger.logError(
+                "Someone called the DirectorySplit's zero-arg constructor. (?)");
     }
 
     /**

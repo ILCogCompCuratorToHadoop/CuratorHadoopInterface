@@ -34,7 +34,7 @@ public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
         String annotation = context.getConfiguration().get("annotationMode");
         Path source = inValue.getAnnotation(AnnotationMode.fromString(annotation)); // pulls Hadoop-HDFS filepath from Record object
         FileSystem fs = FileSystem.get(context.getConfiguration());
-        String text = readFileFromHDFS(source, fs, true);
+        String text = readFileFromHDFS( source, fs );
         Path dest = new Path("/temp/hadoop/curator_in.txt");
         writeFileToLocal((String) text, (Path) dest);
         
