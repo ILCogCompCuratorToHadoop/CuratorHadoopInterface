@@ -46,7 +46,8 @@ public class DummyInputCreator {
                                                 FileSystem fs )
             throws IOException {
         // Create original.txt file
-        String original = "Lorem ipsum dolor sit amet, consectetur adipiscing "
+        String original = "Hello, I'm an original.txt file."
+                + "\n\nLorem ipsum dolor sit amet, consectetur adipiscing "
                 + "elit. Nullam eu mauris odio. Vivamus id fermentum"
                 + "elit. Quisque placerat arcu in nibh tincidunt "
                 + "consectetur.\n\n"
@@ -56,11 +57,12 @@ public class DummyInputCreator {
 
         // Create annotation files
         for( AnnotationMode mode : AnnotationMode.values() ) {
-            String annotation = mode.toString()
+            String annotation = "Hello, I'm an annotation of type "
+                    + mode.toString()
                     + "\n\nLorem ipsum dolor sit amet, consectetur "
                     + "adipiscing elit. Nullam eu mauris odio. Vivamus id "
                     + "fermentum elit. Quisque placerat arcu in nibh tincidunt "
-                    + "consectetur.";
+                    + "consectetur.\n";
             Path annotationPath = new Path( docDir,
                     mode.toString() + ".txt" );
             FileSystemHandler.writeFileToHDFS( annotation, annotationPath, fs );
@@ -72,14 +74,17 @@ public class DummyInputCreator {
     {
         Random rng = new Random();
         int length = rng.nextInt(1000);
-        String characters = "abcdefghijklmnopqrstuvwxyz \n"
+        String characters = "abcdefghijklmnopqrstuvwxyz"
+                            + "\"'abcdefghijklmnopqrstuvwxyz\n"
+                            + "ABCDEFGHIJKLMNOPQRSTUVWXYZ \n"
                             + "ABCDEFGHIJKLMNOPQRSTUVWXYZ[]().!?!@#$%^&*()_+=-";
 
-        char[] text = new char[length];
+        char[] text = new char[length+1];
         for (int i = 0; i < length; i++)
         {
             text[i] = characters.charAt(rng.nextInt(characters.length()));
         }
+        text[length] = '\n';
         return new String(text);
     }
 }

@@ -66,3 +66,5 @@ curatorhadoopinterface.xml
 .MessageLog.txt.crc
 
 MessageLog.txt
+
+META-INF/MANIFEST.MF

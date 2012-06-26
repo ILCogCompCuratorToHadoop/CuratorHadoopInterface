@@ -1,10 +1,8 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure;
 
-import edu.cs.illinois.cogcomp.hadoopinterface.CuratorMapper;
-import edu.cs.illinois.cogcomp.hadoopinterface.CuratorReducer;
-import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
-import edu.cs.illinois.cogcomp.hadoopinterface.TestMapper;
+import edu.cs.illinois.cogcomp.hadoopinterface.*;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.input.DirectoryInputFormat;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.tests.RecordTesterMapper;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -26,7 +24,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
      * @param args The command-line arguments passed ot the tool
      */
     public CuratorJob( String[] args )
-            throws IOException, ClassNotFoundException, InterruptedException {
+            throws ClassNotFoundException, InterruptedException, IOException {
         super( getBaselineConfiguration( args ), "Curator runner");
 
         ArgumentParser argParser = new ArgumentParser(args);
@@ -50,16 +48,18 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
      * Sets up the fields inherited from JobConf in the standard way for a
      * Curator job.
      */
-    private void configureJob() throws IOException {
+    private void configureJob() {
         setJobName( "Curator job" );
 
         setJarByClass( HadoopInterface.class );
 
         // Specify various job-specific parameters
         if( testing ) {
-            setMapperClass( TestMapper.class );
+            logger.log( "Set mapper to RecordTesterMapper" );
+            setMapperClass( RecordTesterMapper.class );
         }
         else {
+            logger.log( "Set mapper to CuratorMapper" );
             setMapperClass( CuratorMapper.class );
         }
 
@@ -146,10 +146,8 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
      * @param args The command line arguments, from which we take the annotation
      *             mode and I/O directories.
      * @return A configured Configuration option.
-     * @throws IOException If status/error logging fails
      */
-    private static Configuration getBaselineConfiguration( String[] args )
-            throws IOException {
+    private static Configuration getBaselineConfiguration( String[] args ) {
         Configuration config = new Configuration();
 
         ArgumentParser argParser = new ArgumentParser(args);

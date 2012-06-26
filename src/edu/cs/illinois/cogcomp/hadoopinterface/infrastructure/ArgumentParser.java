@@ -6,8 +6,6 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.Illegal
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.util.ToolRunner;
 
-import java.io.IOException;
-
 /**
  * This class is used to parse the command-line arguments used by the Hadoop
  * interface. It hides the "business logic" of the actual way that parameters
@@ -29,7 +27,9 @@ public class ArgumentParser {
      *                                      command line was not understood.
      */
     public ArgumentParser(String[] args)
-            throws BadCommandLineUsageException, IOException {
+            throws BadCommandLineUsageException {
+        testing = false;
+
         if( args.length < 2 ) {
             String errorMsg = "Usage: " + getClass().getName()
                     + "<document directory> <mode>\n   or:\n      "
@@ -109,7 +109,7 @@ public class ArgumentParser {
         }
     }
 
-    public void logResultsOfParsing() throws IOException {
+    public void logResultsOfParsing() {
         String alertOfTesting = "";
         if( isTesting() ) {
             alertOfTesting = "\n\tJob started in test mode.";

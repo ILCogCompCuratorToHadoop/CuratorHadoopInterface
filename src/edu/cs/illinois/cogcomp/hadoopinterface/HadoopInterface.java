@@ -15,15 +15,24 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.CuratorJob;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.MessageLogger;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.tests.DummyInputCreator;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.tests.FileSystemHandlerTest;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.SequenceFile;
 
 import java.io.IOException;
 
+/**
+ * A program that allows Hadoop to interface with Curator clients running on
+ * the Hadoop nodes.
+ *
+ * @example (After compiling this program to a JAR)
+ *          $ ./bin/hadoop jar CuratorHadoopInterface.jar -d some_dir -m parse
+ * @example (After compiling this program to a JAR)
+ *          $ ./bin/hadoop jar CuratorHadoopInterface.jar -d other_dir -m verb_srl -test
+ */
 public class HadoopInterface {
 
     /**
-     * Dummy main method for launching the tool as a stand-alone command.
+     * Main method for launching the tool as a stand-alone command.
      * Structure modeled after Hadoop's examples.
      *
      * @param argv String arguments from the command line. Must contain a valid
@@ -33,7 +42,8 @@ public class HadoopInterface {
      *             The directory should contain all documents to be annotated,
      *             complete with their dependencies for this job type.
      */
-    public static void main( String[] argv ) throws IOException, ClassNotFoundException, InterruptedException {
+    public static void main( String[] argv )
+            throws IOException, ClassNotFoundException, InterruptedException {
         logger.beginWritingToDisk();
         logger.logStatus( "Setting up job.\n\n" );
 
@@ -65,24 +75,11 @@ public class HadoopInterface {
             logger.continueWritingToDisk();
             handler.cleanUpTempFiles();
         }
-    }
 
-    /**
-     * Reads the output from the Reduce operation
-     *
-     * @TODO: Is this even necessary? (Depends on what class is responsible for moving output to the DB)
-     * @param job The job configuration for this Hadoop job
-     * @throws IOException If file not found
-     */
-    private static void readOutput(CuratorJob job) throws IOException {
-        // Read outputs
-        Path inFile = new Path( job.getOutputDirectory(), "reduce-out" );
-        SequenceFile.Reader reader =
-                new SequenceFile.Reader( job.getFileSystem(),
-                                         inFile, job.getConfiguration() );
-        // TODO: Oh yeah... we need real output. It's not clear how this works...
-        reader.next("Lorem ipsum");
-        reader.close();
+        if( job.isTesting() ) {
+            logger.logStatus("Beginning tests of File System Handler.");
+            FileSystemHandlerTest.main(new String[0]);
+        }
     }
 
     // Temp directory for input/output
