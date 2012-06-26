@@ -6,7 +6,6 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.EmptyIn
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
@@ -106,8 +105,34 @@ public class FileSystemHandler {
     public static void delete(Path fileOrDirectoryToDelete, FileSystem fs)
             throws IOException {
         if( HDFSFileExists( fileOrDirectoryToDelete, fs ) ) {
-            fs.delete( fileOrDirectoryToDelete, true );
+            fs.delete(fileOrDirectoryToDelete, true);
         }
+    }
+
+    /**
+     * Creates a directory with read/write access to anyone (777 permissions).
+     * For our purposes, this is fine. If the directory already exists, we simply
+     * exit---it's up to you to make sure you're giving a good path.
+     * @param directoryToCreate A path to the location where the directory should
+     *                          be created.
+     * @param fs The file system against which to resolve the path
+     */
+    public static void mkdir(Path directoryToCreate, FileSystem fs)
+            throws IOException {
+        if( !HDFSFileExists( directoryToCreate, fs ) ) {
+            fs.mkdirs( directoryToCreate );
+        }
+    }
+
+    /**
+     * Creates a directory on the local file system with 777 permissions.
+     * For our purposes, this is fine. If the directory already exists, we simply
+     * exit---it's up to you to make sure you're giving a good path.
+     * @param directoryToCreate A path to the location where the directory should
+     *                          be created.
+     */
+    public static void mkdirLocal(Path directoryToCreate) throws IOException {
+        mkdir( directoryToCreate, FileSystem.getLocal(new Configuration()) );
     }
 
     /**
@@ -124,20 +149,6 @@ public class FileSystemHandler {
 
     public static String getFileNameFromPath( Path p ) {
         return getFileNameFromPath(p.toString().trim());
-    }
-
-    /**
-     * Removes a trailing slash from a path, if it exists.
-     * @param p The path whose (possibly nonexistent) trailing slash you want to
-     *          remove
-     * @return The path with no trailing slash
-     */
-    public static String stripTrailingSlash( Path p ) {
-        String s = p.toString();
-        if( s.lastIndexOf(Path.SEPARATOR) == s.length() - 1 ) {
-            return s.substring( 0, s.length() - 1 );
-        }
-        return s;
     }
 
     /**
@@ -254,24 +265,33 @@ public class FileSystemHandler {
                                         FileSystem fs,
                                         boolean appendInsteadOfOverwriting )
             throws IOException {
-        if( appendInsteadOfOverwriting && HDFSFileExists(locationForFile, fs) ) {
+        // Qualify the location to avoid errors
+        Path qualifiedLoc;
+        if( locationForFile != null ) {
+            qualifiedLoc = locationForFile.makeQualified( fs );
+        }
+        else {
+            throw new NullPointerException( "Undefined location for file with "
+                    + "contents \"" + inputText + "\".");
+        }
+
+        // Handle appends
+        if( appendInsteadOfOverwriting && HDFSFileExists(qualifiedLoc, fs) ) {
             // Append is *not* supported in Hadoop r1.0.3. Damn.
             // TODO: When 2.0 is final, change to use FileSystem.append() instead
             // dos = fs.append( locationForFile );
 
-            String old = readFileFromHDFS( locationForFile, fs );
+            String old = readFileFromHDFS( qualifiedLoc, fs );
             inputText = old + inputText;
-            delete( locationForFile, fs );
+            delete( qualifiedLoc, fs );
         }
 
-        FSDataOutputStream dos = fs.create( locationForFile, true);
+        FSDataOutputStream dos = fs.create( qualifiedLoc, true );
         // NOTE: Writing using FSDataOutputStream's writeChars() or writeUTF()
         //       methods writes megabytes worth of invisible control characters,
         //       very quickly leading to hundred megabyte log files. BAD.
         dos.write( inputText.getBytes() );
         dos.close();
-
-        fs.setPermission( locationForFile, new FsPermission( (short)777 ) );
     }
 
     /**
@@ -305,27 +325,11 @@ public class FileSystemHandler {
                                          boolean appendInsteadOfOverwriting )
             throws IOException {
         FileSystem localFS = FileSystem.getLocal( new Configuration() );
-        Path qualifiedLoc;
-        if( locationForFile != null ) {
-            qualifiedLoc = locationForFile.makeQualified( localFS );
-        }
-        else {
-            throw new NullPointerException( "Undefined location for file with "
-                + "contents \"" + inputText + "\".");
-        }
 
-        // Check to make sure parent dir exists; if not, create it
-        if( !localFileExists( qualifiedLoc.getParent() )
-                && !isDir( qualifiedLoc.getParent(), localFS ) ) {
-            localFS.mkdirs( localFS,
-                            qualifiedLoc.getParent(),
-                            new FsPermission( (short)777 ) );
-        }
-
-        writeFileToHDFS( inputText,
-                         qualifiedLoc,
-                         localFS,
-                         appendInsteadOfOverwriting );
+        writeFileToHDFS(inputText,
+                locationForFile,
+                localFS,
+                appendInsteadOfOverwriting);
     }
 
     /**
@@ -441,7 +445,7 @@ public class FileSystemHandler {
      */
     public static boolean HDFSFileExists( Path fileLocation, FileSystem fs )
             throws IOException {
-        return fs.exists( fileLocation );
+        return fs.exists(fileLocation);
     }
 
     /**
@@ -453,7 +457,7 @@ public class FileSystemHandler {
      */
     public static boolean isDir( String pathAsString, FileSystem fs )
             throws IOException {
-        return isDir( new Path( pathAsString ), fs );
+        return isDir( new Path(pathAsString), fs );
     }
 
     /**
@@ -465,8 +469,7 @@ public class FileSystemHandler {
      * @return True if path points to a directory, false otherwise.
      * @throws IOException
      */
-    public static boolean isDir( Path path, FileSystem fs )
-            throws IOException {
+    public static boolean isDir( Path path, FileSystem fs ) throws IOException {
         try {
             return fs.getFileStatus( path ).isDir();
         } catch( FileNotFoundException e ) {
@@ -474,9 +477,33 @@ public class FileSystemHandler {
         }
     }
 
+    /**
+     * Returns the size of the indicated file, in bytes
+     * @param path The location of the file in question. Note that if this is a
+     *             directory, you'll get the size of the actual Unix file
+     *             representing the directory, *not* the size of the sum of
+     *             the contents.
+     * @param fs The file system against which to resolve paths
+     * @return The size in bytes of the entity at the indicated path
+     * @throws IOException
+     */
     public static long getFileSizeInBytes(Path path, FileSystem fs)
             throws IOException {
         return fs.getFileStatus( path ).getLen();
+    }
+
+    /**
+     * Removes a trailing slash from a path, if it exists.
+     * @param p The path whose (possibly nonexistent) trailing slash you want to
+     *          remove
+     * @return The path with no trailing slash
+     */
+    public static String stripTrailingSlash( Path p ) {
+        String s = p.toString();
+        if( s.lastIndexOf(Path.SEPARATOR) == s.length() - 1 ) {
+            return s.substring( 0, s.length() - 1 );
+        }
+        return s;
     }
 
 

@@ -15,6 +15,7 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.CuratorJob;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.MessageLogger;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.tests.DummyInputCreator;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.tests.FileSystemHandlerTest;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.SequenceFile;
 
@@ -65,6 +66,11 @@ public class HadoopInterface {
         } finally {
             logger.continueWritingToDisk();
             handler.cleanUpTempFiles();
+        }
+
+        if( job.isTesting() ) {
+            logger.logStatus("Beginning tests of File System Handler.");
+            FileSystemHandlerTest.main(new String[0]);
         }
     }
 

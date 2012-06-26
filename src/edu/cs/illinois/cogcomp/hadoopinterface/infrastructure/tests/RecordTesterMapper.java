@@ -73,12 +73,14 @@ public class RecordTesterMapper extends Mapper<Text, Record, Text, Record> {
         }
         else {
             logger.logError("We have NOT satisfied the deps for POS");
+            throw new Error( "Error checking dependencies in Record." );
         }
         if( ner_bool ) {
             logger.log("We have satisfied the deps for NER");
         }
         else {
             logger.logError("We have NOT satisfied the deps for NER");
+            throw new Error( "Error checking dependencies in Record." );
         }
 
         testContext.write(testKey, testValue);
