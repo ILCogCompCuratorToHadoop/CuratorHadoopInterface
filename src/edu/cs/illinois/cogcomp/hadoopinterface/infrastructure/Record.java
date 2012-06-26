@@ -160,10 +160,12 @@ public class Record implements WritableComparable< Record > {
      */
     public void addAnnotation( AnnotationMode typeOfAnnotation,
                                String annotationBody ) throws IOException {
-        String annotation = typeOfAnnotation.toString();
         if ( annotations.contains( typeOfAnnotation ) ) {
-            // TODO: Throw a real error?
             logger.logError( "This annotation already exists; not adding" );
+            throw new IllegalArgumentException( "Annotation "
+                    + typeOfAnnotation.toString() + " already exists for"
+                    + " document with hash " + getDocumentHash() + ". "
+                    + "Can't add a new one until you delete the old one." );
         }
         else {
             Path path = constructAnnotationPath( typeOfAnnotation );

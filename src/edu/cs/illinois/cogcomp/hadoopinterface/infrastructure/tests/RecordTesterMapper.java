@@ -22,6 +22,15 @@ import java.util.List;
 import java.util.Random;
 
 
+/**
+ * A Mapper class to test the Record input extensively. Also, since running the
+ * Mapper relies on the CuratorRecordReader, DirectoryInputFormat, and
+ * DirectorySplit classes to function properly, successfully running this mapper
+ * also serves as a test for those classes.
+ *
+ * @author Lisa Bao
+ * @author Tyler Young
+ */
 public class RecordTesterMapper extends Mapper<Text, Record, Text, Record> {
 
 
@@ -46,7 +55,9 @@ public class RecordTesterMapper extends Mapper<Text, Record, Text, Record> {
         // Test rec's add and remove capabilities //
         logger.logStatus( "Adding POS annotation. "
                           + "Should throw an already-exists error." );
-        testValue.addAnnotation( AnnotationMode.POS, "This is the POS annotation body." );
+        try {
+            testValue.addAnnotation( AnnotationMode.POS, "This is the POS annotation body." );
+        } catch ( IllegalArgumentException expected ) { }
 
         logger.logStatus( "Removing POS annotation, then re-adding. "
                           + "Should be silent." );
@@ -89,6 +100,11 @@ public class RecordTesterMapper extends Mapper<Text, Record, Text, Record> {
     }
 
 
+    /**
+     * Simply returns a random annotation mode for the sake of testing the
+     * record's ability to work with that mode.
+     * @return A random AnnotationMode
+     */
     private AnnotationMode getRandomMode() {
         List<AnnotationMode> values = Collections.unmodifiableList(
                 Arrays.asList( AnnotationMode.values() ) );
