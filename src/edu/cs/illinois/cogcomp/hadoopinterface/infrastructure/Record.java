@@ -35,10 +35,9 @@ public class Record implements WritableComparable< Record > {
     private FileSystem fs;
     private MessageLogger logger;
     private Path docDir;
+    private boolean isInitialized;
 
     public Record() {
-        HadoopInterface.logger.logError(
-                "Someone called the Record's zero-arg constructor (?)");
     }
 
     /**
@@ -51,16 +50,34 @@ public class Record implements WritableComparable< Record > {
      * @param config Hadoop Configuration for this job containing HDFS file path
      */
     public Record( String documentHash, FileSystem fs, Configuration config ) {
+        initializeAllVars( documentHash, fs, config );
+    }
+
+    /**
+     * Essentially the "real" constructor. Handles the initialization of all
+     * variables. The reason for separating this from the actual constructor is
+     * that the Writable interface works by creating new Record objects using
+     * the zero-argument constructor, then passing the arguments later. A bit
+     * of a pain.
+     * @param documentHash The hash for the document whose annotation this
+     *                     record stores
+     * @param fs A filesystem object with which this Record can access the
+     *           Hadoop Distributed File System
+     * @param config Hadoop Configuration for this job containing HDFS file path
+     */
+    private void initializeAllVars( String documentHash, FileSystem fs,
+                                    Configuration config ) {
         this.fs = fs;
         this.documentHash = documentHash;
         this.config = config;
         inputDir = config.get("inputDirectory");
         docDir = new Path( inputDir + Path.SEPARATOR + documentHash );
         annotations = new HashSet<AnnotationMode>();
-        initializeWithAllAnnotationsThatExistInHDFS();
+        initializeKnownAnnotations();
 
         logger = new MessageLogger( true );
-        logger.log( "Created record for document with hash " + documentHash );
+        logger.log( "Initialized record for document with hash " + documentHash );
+
     }
 
     /**
@@ -68,7 +85,7 @@ public class Record implements WritableComparable< Record > {
      * adds to the list of known annotations all annotation files that it finds
      * there.
      */
-    private void initializeWithAllAnnotationsThatExistInHDFS() {
+    private void initializeKnownAnnotations() {
         for( AnnotationMode mode : AnnotationMode.values() ) {
             try {
                 if( annotationExistsOnDisk( mode ) ) {
@@ -78,6 +95,7 @@ public class Record implements WritableComparable< Record > {
                 logger.logError("Error checking disk for extant annotations!");
             }
         }
+        isInitialized = true;
     }
 
 
@@ -306,15 +324,24 @@ public class Record implements WritableComparable< Record > {
 
     @Override
     public void write( DataOutput out ) throws IOException {
-        logger.log( "Writing data output for " + getDocumentHash() );
-
-        out.write( (getDocumentHash() + "\n").getBytes() );
+        if( isInitialized ) {
+            logger.log( "Writing data output for " + getDocumentHash() );
+            String stringRep = getDocumentHash() + "\n";
+            out.write( stringRep.getBytes() );
+            // Have the configuration serialize its data
+            config.write( out );
+        }
     }
 
     @Override
     public void readFields( DataInput in ) throws IOException {
-        logger.log( "Reading fields for " + getDocumentHash() );
-        documentHash = in.readLine();
+        String newDocumentHash = in.readLine();
+        Configuration newConfig = new Configuration();
+        newConfig.readFields( in );
+        FileSystem newFileSystem = FileSystem.get( newConfig );
+        if( newDocumentHash != null ) {
+            initializeAllVars( newDocumentHash, newFileSystem, newConfig );
+        }
     }
 
     /**
