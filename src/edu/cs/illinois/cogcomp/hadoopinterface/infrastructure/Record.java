@@ -148,7 +148,7 @@ public class Record implements WritableComparable< Record > {
             logger.logError( "This annotation already exists; not adding" );
         }
         else {
-            Path path = new Path( docDir, annotation + ".txt");
+            Path path = constructAnnotationPath( typeOfAnnotation );
             writeFileToHDFS( annotationBody, path, fs );
             annotations.add( typeOfAnnotation );
         }
@@ -187,7 +187,7 @@ public class Record implements WritableComparable< Record > {
                             + " is not known to exist; nothing to remove" );
 		}
 		else {
-		    Path path = new Path( docDir, typeOfAnnotation.toString() + ".txt");
+		    Path path = constructAnnotationPath( typeOfAnnotation );
 			delete(path, fs);
 			annotations.remove( typeOfAnnotation );
 		}
@@ -222,7 +222,7 @@ public class Record implements WritableComparable< Record > {
      * has seen fit to copy in to HDFS.
      * @return A list of paths to the annotations in the document's directory.
      */
-    public List<Path> getKnownAnnotations() {
+    public List<Path> getKnownAnnotationLocations() {
         ArrayList<Path> knownAnnotations = new ArrayList<Path>();
         for( AnnotationMode mode : AnnotationMode.values() ) {
             if( annotationExists( mode ) ) {
@@ -249,7 +249,9 @@ public class Record implements WritableComparable< Record > {
      *                         recognition, etc.).
      */
     public boolean checkDependencies( AnnotationMode typeOfAnnotation ) {
-        HadoopInterface.logger.log( "Checking deps for " + getDocumentHash() );
+        HadoopInterface.logger.log( "Checking if document with hash "
+                + getDocumentHash() + " satisfies the dependency requirements "
+                + "for annotation type " + typeOfAnnotation.toString() );
 
         boolean valid = true;
         if ( typeOfAnnotation == CHUNK ) {
@@ -328,7 +330,7 @@ public class Record implements WritableComparable< Record > {
         String stringRep = "Document with hash " + getDocumentHash()
                            + " has annotations:\n";
 
-        for( Path annotationPath : getKnownAnnotations() ) {
+        for( Path annotationPath : getKnownAnnotationLocations() ) {
             stringRep = stringRep + "\t\t - " + annotationPath.toString() + "\n";
         }
         return stringRep;

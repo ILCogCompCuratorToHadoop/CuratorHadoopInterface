@@ -66,8 +66,8 @@ public class RecordTesterMapper extends Mapper<Text, Record, Text, Record> {
             logger.log( testValue.getAnnotationString( mode ) );
         }
 
-        Boolean pos_bool = testValue.checkDependencies(AnnotationMode.fromString("POS"));
-        Boolean ner_bool = testValue.checkDependencies(AnnotationMode.fromString("NER"));
+        Boolean pos_bool = testValue.checkDependencies( AnnotationMode.POS );
+        Boolean ner_bool = testValue.checkDependencies( AnnotationMode.NER );
         if( pos_bool ) {
             logger.log("We have satisfied the deps for POS");
         }

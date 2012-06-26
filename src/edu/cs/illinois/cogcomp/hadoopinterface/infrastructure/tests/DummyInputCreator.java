@@ -46,7 +46,8 @@ public class DummyInputCreator {
                                                 FileSystem fs )
             throws IOException {
         // Create original.txt file
-        String original = "Lorem ipsum dolor sit amet, consectetur adipiscing "
+        String original = "Hello, I'm an original.txt file."
+                + "\n\nLorem ipsum dolor sit amet, consectetur adipiscing "
                 + "elit. Nullam eu mauris odio. Vivamus id fermentum"
                 + "elit. Quisque placerat arcu in nibh tincidunt "
                 + "consectetur.\n\n"
@@ -56,7 +57,8 @@ public class DummyInputCreator {
 
         // Create annotation files
         for( AnnotationMode mode : AnnotationMode.values() ) {
-            String annotation = mode.toString()
+            String annotation = "Hello, I'm an annotation of type "
+                    + mode.toString()
                     + "\n\nLorem ipsum dolor sit amet, consectetur "
                     + "adipiscing elit. Nullam eu mauris odio. Vivamus id "
                     + "fermentum elit. Quisque placerat arcu in nibh tincidunt "
