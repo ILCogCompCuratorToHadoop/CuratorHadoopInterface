@@ -123,7 +123,7 @@ public class CuratorHandler implements Curator.Iface {
 				"edu.illinois.cs.cogcomp.archive.DatabaseArchive");
 
 		// initialize the archive class
-		try {
+    		try {
 			if (!archivefn.trim().equals("")) {
 				init(archiveClassname, new PropertiesConfiguration(archivefn));
 			} else {
@@ -498,7 +498,7 @@ public class CuratorHandler implements Curator.Iface {
 						logger.warn(e.toString());
 					}
 				}
-				// salves should also store records when they request from
+				// slaves should also store records when they request from
 				// master (cut down on comms)
 				try {
 					archive.store(record, Record.class);
@@ -567,6 +567,7 @@ public class CuratorHandler implements Curator.Iface {
 	 */
 	private void removeStaleFields(MultiRecord record) {
 		//TODO: Implement!
+        //for backwards compat with MultiRecord only?? (so maybe not necessary)
 	}
 
 	/**
@@ -666,6 +667,9 @@ public class CuratorHandler implements Curator.Iface {
 	 * @throws ServiceUnavailableException
 	 * @throws TException
 	 * @throws AnnotationFailedException
+     *
+     * calls NLP tool to provide annotation using Record ds
+     * does NOT check for dependencies
 	 */
 	public void performAnnotation(Record record, String view_name,
 			boolean forceUpdate) throws ServiceUnavailableException,
@@ -1017,6 +1021,8 @@ public class CuratorHandler implements Curator.Iface {
 
 	}
 
+    // gets annotation for a given text string
+    // also checks for dependencies
 	public Record provide(String view_name, String text, boolean forceUpdate)
 			throws ServiceUnavailableException, AnnotationFailedException,
 			TException {
