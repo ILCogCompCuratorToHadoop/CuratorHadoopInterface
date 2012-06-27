@@ -1,15 +1,10 @@
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
-import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
-
-import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.*;
 
 //import java.nio.charset.Charset;
 //import java.nio.file.*;
@@ -29,8 +24,28 @@ public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
     public void reduce( Text inKey, 
                         Record inValue, 
                         Context context ) throws IOException, InterruptedException {
+        // Pseudo-code per discussion with Mark on 27 June
 
-        // write input document to local dir
+        // Check if annotation tool is running locally (i.e., by checking log
+        // file).
+            // If not, start it and sleep repeatedly until it's ready to go
+
+        // Check if Curator is running locally (again, via log file)
+            // If not, start it and sleep until it's ready to go
+
+        // Check if Curator Client is running locally, launch if not
+
+        // Have Curator Client request the annotation on this record
+
+        // As another MR job (?): after all jobs are through, kill client,
+        // Curator, and annotation tool
+
+
+
+
+
+        // Below is the original version . . .
+        /*// write input document to local dir
         String annotation = context.getConfiguration().get("annotationMode");
         Path source = inValue.getAnnotation(AnnotationMode.fromString(annotation)); // pulls Hadoop-HDFS filepath from Record object
         FileSystem fs = FileSystem.get(context.getConfiguration());
@@ -58,7 +73,7 @@ public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
                 text = readFileFromLocal(output);
                 inValue.addAnnotation(AnnotationMode.fromString(annotation), text);
             }
-        }
+        }*/
         
         // pass Curator output back to Hadoop as Record
         context.write(inKey, inValue);
