@@ -92,8 +92,19 @@ public class CuratorHandler implements Curator.Iface {
 		this(propfn, annotatorsfn, "");
 	}
 
+    /**
+     * Constructs a CuratorHandler
+     * @param propfn A string containing a path (relative to the current working
+     *               directory) to the Curator configuration files. If this is
+     *               blank, we use the default.
+     * @param annotatorsfn A path to the annotator configuration file. If blank,
+     *                     we use the default.
+     * @param archivefn A path to the archive handler's configuration file. If
+     *                  blank, we use no archive handler.
+     */
 	public CuratorHandler(String propfn, String annotatorsfn, String archivefn) {
-		if (propfn.trim().equals("")) {
+		// Set the configuration based on our inputs
+        if (propfn.trim().equals("")) {
 			propfn = "configs/curator.properties";
 		}
 		if (annotatorsfn.trim().equals("")) {
@@ -112,7 +123,6 @@ public class CuratorHandler implements Curator.Iface {
 				"edu.illinois.cs.cogcomp.archive.DatabaseArchive");
 
 		// initialize the archive class
-
 		try {
 			if (!archivefn.trim().equals("")) {
 				init(archiveClassname, new PropertiesConfiguration(archivefn));

@@ -39,19 +39,23 @@ public class CuratorServer {
 	 * and main to get a server working!
 	 */
 	public static Options createOptions() {
-		
+
+        // Set port to open server on
 		Option port = OptionBuilder.withLongOpt("port").withArgName("PORT")
 				.hasArg().withDescription("port to open server on").create("p");
-		
+
+        // Set number of threads to run
 		Option threads = OptionBuilder.withLongOpt("threads")
 				.withArgName("THREADS").hasArg()
 				.withDescription("number of threads to run").create("t");
-		
+
+        // Set Curator config file
 		Option config = OptionBuilder.withLongOpt("config")
 				.withArgName("CONFIG").hasArg()
 				.withDescription("configuration file (curator.properties)")
 				.create("c");
-		
+
+        // Set annotators config file
 		Option annotators = OptionBuilder
 				.withLongOpt("annotators")
 				.withArgName("ANNOTATORS")
@@ -59,7 +63,8 @@ public class CuratorServer {
 				.withDescription(
 						"annotators configuration file (annotators.xml)")
 				.create("a");
-		
+
+        // Set archiver config file
 		Option archive = OptionBuilder
 				.withLongOpt("archiveconfig").withArgName("ARCHIVECONFIG").hasArg()
 				.withDescription("archiver configuration file (configs/database.properties)")
@@ -80,10 +85,11 @@ public class CuratorServer {
 	}
 
 	public static void main(String[] args) {
-		
+
 		int threads = 1;
 		int port = 9090;
-		
+
+        // Set up command-line options
 		String configFile = "";
 		String annotatorsFile = "";
 		String archiveConfigFile = "";
@@ -124,13 +130,22 @@ public class CuratorServer {
 		configFile = line.getOptionValue("config", "");
 		annotatorsFile = line.getOptionValue("annotators", "");
 		archiveConfigFile = line.getOptionValue("archiveconfig", "");
-		
+
+
 		Curator.Iface handler = new CuratorHandler(configFile, annotatorsFile, archiveConfigFile);
 		Curator.Processor processor = new Curator.Processor(handler);
 
+        // Having finished setting up the option, do all the real work
 		runServer(processor, port, threads);
 	}
 
+    /**
+     * Launches the (now configured) server
+     * @param processor A Thrift/Curator processor that has been fully configured
+     *                  via the CuratorHandler (probably via command-line options)
+     * @param port The port to open this server on
+     * @param threads The number of threads to use for the server
+     */
 	public static void runServer(TProcessor processor, int port, int threads) {
 
 		TNonblockingServerTransport serverTransport;
@@ -139,8 +154,10 @@ public class CuratorServer {
 			serverTransport = new TNonblockingServerSocket(port);
 
 			if (threads == 1) {
+                // Instantiate a Thrift non-blocking server
 				server = new TNonblockingServer(processor, serverTransport);
 			} else {
+                // Instantiate a Thrift Half-Sync/Half-Async server
 				THsHaServer.Options serverOptions = new THsHaServer.Options();
 				serverOptions.workerThreads = threads;
 				server = new THsHaServer(new TProcessorFactory(processor),
@@ -152,6 +169,7 @@ public class CuratorServer {
 							"Server Shutdown Listener"));
 			logger.info("Starting the server on port {} with {} threads", port,
 					threads);
+            // Begin accepting connections and processing invocations.
 			server.serve();
 		} catch (TTransportException e) {
 			logger.error("Thrift Transport error");
