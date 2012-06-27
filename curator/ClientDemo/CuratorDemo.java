@@ -1,3 +1,5 @@
+// Read online here: http://cogcomp.cs.illinois.edu/curator/CuratorDemo.html
+
 // You can download [CuratorDemo.java][java].
 // [java]: CuratorDemo.java
 //
