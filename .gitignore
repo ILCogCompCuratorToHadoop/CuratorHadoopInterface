@@ -68,3 +68,5 @@ curatorhadoopinterface.xml
 MessageLog.txt
 
 META-INF/MANIFEST.MF
+
+scripts/.#launch_curator_on_this_node.sh
