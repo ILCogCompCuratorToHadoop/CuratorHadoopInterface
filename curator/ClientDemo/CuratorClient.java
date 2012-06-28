@@ -56,6 +56,128 @@ public class CuratorClient {
 		return result.toString();
 	}
 	
+	/**
+     *  Converts a Record data structure object into strings of
+     *  the original raw text and each existing annotation,
+     *  stored and returned in a Map.
+	 */
+	public Map<String, String> serializeRecord(Record record) {
+        Map<String, String> map = new HashMap<String, String>();
+        String raw = record.getRawText();
+        map.put("original", raw);
+
+        Map<String, edu.illinois.cs.cogcomp.thrift.base.Labeling> labels = record.getLabelViews();
+        Map<String, edu.illinois.cs.cogcomp.thrift.base.Clustering> cluster = record.getClusterViews();
+        Map<String, edu.illinois.cs.cogcomp.thrift.base.Forest> parse = record.getParseViews();
+        Map<String, edu.illinois.cs.cogcomp.thrift.base.View<F5>> views = record.getViews();
+
+        String value = "";
+        boolean coref = false;
+
+        // if these logic statements are erroring, try checking for all known keys in each map        
+        for (String key : labels.keys()) {
+            if (key.equals("pos")) {
+                value = labels.get(key);
+                map.put("POS", value);
+            }
+            else if (key.equals("chunk")) {
+                value = labels.get(key);
+                map.put("CHUNK", value);
+            }
+            else if (key.equals("ner-ext")) {
+                value = labels.get(key);
+                map.put("NER", value);
+            }
+            else if (key.equals("tokens")) {
+                vlaue = labels.get(key);
+                map.put("TOKEN", value);
+            }
+            else if (key.equals("wikifier")) {
+                value = labels.get(key);
+                map.put("WIKI", value);
+            }
+            else if (key.equals("coref")) {
+                if (coref == false) {
+                    coref = true;
+                    value = labels.get(key);
+                    map.put("COREF", value);
+                }
+                else {
+                    System.out.println("ERROR: multiple instances of COREF");
+                }
+            }
+        }
+
+        for (String key : cluster.keys()) {
+            if (key.equals("stanfordDep") || key.equals("stanfordParse")) {
+                value = cluster.get(key);
+                map.put("PARSE", value);
+            }
+            else if (key.equals("srl")) {
+                value = cluster.get(key);
+                map.put("VERB_SRL", value);
+            }
+            else if (key.equals("nom")) {
+                value = cluster.get(key);
+                map.put("NOM_SRL", value);
+            }
+            else if (key.equals("coref")) {
+                if (coref == false) {
+                    coref = true;
+                    value = labels.get(key);
+                    map.put("COREF", value);
+                }
+                else {
+                    System.out.println("ERROR: multiple instances of COREF");
+                }
+            }
+        }
+
+        for (String key : parse.keys()) { 
+            if (key.equals("coref")) {
+                if (coref == false) {
+                    coref = true;
+                    value = labels.get(key);
+                    map.put("COREF", value);
+                }
+                else {
+                    System.out.println("ERROR: multiple instances of COREF");
+                }
+            }
+        }
+
+        for (String key : views.keys()) { 
+            if (key.equals("coref")) {
+                if (coref == false) {
+                    coref = true;
+                    value = labels.get(key);
+                    map.put("COREF", value);
+                }
+                else {
+                    System.out.println("ERROR: multiple instances of COREF");
+                }
+            }
+        }
+
+        return map;
+        
+	}
+
+    /**
+     *  Converts a Map of strings (original text and annotations)
+     *  into a Curator Record object.
+     *  
+     *  @param map containing raw text and annotations
+     *  @param id String identifier for the Record
+     *
+     */
+	public Record deserializeRecord(Map<String, String> map, String id) {
+		String raw = map.get("original");
+        Map<String, edu.illinois.cs.cogcomp.thrift.base.Labeling 
+        Record record = new Record(id, raw, labels, cluster, parse, views, false);
+        return record;
+	}
+	
     public static void main(String[] args) throws AnnotationFailedException, FileNotFoundException {
 
 	    if ( args.length != 3 ) 
