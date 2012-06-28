@@ -1,14 +1,12 @@
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
-
-//import java.nio.charset.Charset;
-//import java.nio.file.*;
-
 
 /**
  * @author Tyler A. Young
@@ -26,56 +24,121 @@ public class CuratorReducer extends Reducer<Text, Record, Text, Record> {
                         Context context ) throws IOException, InterruptedException {
         // Pseudo-code per discussion with Mark on 27 June
 
+        AnnotationMode toolToRun = AnnotationMode
+                .fromString( context.getConfiguration().get("annotationMode") );
+
         // Check if annotation tool is running locally (i.e., by checking log
-        // file).
+        // file located at CURATOR_DIR/logs/).
+        if( !toolIsRunning( toolToRun ) ) {
             // If not, start it and sleep repeatedly until it's ready to go
+            startTool( toolToRun );
+            Thread.sleep(1000); // Give it 1 second at minimum to start up
+
+            while( !toolIsRunning( toolToRun ) ) {
+                Thread.sleep(5000);
+            }
+        }
 
         // Check if Curator is running locally (again, via log file)
-            // If not, start it and sleep until it's ready to go
+        if( !curatorIsRunning() ) {
+            // If not, start it and sleep repeatedly until it's ready to go
+            startCurator();
+            Thread.sleep(1000); // Give it 1 second at minimum to start up
 
-        // Check if Curator Client is running locally, launch if not
+            while( !curatorIsRunning() ) {
+                Thread.sleep(5000);
+            }
+        }
+
+        // Create a new Curator client object
+        HadoopCuratorClient client = new HadoopCuratorClient();
+
+        Path recordLocation = new Path( inValue.getDocumentLocation() );
+        edu.illinois.cs.cogcomp.thrift.curator.Record curatorRecord =
+                client.deserializeRecord( recordLocation );
 
         // Have Curator Client request the annotation on this record
+        curatorRecord = client.performAnnotation( curatorRecord, toolToRun );
 
-        // As another MR job (?): after all jobs are through, kill client,
-        // Curator, and annotation tool
+        // Serialize the updated record to the output directory
+        Path generalOutputDir =
+                new Path( context.getConfiguration().get("outputDirectory") );
+        Path docOutputDir =
+                new Path( generalOutputDir, inValue.getDocumentHash() );
+        client.serializeRecord( curatorRecord, docOutputDir );
 
 
+        // TODO: As another MR job (?): after all jobs are through, kill all tools
 
-
-
-        // Below is the original version . . .
-        /*// write input document to local dir
-        String annotation = context.getConfiguration().get("annotationMode");
-        Path source = inValue.getAnnotation(AnnotationMode.fromString(annotation)); // pulls Hadoop-HDFS filepath from Record object
-        FileSystem fs = FileSystem.get(context.getConfiguration());
-        String text = readFileFromHDFS( source, fs );
-        Path dest = new Path("/temp/hadoop/curator_in.txt");
-        writeFileToLocal((String) text, (Path) dest);
-        
-	    // while loop, wait for output in appropriate directory to "magically" appear
-        // (put there by the local Curator instance)
-        boolean done = false;
-        Path output = new Path("/temp/hadoop/curator_out.txt");
-        while (!done) {
-            try {
-                Thread.sleep(1000); // sleep for 1 sec
-            }
-            catch (InterruptedException e) {
-                System.out.println("Time delay interrupted");
-            }
-
-            if ( !localFileExists(output) ) {
-                System.out.println("Waiting on Curator output");
-            }
-            else { // only if output file exists, read file from path to a string
-                done = true;
-                text = readFileFromLocal(output);
-                inValue.addAnnotation(AnnotationMode.fromString(annotation), text);
-            }
-        }*/
         
         // pass Curator output back to Hadoop as Record
         context.write(inKey, inValue);
     }
+
+    /**
+     * Checks the log files in your Curator directory (`~/curator/dist/logs`)
+     * to see if the indicated tool has finished launching.
+     * @param toolToCheck The annotation tool in question (more accurately,
+     *                    the type of annotation provided by the tool)
+     * @return TRUE if the log file indicates the tool is running. FALSE if
+     *         the log file *should* indicate the tool is running successfully,
+     *         but it does not.
+     *
+     *         Note that if the annotation tool, through an aggravating design
+     *         decision, does *not* indicate explicitly when it's ready to go,
+     *         we make a best guess based on when the log file was last modified.
+     *
+     * @TODO: Make this less brittle (don't rely on tools to indicate readiness in log)
+     */
+    public boolean toolIsRunning( AnnotationMode toolToCheck ) {
+        // If the tool to check gives us an explicit "hello world" or something
+        // in it's log file
+
+            // Check the log file
+
+        // Else, check the log file's time of last modification. If it's within
+        // the last half hour, assume all is well.
+
+        return false;
+    }
+
+
+    /**
+     * Checks the log files in your Curator directory (`~/curator/dist/logs`)
+     * to see if the indicated tool has finished launching.
+     * @return TRUE if the log file indicates the Curator is running.
+     */
+    public boolean curatorIsRunning() {
+        // Basically, since we assume that the Curator isn't launched until all
+        // tools are good to go, we can assume the Curator is running as long as
+        // its log file has been modified in the last half hour.
+
+        return false;
+    }
+
+    /**
+     * Runs the shell script required to launch the indicated annotation tool.
+     * If this script is not found in your Curator directory (i.e., at
+     * `~/curator/dist/scripts/launch_annotator_on_this_node.sh`), we'll simply
+     * create it.
+     * @param toolToLaunch The annotation tool to launch (more accurately,
+     *                     the type of annotation provided by the tool to be
+     *                     launched)
+     */
+    public void startTool( AnnotationMode toolToLaunch ) {
+
+    }
+
+    /**
+     * Runs the shell script required to launch the indicated annotation tool.
+     * If this script is not found in your Curator directory (i.e., at
+     * `~/curator/dist/scripts/launch_curator_on_this_node.sh`), we'll simply
+     * create it.
+     */
+    public void startCurator() {
+        //Runtime.getRuntime().exec(myShellScript);
+    }
+
+
+    private Path curatorDir;
 }

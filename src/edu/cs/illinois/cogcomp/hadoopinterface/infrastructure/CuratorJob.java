@@ -16,6 +16,15 @@ import java.util.Random;
  * This configuration "knows" what mapper and reducer will be used, and it also
  * knows how to access the file system for this job.
  *
+ * The configuration provides the following variables to the rest of the program
+ * (available via the Configuration's `get()` method):
+ *
+ *      - annotationMode: the tool that we're running over this batch of documents
+ *      - inputDirectory: the directory in which you will find a number of
+ *          directories named with document hashes (those directories will contain
+ *          the actual text files for annotation)
+ *      - outputDirectory: similar to inputDirectory
+ *
  * @author Tyler Young
  */
 public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
