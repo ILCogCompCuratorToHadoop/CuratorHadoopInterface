@@ -347,7 +347,7 @@ public class Record implements TBase<Record, Record._Fields>, java.io.Serializab
         this.identifier = null;
     }
 
-    /** Returns true if field identifier is set (has been asigned a value) and false otherwise */
+    /** Returns true if field identifier is set (has been assigned a value) and false otherwise */
     public boolean isSetIdentifier() {
         return this.identifier != null;
     }
@@ -377,7 +377,7 @@ public class Record implements TBase<Record, Record._Fields>, java.io.Serializab
         this.rawText = null;
     }
 
-    /** Returns true if field rawText is set (has been asigned a value) and false otherwise */
+    /** Returns true if field rawText is set (has been assigned a value) and false otherwise */
     public boolean isSetRawText() {
         return this.rawText != null;
     }

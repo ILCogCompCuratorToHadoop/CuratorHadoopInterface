@@ -172,8 +172,71 @@ public class CuratorClient {
      *
      */
 	public Record deserializeRecord(Map<String, String> map, String id) {
-		String raw = map.get("original");
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Labeling 
+        Map<String, edu.illinois.cs.cogcomp.thrift.base.Labeling> labels = new HashMap<String, edu.illinois.cs.cogcomp.thrift.base.Labeling>();
+        Map<String, edu.illinois.cs.cogcomp.thrift.base.Clustering> cluster = new HashMap<String, edu.illinois.cs.cogcomp.thrift.base.Clustering>();
+        Map<String, edu.illinois.cs.cogcomp.thrift.base.Forest> parse = new HashMap<String, edu.illinois.cs.cogcomp.thrift.base.Forest>();
+        Map<String, edu.illinois.cs.cogcomp.thrift.base.View> views = new HashMap<String, edu.illinois.cs.cogcomp.thrift.base.Views>();
+
+        String raw = "";
+        String value = "";
+
+        for(String key : map.keys()) {
+            if (key.equals("original") {
+                raw = map.get(key);
+            }
+            
+            // Forest map
+            if (key.equals("PARSE")) {
+                value = map.get(key);
+                parse.put("stanfordParse", value); // arbitrary choice over stanfordDep
+            }
+            else if (key.equals("VERB_SRL")) {
+                value = map.get(key);
+                parse.put("srl", value);
+            }
+            else if (key.equals("NOM_SRL")) {
+                value = map.get(key);
+                parse.put("nom", value);
+            }
+
+            // Labeling map
+            else if (key.equals("TOKEN")) {
+                value = map.get(key);
+                labels.put("tokens", value);
+            }
+            else if (key.equals("NER")) {
+                value = map.get(key);
+                labels.put("ner-ext", value);
+            }
+            else if (key.equals("POS")) {
+                value = map.get(key);
+                labels.put("pos", value);
+            }
+            else if (key.equals("CHUNK")) {
+                value = map.get(key);
+                labels.put("chunk", value);
+            }
+            else if (key.equals("WIKI")) {
+                value = map.get(key);
+                labels.put("wikifier", value);
+            }
+
+            // Clustering map is currently EMPTY
+            
+            // (general) View map - temporary location for coref
+            else if (key.equals("COREF")) {
+                value = map.get(key);
+                views.put("COREF", value);
+            }
+
+            // throw an error
+            else {
+                System.out.println("ERROR: unrecognized key of " + key + " corresponding to value of " + map.get(key));
+            }
+                
+        }
+
+
         Record record = new Record(id, raw, labels, cluster, parse, views, false);
         return record;
 	}
