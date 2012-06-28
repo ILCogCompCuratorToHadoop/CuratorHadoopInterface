@@ -469,6 +469,13 @@ public class CuratorClient {
 		
 // 		System.out.println("We could continue calling the Curator for other annotations but we'll stop here.");
 
+		// TODO print out map keys
+		Record record = getRecord();
+		Map map = record.getParseViews();
+		for (String key : map.keys()) {
+			System.out.println(key);
+		}
+
 
 		System.out.println();
 		System.out.println("Next we call the MentionDetector..." );
