@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Get CURATOR_DIRECTORY, CURRENT_TOOL_SCRIPT, and PORT variables
+# TODO: Get CURATOR_DIRECTORY, CURRENT_TOOL_SCRIPT, and PORT variables
 
 cd $CURATOR_DIRECTORY/dist
 # Launch the annotation tool
