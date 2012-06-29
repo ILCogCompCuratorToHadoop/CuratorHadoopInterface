@@ -1,12 +1,8 @@
-package edu.illinois.cs.cogcomp.ClientDemo;
+package edu.cs.illinois.cogcomp.hadoopinterface;
 
-import java.util.Map;
-import java.util.Stack;
-import java.util.Map.Entry;
-import java.util.Scanner;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-
+import edu.illinois.cs.cogcomp.thrift.base.*;
+import edu.illinois.cs.cogcomp.thrift.curator.Curator;
+import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -14,13 +10,13 @@ import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 
-import edu.illinois.cs.cogcomp.thrift.base.AnnotationFailedException;
-import edu.illinois.cs.cogcomp.thrift.base.Node;
-import edu.illinois.cs.cogcomp.thrift.base.ServiceUnavailableException;
-import edu.illinois.cs.cogcomp.thrift.base.Span;
-import edu.illinois.cs.cogcomp.thrift.base.Tree;
-import edu.illinois.cs.cogcomp.thrift.curator.Curator;
-import edu.illinois.cs.cogcomp.thrift.curator.Record;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Scanner;
+import java.util.Stack;
 
 public class CuratorClient {
 	
@@ -69,37 +65,37 @@ public class CuratorClient {
         Map<String, edu.illinois.cs.cogcomp.thrift.base.Labeling> labels = record.getLabelViews();
         Map<String, edu.illinois.cs.cogcomp.thrift.base.Clustering> cluster = record.getClusterViews();
         Map<String, edu.illinois.cs.cogcomp.thrift.base.Forest> parse = record.getParseViews();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.View<F5>> views = record.getViews();
+        Map<String, edu.illinois.cs.cogcomp.thrift.base.View> views = record.getViews();
 
         String value = "";
         boolean coref = false;
 
         // if these logic statements are erroring, try checking for all known keys in each map        
-        for (String key : labels.keys()) {
+        for (String key : labels.keySet()) {
             if (key.equals("pos")) {
-                value = labels.get(key);
+                value = labels.get(key).toString();
                 map.put("POS", value);
             }
             else if (key.equals("chunk")) {
-                value = labels.get(key);
+                value = labels.get(key).toString();
                 map.put("CHUNK", value);
             }
             else if (key.equals("ner-ext")) {
-                value = labels.get(key);
+                value = labels.get(key).toString();
                 map.put("NER", value);
             }
             else if (key.equals("tokens")) {
-                vlaue = labels.get(key);
+                value = labels.get(key).toString();
                 map.put("TOKEN", value);
             }
             else if (key.equals("wikifier")) {
-                value = labels.get(key);
+                value = labels.get(key).toString();
                 map.put("WIKI", value);
             }
             else if (key.equals("coref")) {
-                if (coref == false) {
+                if (!coref) {
                     coref = true;
-                    value = labels.get(key);
+                    value = labels.get(key).toString();
                     map.put("COREF", value);
                 }
                 else {
@@ -108,23 +104,23 @@ public class CuratorClient {
             }
         }
 
-        for (String key : cluster.keys()) {
+        for (String key : cluster.keySet()) {
             if (key.equals("stanfordDep") || key.equals("stanfordParse")) {
-                value = cluster.get(key);
+                value = cluster.get(key).toString();
                 map.put("PARSE", value);
             }
             else if (key.equals("srl")) {
-                value = cluster.get(key);
+                value = cluster.get(key).toString();
                 map.put("VERB_SRL", value);
             }
             else if (key.equals("nom")) {
-                value = cluster.get(key);
+                value = cluster.get(key).toString();
                 map.put("NOM_SRL", value);
             }
             else if (key.equals("coref")) {
-                if (coref == false) {
+                if (!coref) {
                     coref = true;
-                    value = labels.get(key);
+                    value = labels.get(key).toString();
                     map.put("COREF", value);
                 }
                 else {
@@ -133,11 +129,11 @@ public class CuratorClient {
             }
         }
 
-        for (String key : parse.keys()) { 
+        for (String key : parse.keySet()) {
             if (key.equals("coref")) {
-                if (coref == false) {
+                if (!coref) {
                     coref = true;
-                    value = labels.get(key);
+                    value = labels.get(key).toString();
                     map.put("COREF", value);
                 }
                 else {
@@ -146,11 +142,11 @@ public class CuratorClient {
             }
         }
 
-        for (String key : views.keys()) { 
+        for (String key : views.keySet()) {
             if (key.equals("coref")) {
-                if (coref == false) {
+                if (!coref) {
                     coref = true;
-                    value = labels.get(key);
+                    value = labels.get(key).toString();
                     map.put("COREF", value);
                 }
                 else {

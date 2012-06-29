@@ -29,11 +29,9 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      * Constructs a CuratorReducer
      */
     public CuratorReducer() {
-        distDir = new Path( "~" + Path.SEPARATOR + "curator"
-                + Path.SEPARATOR + "dist" );
-        logDir = new Path( distDir, "logs" );
-        binDir = new Path( distDir, "bin" );
-        configDir = new Path( distDir, "configs" );
+        Path distDir = new Path( "~" + Path.SEPARATOR + "curator"
+                                 + Path.SEPARATOR + "dist" );
+        dir = new PathStruct( distDir );
     }
 
     /**
@@ -169,13 +167,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
     }
 
     /**
-     * @return The location, on the local file system, of the Curator log file
-     */
-    private Path getCuratorLogLocation() {
-        return new Path( logDir, "curator.log" );
-    }
-
-    /**
      * Runs the shell script required to launch the indicated annotation tool.
      * If this script is not found in your Curator directory (i.e., at
      * `~/curator/dist/scripts/launch_annotator_on_this_node.sh`), we'll simply
@@ -194,7 +185,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
         // Make sure log directory exists
         try {
-            FileSystemHandler.mkdir( logDir, fs );
+            FileSystemHandler.mkdir( dir.log(), fs );
         } catch( IOException ignored ) { }
 
         // Figure out location of shell script based on tool in use
@@ -202,27 +193,27 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         int port = -1;
         switch( toolToLaunch ) {
             case CHUNK:
-                scriptLocation = new Path( binDir, "illinois-chunker-server.sh" );
+                scriptLocation = new Path( dir.bin(), "illinois-chunker-server.sh" );
                 port = 9092;
                 break;
             case COREF:
-                scriptLocation = new Path( binDir, "illinois-coref-server.sh" );
+                scriptLocation = new Path( dir.bin(), "illinois-coref-server.sh" );
                 port = 9094;
                 break;
             case NER:
-                scriptLocation = new Path( binDir, "illinois-ner-extended-server.pl" );
+                scriptLocation = new Path( dir.bin(), "illinois-ner-extended-server.pl" );
                 port = 9096;
                 break;
             case NOM_SRL:
-                scriptLocation = new Path( binDir, "illinois-nom-srl-server.sh" );
+                scriptLocation = new Path( dir.bin(), "illinois-nom-srl-server.sh" );
                 port = 14910;
                 break;
             case PARSE:
-                scriptLocation = new Path( binDir, "stanford-parser-server.sh" );
+                scriptLocation = new Path( dir.bin(), "stanford-parser-server.sh" );
                 port = 9095;
                 break;
             case POS:
-                scriptLocation = new Path( binDir, "illinois-pos-server.sh" );
+                scriptLocation = new Path( dir.bin(), "illinois-pos-server.sh" );
                 port = 9091;
                 break;
             case TOKEN:
@@ -230,11 +221,11 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                 // at the top of this method.
                 return;
             case VERB_SRL:
-                scriptLocation = new Path( binDir, "illinois-verb-srl-server.sh" );
+                scriptLocation = new Path( dir.bin(), "illinois-verb-srl-server.sh" );
                 port = 14810;
                 break;
             case WIKI:
-                scriptLocation = new Path( binDir, "illinois-wikifier-server.sh" );
+                scriptLocation = new Path( dir.bin(), "illinois-wikifier-server.sh" );
                 port = 15231;
                 break;
             default:
@@ -257,7 +248,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             command.append( " " );
             command.append( port );
             command.append( " " );
-            command.append( new Path( configDir, "ner.conll.config" )
+            command.append( new Path( dir.config(), "ner.conll.config" )
                     .toString() );
             command.append( " >& " );
             command.append( getLogLocation( toolToLaunch ).toString() );
@@ -271,11 +262,11 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             secondCommand.append( " " );
             secondCommand.append( port );
             secondCommand.append( " " );
-            secondCommand.append( new Path( configDir, "ner.ontonotes.config" )
+            secondCommand.append( new Path( dir.config(), "ner.ontonotes.config" )
                     .toString() );
             secondCommand.append( " >& " );
             secondCommand.append(
-                    new Path( logDir, "ner-ext-ontonotes.log").toString() );
+                    new Path( dir.log(), "ner-ext-ontonotes.log").toString() );
             secondCommand.append( " &" );
             Runtime.getRuntime().exec( secondCommand.toString() );
         }
@@ -288,8 +279,8 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      * create it.
      */
     public void startCurator() throws IOException {
-        Path scriptLoc = new Path( binDir, "curator.sh" );
-        Path annotatorsConfigLoc = new Path( configDir, "annotators-local.xml" );
+        Path scriptLoc = new Path( dir.bin(), "curator.sh" );
+        Path annotatorsConfigLoc = new Path( dir.config(), "annotators-local.xml" );
         // Ensure the config file exists; create it if not
         checkAnnotatorConfig(annotatorsConfigLoc);
 
@@ -302,6 +293,47 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
         Runtime.getRuntime().exec( launchScript.toString() );
 
+    }
+
+    /**
+     * Returns the log location on the local node for the specified annotation
+     * tool.
+     * @param tool The tool whose log location we should get
+     * @return A Path (on the local filesystem) where you can find the log for
+     *         the indicated annotation tool.
+     */
+    private Path getLogLocation( AnnotationMode tool ) {
+        switch( tool ) {
+            case CHUNK:
+                return new Path( dir.log(), "chunk.log" );
+            case COREF:
+                return new Path( dir.log(), "coref.log" );
+            case NER:
+                return new Path( dir.log(), "ner-ext-conll.log" );
+            case NOM_SRL:
+                return new Path( dir.log(), "nom-srl.log" );
+            case PARSE:
+                return new Path( dir.log(), "stanford.log" );
+            case POS:
+                return new Path( dir.log(), "pos.log" );
+            case TOKEN:
+                // TODO: Seriously? The Tokenizer doesn't keep a log file?
+                return new Path("");
+            case VERB_SRL:
+                return new Path( dir.log(), "verb-srl.log" );
+            case WIKI:
+                return new Path( dir.log(), "wikifier.log" );
+            default:
+                throw new IllegalArgumentException( "Tool"
+                        + tool.toString() + " is not known." );
+        }
+    }
+
+    /**
+     * @return The location, on the local file system, of the Curator log file
+     */
+    private Path getCuratorLogLocation() {
+        return new Path( dir.log(), "curator.log" );
     }
 
     /**
@@ -318,43 +350,44 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
     }
 
     /**
-     * Returns the log location on the local node for the specified annotation
-     * tool.
-     * @param tool The tool whose log location we should get
-     * @return A Path (on the local filesystem) where you can find the log for
-     *         the indicated annotation tool.
-     * @TODO: Fix this
+     * Stores all the Path objects used by the Reducer. Simplifies usage of the
+     * directories by providing a centralized, write-once data structure.
      */
-    public Path getLogLocation( AnnotationMode tool ) {
-        switch( tool ) {
-            case CHUNK:
-                return new Path( logDir, "chunk.log" );
-            case COREF:
-                return new Path( logDir, "coref.log" );
-            case NER:
-                return new Path( logDir, "ner-ext-conll.log" );
-            case NOM_SRL:
-                return new Path( logDir, "nom-srl.log" );
-            case PARSE:
-                return new Path( logDir, "stanford.log" );
-            case POS:
-                return new Path( logDir, "pos.log" );
-            case TOKEN:
-                // TODO: Seriously? The Tokenizer doesn't keep a log file?
-                return new Path("");
-            case VERB_SRL:
-                return new Path( logDir, "verb-srl.log" );
-            case WIKI:
-                return new Path( logDir, "wikifier.log" );
-            default:
-                throw new IllegalArgumentException( "Tool"
-                        + tool.toString() + " is not known." );
+    private class PathStruct {
+        /**
+         * Constructs all the Path objects used by the Reducer
+         * @param distDir
+         */
+        public PathStruct( Path distDir ) {
+            this.distDir = distDir;
+
+            logDir = new Path( distDir, "logs" );
+            binDir = new Path( distDir, "bin" );
+            configDir = new Path( distDir, "configs" );
         }
+
+        public Path dist() {
+            return distDir;
+        }
+
+        public Path log() {
+            return logDir;
+        }
+
+        public Path bin() {
+            return binDir;
+        }
+
+        public Path config() {
+            return configDir;
+        }
+
+        private final Path distDir;
+        private final Path logDir;
+        private final Path binDir;
+        private final Path configDir;
     }
 
-    private final Path distDir;
-    private final Path logDir;
-    private final Path binDir;
-    private final Path configDir;
+    private final PathStruct dir;
     private FileSystem fs;
 }

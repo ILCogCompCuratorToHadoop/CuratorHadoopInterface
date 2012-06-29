@@ -76,6 +76,7 @@ public class HadoopCuratorClient {
      */
     private Record deserializeHadoopRecord( HadoopRecord record ) {
 
+
         return new edu.illinois.cs.cogcomp.thrift.curator.Record();
     }
 
