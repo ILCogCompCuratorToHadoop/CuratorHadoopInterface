@@ -10,12 +10,30 @@ import org.apache.hadoop.fs.Path;
  * in the `curator-clients` directory), this class simply provides a way to
  * "talk" to a locally running Curator.
  *
- * It has the ability to serialize and deserialize Curator Records, for the
- * purpose of transfering them across file systems.
+ * This class is designed to annotate exactly one document at a time. The
+ * expected use pattern goes like this:
+ *
+ *   1. Create a HadoopCuratorClient object
+ *   2. Call annotateSingleDoc() on your document record. The Curator Client will
+ *      handle all the type conversions for the record and ask the locally
+ *      running Curator to annotate it.
+ *   3. Call writeOutputFromLastAnnotate() to write that new annotation to the
+ *      Hadoop Distributed File System (HDFS).
+ *
+ * Note that it is *your* responsibility to make sure there is a Curator running
+ * on this node, and that the annotation tool you want to use is running on
+ * this node and is able to communicate with your Curator.
  *
  * @author Tyler Young
  */
 public class HadoopCuratorClient {
+    /**
+     * Constructs a Curator Client.
+     */
+    public HadoopCuratorClient() {
+
+    }
+
     /**
      * Reads a number of text files in from the Hadoop File System (the location
      * of which is provided by the HadoopRecord that is passed in) and turns them
@@ -25,8 +43,9 @@ public class HadoopCuratorClient {
      * @return A Thrift/Curator Record containing the annotations (and original
      *         text, of course) that were present in the HDFS version of
      *         the record.
+     * @TODO: Write method
      */
-    public Record deserializeHadoopRecord( HadoopRecord record ) {
+    private Record deserializeHadoopRecord( HadoopRecord record ) {
 
         return new edu.illinois.cs.cogcomp.thrift.curator.Record();
     }
@@ -39,8 +58,9 @@ public class HadoopCuratorClient {
      *                      to HDFS.
      * @param docOutputDir The location in HDFS to which the Record should be
      *                     written.
+     * @TODO: Write method
      */
-    public void serializeCuratorRecord( Record curatorRecord,
+    private void serializeCuratorRecord( Record curatorRecord,
                                         Path docOutputDir ) {
     }
 
@@ -53,10 +73,43 @@ public class HadoopCuratorClient {
      *                        annotation tool currently running on the local node.
      * @return The Curator-friendly Record, modified to include the new
      *         annotation (assuming no errors, of course!).
+     *
+     * @TODO: Write method
      */
-    public Record performAnnotation( Record curatorRecord,
+    private Record performAnnotation( Record curatorRecord,
                                      AnnotationMode annotationToGet ) {
 
         return new edu.illinois.cs.cogcomp.thrift.curator.Record();
     }
+
+    /**
+     * Requests an annotation from the indicated annotation tool (running on the
+     * local node) for the indicated document record. Stores the result in this
+     * object for later output through the writeOutputFromLastAnnotate() method.
+     * @param record
+     * @param toolToRun
+     */
+    public void annotateSingleDoc( HadoopRecord record,
+                                   AnnotationMode toolToRun ) {
+        // De-serialize the Hadoop Record
+        Record curatorFriendlyRec = deserializeHadoopRecord( record );
+
+        // Call performAnnotation() on the de-serialized record
+        lastAnnotatedRecord = performAnnotation( curatorFriendlyRec, toolToRun );
+    }
+
+    /**
+     * Writes the results of the last call to annotate() to the specified
+     * directory. This is equivalent to serializing the results of a call to
+     * performAnnotation() to the directory.
+     * @param docOutputDir The directory to which the results of the last call
+     *                     to annotate() should be written.
+     * @TODO: Write this method
+     */
+    public void writeOutputFromLastAnnotate( Path docOutputDir ) {
+
+
+    }
+
+    private edu.illinois.cs.cogcomp.thrift.curator.Record lastAnnotatedRecord;
 }

@@ -53,18 +53,14 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         // Create a new Curator client object
         HadoopCuratorClient client = new HadoopCuratorClient();
 
-        edu.illinois.cs.cogcomp.thrift.curator.Record curatorRecord;
-        curatorRecord = client.deserializeHadoopRecord( inValue );
-
-        // Have Curator Client request the annotation on this record
-        curatorRecord = client.performAnnotation( curatorRecord, toolToRun );
+        client.annotateSingleDoc( inValue, toolToRun );
 
         // Serialize the updated record to the output directory
         Path generalOutputDir =
                 new Path( context.getConfiguration().get("outputDirectory") );
         Path docOutputDir =
                 new Path( generalOutputDir, inValue.getDocumentHash() );
-        client.serializeCuratorRecord( curatorRecord, docOutputDir );
+        client.writeOutputFromLastAnnotate( docOutputDir );
 
 
         // TODO: As another MR job (?): after all jobs are through, kill all tools
