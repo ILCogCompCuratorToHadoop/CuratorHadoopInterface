@@ -7,7 +7,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 
 import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.writeFileToHDFS;
@@ -33,7 +32,7 @@ import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemH
  *
  * @author Tyler Young
  */
-public class HadoopCuratorClient {
+public class HadoopCuratorClient extends CuratorClient {
     /**
      * Constructs a Curator Client.
      */
@@ -51,7 +50,7 @@ public class HadoopCuratorClient {
      * @param toolToRun The type of annotation that we should get for the record
      */
     public void annotateSingleDoc( HadoopRecord record,
-                                   AnnotationMode toolToRun ) {
+                                   AnnotationMode toolToRun ) throws IOException {
         // De-serialize the Hadoop Record
         Record curatorFriendlyRec = deserializeHadoopRecord( record );
 
@@ -74,22 +73,19 @@ public class HadoopCuratorClient {
     }
 
     /**
-     * Reads a number of text files in from the Hadoop File System (the location
-     * of which is provided by the HadoopRecord that is passed in) and turns them
-     * into a Curator-friendly Record.
-     * @param record The HadoopRecord that should be converted to a
-     *               Curator-friendly, Thrift-based Record.
-     * @return A Thrift/Curator Record containing the annotations (and original
-     *         text, of course) that were present in the HDFS version of
-     *         the record.
+     * Calls the specified annotation tool (assumed to be running locally on
+     * this node) on the specified Record.
+     * @param curatorRecord A Curator Record for the document to be annotated.
+     * @param annotationToGet The type of annotation that should be requested
+     *                        for the input Record. This must correspond to an
+     *                        annotation tool currently running on the local node.
+     * @return The Curator-friendly Record, modified to include the new
+     *         annotation (assuming no errors, of course!).
+     *
      * @TODO: Write method
      */
-    private Record deserializeHadoopRecord( HadoopRecord record ) {
-        // Read in the HadoopRecord
-        Map<String, String> recordAsText = new HashMap<String, String>();
-
-        // TODO: Figure out how to get the actual hash
-        CuratorClient.deserializeRecord( recordAsText, "0xDEADBEEF" );
+    private Record performAnnotation( Record curatorRecord,
+                                      AnnotationMode annotationToGet ) {
 
         return new edu.illinois.cs.cogcomp.thrift.curator.Record();
     }
@@ -113,31 +109,28 @@ public class HadoopCuratorClient {
         for( String key : recordAsText.keySet() ) {
             try {
                 writeFileToHDFS( recordAsText.get(key),
-                                 new Path( docOutputDir, key + ".txt" ),
-                                 fs );
+                        new Path( docOutputDir, key + ".txt" ),
+                        fs );
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-
     }
 
     /**
-     * Calls the specified annotation tool (assumed to be running locally on
-     * this node) on the specified Record.
-     * @param curatorRecord A Curator Record for the document to be annotated.
-     * @param annotationToGet The type of annotation that should be requested
-     *                        for the input Record. This must correspond to an
-     *                        annotation tool currently running on the local node.
-     * @return The Curator-friendly Record, modified to include the new
-     *         annotation (assuming no errors, of course!).
-     *
-     * @TODO: Write method
+     * Reads a number of text files in from the Hadoop File System (the location
+     * of which is provided by the HadoopRecord that is passed in) and turns them
+     * into a Curator-friendly Record.
+     * @param record The HadoopRecord that should be converted to a
+     *               Curator-friendly, Thrift-based Record.
+     * @return A Thrift/Curator Record containing the annotations (and original
+     *         text, of course) that were present in the HDFS version of
+     *         the record.
      */
-    private Record performAnnotation( Record curatorRecord,
-                                     AnnotationMode annotationToGet ) {
-
-        return new edu.illinois.cs.cogcomp.thrift.curator.Record();
+    private Record deserializeHadoopRecord( HadoopRecord record )
+            throws IOException {
+        // TODO: Figure out how to get the actual hash
+        return CuratorClient.deserializeRecord( record.toMap(), "0xDEADBEEF" );
     }
 
     private edu.illinois.cs.cogcomp.thrift.curator.Record lastAnnotatedRecord;
