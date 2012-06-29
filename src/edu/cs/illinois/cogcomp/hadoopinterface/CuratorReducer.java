@@ -2,6 +2,7 @@ package edu.cs.illinois.cogcomp.hadoopinterface;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -22,6 +23,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
     public void reduce( Text inKey, 
                         HadoopRecord inValue,
                         Context context ) throws IOException, InterruptedException {
+        FileSystem fs = FileSystem.get( context.getConfiguration() );
         // Pseudo-code per discussion with Mark on 27 June
 
         AnnotationMode toolToRun = AnnotationMode
@@ -29,12 +31,12 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
         // Check if annotation tool is running locally (i.e., by checking log
         // file located at CURATOR_DIR/logs/).
-        if( !toolIsRunning( toolToRun ) ) {
+        if( !toolIsRunning( toolToRun, fs ) ) {
             // If not, start it and sleep repeatedly until it's ready to go
             startTool( toolToRun );
             Thread.sleep(1000); // Give it 1 second at minimum to start up
 
-            while( !toolIsRunning( toolToRun ) ) {
+            while( !toolIsRunning( toolToRun, fs ) ) {
                 Thread.sleep(5000);
             }
         }
@@ -53,14 +55,14 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         // Create a new Curator client object
         HadoopCuratorClient client = new HadoopCuratorClient();
 
-        client.annotateSingleDoc( inValue, toolToRun );
+        client.annotateSingleDoc(inValue, toolToRun);
 
         // Serialize the updated record to the output directory
         Path generalOutputDir =
                 new Path( context.getConfiguration().get("outputDirectory") );
         Path docOutputDir =
                 new Path( generalOutputDir, inValue.getDocumentHash() );
-        client.writeOutputFromLastAnnotate( docOutputDir );
+        client.writeOutputFromLastAnnotate(docOutputDir);
 
 
         // TODO: As another MR job (?): after all jobs are through, kill all tools
@@ -83,17 +85,70 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      *         decision, does *not* indicate explicitly when it's ready to go,
      *         we make a best guess based on when the log file was last modified.
      *
-     * @TODO: Write method
      * @TODO: Make this less brittle (don't rely on tools to indicate readiness in log)
      */
-    public boolean toolIsRunning( AnnotationMode toolToCheck ) {
+    public boolean toolIsRunning( AnnotationMode toolToCheck,
+                                  FileSystem fs )
+            throws EnumConstantNotPresentException {
+        // Get the tool's log location
+        Path generalLogDir = new Path( "~/curator/dist/logs" );
+        Path logLocation;
+        switch (toolToCheck) {
+            case CHUNK:
+                logLocation = new Path( generalLogDir, "chunk.log" );
+                break;
+            case COREF:
+                logLocation = new Path( generalLogDir, "coref.log" );
+                break;
+            case NER:
+                logLocation = new Path( generalLogDir, "ner-ext-conll.log" );
+                break;
+            case NOM_SRL:
+                logLocation = new Path( generalLogDir, "nom-srl.log" );
+                break;
+            case PARSE:
+                logLocation = new Path( generalLogDir, "stanford.log" );
+                break;
+            case POS:
+                logLocation = new Path( generalLogDir, "pos.log" );
+                break;
+            case TOKEN:
+                // TODO: Seriously? The Tokenizer doesn't keep a log file?
+                // No log file, so we're stuck assuming it's running.
+                return true;
+                break;
+            case VERB_SRL:
+                logLocation = new Path( generalLogDir, "verb-srl.log" );
+                break;
+            case WIKI:
+                logLocation = new Path( generalLogDir, "wikifier.log" );
+                break;
+            default:
+                throw new IllegalArgumentException( "Tool"
+                        + toolToCheck.toString() + " is not known." );
+        }
+
         // If the tool to check gives us an explicit "hello world" or something
         // in it's log file
+        // TODO: Figure out which ones do this, and how to check it. . .
 
             // Check the log file
 
         // Else, check the log file's time of last modification. If it's within
         // the last half hour, assume all is well.
+        try {
+            long thirtyMinsAgo = System.currentTimeMillis() - ( 30*60*1000 );
+            if( fs.getFileStatus(logLocation).getAccessTime() > thirtyMinsAgo ) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        } catch( IOException e ) {
+            // Can't access the file system. Just assume it works (else we could
+            // have an infinite loop where we just keep trying to check the log).
+            return true;
+        }
 
         return false;
     }
@@ -124,6 +179,9 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      * @TODO: Write method
      */
     public void startTool( AnnotationMode toolToLaunch ) {
+        // Figure out location of shell script based on tool in use
+
+        //Runtime.getRuntime().exec(myShellScript);
 
     }
 
