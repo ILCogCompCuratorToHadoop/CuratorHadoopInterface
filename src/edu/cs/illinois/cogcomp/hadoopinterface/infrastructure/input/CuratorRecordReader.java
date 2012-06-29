@@ -1,7 +1,7 @@
 package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.input;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
-import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.Text;
@@ -12,9 +12,9 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import java.io.IOException;
 
 /**
- * This class transforms a DirectorySplit into a (Text key, Record value) pair
- * (where Record is of our own type, denoting a single document in the corpus
- * together with all its annotations).
+ * This class transforms a DirectorySplit into a (Text key, HadoopRecord value)
+ * pair (where HadoopRecord is of our own type, denoting a single document in the
+ * corpus together with all its annotations).
  *
  * @author Tyler Young
  */
@@ -43,7 +43,7 @@ public class CuratorRecordReader extends RecordReader {
         if( progress < 0.9 ) {
             // Read the next key, value pair from the input split
             // Effectively, construct the Record that we will pass out as a value
-            nextRecord = new Record( nextKey.toString(),
+            nextRecord = new HadoopRecord( nextKey.toString(),
                                      FileSystem.get( config ),
                                      config );
             return true;
@@ -77,6 +77,6 @@ public class CuratorRecordReader extends RecordReader {
     //  The hash identifying the document for which this object generates records
     Text nextKey;
     Configuration config;
-    Record nextRecord;
+    HadoopRecord nextRecord;
     float progress;
 }

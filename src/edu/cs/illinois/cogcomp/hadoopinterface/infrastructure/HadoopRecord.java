@@ -26,7 +26,7 @@ import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemH
  * @author Lisa Bao
  * @author Tyler Young
  */
-public class Record implements WritableComparable< Record > {
+public class HadoopRecord implements WritableComparable< HadoopRecord > {
     
     private String inputDir;
     private HashSet<AnnotationMode> annotations; // Takes care of duplicates
@@ -37,7 +37,7 @@ public class Record implements WritableComparable< Record > {
     private Path docDir;
     private boolean isInitialized;
 
-    public Record() {
+    public HadoopRecord() {
     }
 
     /**
@@ -49,7 +49,7 @@ public class Record implements WritableComparable< Record > {
      *           Hadoop Distributed File System
      * @param config Hadoop Configuration for this job containing HDFS file path
      */
-    public Record( String documentHash, FileSystem fs, Configuration config ) {
+    public HadoopRecord( String documentHash, FileSystem fs, Configuration config ) {
         initializeAllVars( documentHash, fs, config );
     }
 
@@ -98,7 +98,6 @@ public class Record implements WritableComparable< Record > {
         isInitialized = true;
     }
 
-
     /**
      * Gets the location in HDFS of a particular annotation for a document. If
      * the requested annotation doesn't exist, returns NULL.
@@ -119,6 +118,7 @@ public class Record implements WritableComparable< Record > {
 
         return constructAnnotationPath( typeOfAnnotation );
     }
+
 
     /**
      * Gets what *would* be the annotation's location in HDFS if that annotation
@@ -252,6 +252,15 @@ public class Record implements WritableComparable< Record > {
         return knownAnnotations;
     }
 
+    /**
+     * @return The directory in HDFS containing all this document's text files
+     *         (the original.txt along with the annotations). This will simply
+     *         be [job input directory]/[this document's hash]/.
+     */
+    public Path getDocumentDirectory() {
+        return docDir;
+    }
+
 
     /**
      * Prints a list of the available annotations
@@ -318,7 +327,7 @@ public class Record implements WritableComparable< Record > {
     }
 
     @Override
-    public int compareTo( Record record ) {
+    public int compareTo( HadoopRecord record ) {
         logger.log( "Comparing rec for " + getDocumentHash()
                                     + "to rec for " + record.getDocumentHash() );
         return getDocumentHash().compareTo( record.getDocumentHash() );
@@ -373,5 +382,4 @@ public class Record implements WritableComparable< Record > {
     public void setMessageLogger( MessageLogger logger ) {
         this.logger = logger;
     }
-
 } // THE END

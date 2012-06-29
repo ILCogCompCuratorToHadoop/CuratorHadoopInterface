@@ -8,14 +8,14 @@
 
 package edu.cs.illinois.cogcomp.hadoopinterface;
 
-import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
 import java.io.IOException;
 
 
-public class CuratorMapper extends Mapper<Text, Record, Text, Record> {
+public class CuratorMapper extends Mapper<Text, HadoopRecord, Text, HadoopRecord> {
 
 
     /**
@@ -26,7 +26,7 @@ public class CuratorMapper extends Mapper<Text, Record, Text, Record> {
      * @param context The configuration context
      */
     public void map( Text inKey, 
-                     Record inValue, 
+                     HadoopRecord inValue, 
                      Context context) throws IOException, InterruptedException {
     
         HadoopInterface.logger.logStatus( "Beginning map phase.\n"

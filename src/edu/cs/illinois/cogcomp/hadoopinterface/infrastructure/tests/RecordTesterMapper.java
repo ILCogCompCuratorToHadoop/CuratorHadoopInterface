@@ -11,7 +11,7 @@ package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.tests;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.MessageLogger;
-import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
@@ -31,7 +31,7 @@ import java.util.Random;
  * @author Lisa Bao
  * @author Tyler Young
  */
-public class RecordTesterMapper extends Mapper<Text, Record, Text, Record> {
+public class RecordTesterMapper extends Mapper<Text, HadoopRecord, Text, HadoopRecord> {
 
 
     /**
@@ -42,7 +42,7 @@ public class RecordTesterMapper extends Mapper<Text, Record, Text, Record> {
      * @param testContext The configuration context
      */
     public void map( Text testKey, 
-                     Record testValue, 
+                     HadoopRecord testValue,
                      Context testContext) throws IOException, InterruptedException {
 
         MessageLogger logger = new MessageLogger(true);

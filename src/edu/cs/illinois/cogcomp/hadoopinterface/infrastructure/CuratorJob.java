@@ -80,9 +80,9 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
 
         // We output in (Text, Record) pairs
         setMapOutputKeyClass( Text.class );
-        setMapOutputValueClass( Record.class );
+        setMapOutputValueClass( HadoopRecord.class );
         setOutputKeyClass( Text.class );
-        setOutputValueClass( Record.class );
+        setOutputValueClass( HadoopRecord.class );
 
         // Turn off speculative execution, because DFS doesn't handle
         // multiple writers to the same file.

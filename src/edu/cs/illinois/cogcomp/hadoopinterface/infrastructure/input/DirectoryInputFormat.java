@@ -2,7 +2,7 @@ package edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.input;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.HadoopInterface;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
-import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.Record;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -28,7 +28,7 @@ import java.util.List;
  *
  * @author Tyler Young
  */
-public class DirectoryInputFormat extends InputFormat< Text, Record> {
+public class DirectoryInputFormat extends InputFormat< Text, HadoopRecord> {
 
     @Override
     public List<InputSplit> getSplits(JobContext context)
@@ -63,7 +63,7 @@ public class DirectoryInputFormat extends InputFormat< Text, Record> {
     }
 
     @Override
-    public RecordReader<Text, Record>
+    public RecordReader<Text, HadoopRecord>
             createRecordReader( InputSplit inputSplit,
                                 TaskAttemptContext taskAttemptContext)
             throws IOException, InterruptedException {
