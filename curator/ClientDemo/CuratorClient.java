@@ -60,6 +60,11 @@ public class CuratorClient {
      *  Converts a Record data structure object into strings of
      *  the original raw text and each existing annotation,
      *  stored and returned in a Map.
+     *
+     *  @return A map with keys for types of annotations and values for the
+     *          actual annotations. The keys are named as in the AnnotationMode
+     *          enum, with an additional "ORIGINAL" value (which maps to the
+     *          original document text).
 	 */
 	public static Map<String, String> serializeRecord(Record record) {
         Map<String, String> map = new HashMap<String, String>();

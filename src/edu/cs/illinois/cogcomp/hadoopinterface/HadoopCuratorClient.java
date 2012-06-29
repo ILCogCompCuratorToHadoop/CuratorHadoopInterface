@@ -3,7 +3,14 @@ package edu.cs.illinois.cogcomp.hadoopinterface;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
+import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.writeFileToHDFS;
 
 /**
  * Similar in functionality to the CuratorClient.java (packaged with the Curator,
@@ -30,7 +37,9 @@ public class HadoopCuratorClient {
     /**
      * Constructs a Curator Client.
      */
-    public HadoopCuratorClient() {
+    public HadoopCuratorClient( FileSystem hdfs, FileSystem local ) {
+        this.hdfs = hdfs;
+        this.localFS = local;
 
     }
 
@@ -38,8 +47,8 @@ public class HadoopCuratorClient {
      * Requests an annotation from the indicated annotation tool (running on the
      * local node) for the indicated document record. Stores the result in this
      * object for later output through the writeOutputFromLastAnnotate() method.
-     * @param record
-     * @param toolToRun
+     * @param record The HadoopRecord on which we will run the annotation tool
+     * @param toolToRun The type of annotation that we should get for the record
      */
     public void annotateSingleDoc( HadoopRecord record,
                                    AnnotationMode toolToRun ) {
@@ -55,12 +64,13 @@ public class HadoopCuratorClient {
      * directory. This is equivalent to serializing the results of a call to
      * performAnnotation() to the directory.
      * @param docOutputDir The directory to which the results of the last call
-     *                     to annotate() should be written.
-     * @TODO: Write this method
+     *                     to annotate() should be written. This directory will
+     *                     most likely be named with the document's hash, and it
+     *                     will likely be a subdirectory of the overall job
+     *                     output directory.
      */
     public void writeOutputFromLastAnnotate( Path docOutputDir ) {
-
-
+        serializeCuratorRecord( lastAnnotatedRecord, docOutputDir, localFS );
     }
 
     /**
@@ -75,7 +85,11 @@ public class HadoopCuratorClient {
      * @TODO: Write method
      */
     private Record deserializeHadoopRecord( HadoopRecord record ) {
+        // Read in the HadoopRecord
+        Map<String, String> recordAsText = new HashMap<String, String>();
 
+        // TODO: Figure out how to get the actual hash
+        CuratorClient.deserializeRecord( recordAsText, "0xDEADBEEF" );
 
         return new edu.illinois.cs.cogcomp.thrift.curator.Record();
     }
@@ -88,10 +102,24 @@ public class HadoopCuratorClient {
      *                      to HDFS.
      * @param docOutputDir The location in HDFS to which the Record should be
      *                     written.
-     * @TODO: Write method
+     * @param fs The filesystem against which the path will be resolved
      */
     private void serializeCuratorRecord( Record curatorRecord,
-                                        Path docOutputDir ) {
+                                         Path docOutputDir,
+                                         FileSystem fs ) {
+        Map<String, String> recordAsText;
+        recordAsText = CuratorClient.serializeRecord( curatorRecord );
+
+        for( String key : recordAsText.keySet() ) {
+            try {
+                writeFileToHDFS( recordAsText.get(key),
+                                 new Path( docOutputDir, key + ".txt" ),
+                                 fs );
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
     /**
@@ -113,4 +141,6 @@ public class HadoopCuratorClient {
     }
 
     private edu.illinois.cs.cogcomp.thrift.curator.Record lastAnnotatedRecord;
+    private FileSystem hdfs;
+    private FileSystem localFS;
 }

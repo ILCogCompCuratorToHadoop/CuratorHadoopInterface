@@ -9,12 +9,11 @@ import org.apache.hadoop.io.WritableComparable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode.*;
 import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.delete;
+import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.readFileFromHDFS;
 import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.writeFileToHDFS;
 
 /**
@@ -125,7 +124,6 @@ public class HadoopRecord implements WritableComparable< HadoopRecord > {
         return constructAnnotationPath( typeOfAnnotation );
     }
 
-
     /**
      * Gets what *would* be the annotation's location in HDFS if that annotation
      * exists. Doesn't care whether it actually exists or not.
@@ -153,6 +151,25 @@ public class HadoopRecord implements WritableComparable< HadoopRecord > {
         else {
             return "";
         }
+    }
+
+    /**
+     * Gets the location in HDFS of the file containing the document's original
+     * text.
+     *
+     * @return An HDFS path to the `original.txt` file.
+     */
+    public Path getOriginal() {
+        return new Path( docDir, "original.txt" );
+    }
+
+    /**
+     * Returns a string version of the document's original text
+     * @return The `original.txt` file, as read from HDFS.
+     * @throws IOException
+     */
+    public String getOriginalString() throws IOException {
+        readFileFromHDFS( getOriginal(), fs );
     }
 
     /**
@@ -378,6 +395,17 @@ public class HadoopRecord implements WritableComparable< HadoopRecord > {
             stringRep = stringRep + "\t\t - " + annotationPath.toString() + "\n";
         }
         return stringRep;
+    }
+
+    public Map<String, String> toMap() throws IOException {
+        Map< String, String > mapVersion = new HashMap<String, String>();
+        for( AnnotationMode annotation : annotations ) {
+            mapVersion.put( annotation.toString(),
+                            getAnnotationString( annotation ) );
+        }
+        mapVersion.put( "original", getOriginalString() );
+
+        return mapVersion;
     }
 
     /**

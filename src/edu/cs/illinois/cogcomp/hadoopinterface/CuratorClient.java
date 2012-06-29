@@ -176,8 +176,8 @@ public class CuratorClient {
         String raw = "";
         String value = "";
 
-        for(String key : map.keys()) {
-            if (key.equals("original") {
+        for(String key : map.keySet()) {
+            if (key.equals("original") ) {
                 raw = map.get(key);
             }
             

@@ -3,6 +3,7 @@ package edu.cs.illinois.cogcomp.hadoopinterface;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
@@ -76,7 +77,8 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         }
 
         // Create a new Curator client object
-        HadoopCuratorClient client = new HadoopCuratorClient();
+        HadoopCuratorClient client = new HadoopCuratorClient(
+                fs, FileSystem.getLocal( new Configuration() ) );
 
         client.annotateSingleDoc(inValue, toolToRun);
 
