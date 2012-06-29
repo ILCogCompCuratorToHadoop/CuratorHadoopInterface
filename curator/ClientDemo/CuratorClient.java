@@ -22,6 +22,10 @@ import edu.illinois.cs.cogcomp.thrift.base.Tree;
 import edu.illinois.cs.cogcomp.thrift.curator.Curator;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 
+import edu.illinois.cs.cogcomp.thrift.base.*;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
+
+
 public class CuratorClient {
 	
 	private static String recordContents(Record record) {
@@ -56,25 +60,122 @@ public class CuratorClient {
 		return result.toString();
 	}
 	
-	/**
-     *  Converts a Record data structure object into strings of
-     *  the original raw text and each existing annotation,
-     *  stored and returned in a Map.
+    /**
+     * Takes a Path to the documents to be annotated,
+     * checks for an existing Record in the db if requested,
+     * and creates Curator Records for the new docs.
+     * Returns both old and new Records as output.
      *
-     *  @return A map with keys for types of annotations and values for the
-     *          actual annotations. The keys are named as in the AnnotationMode
-     *          enum, with an additional "ORIGINAL" value (which maps to the
-     *          original document text).
+     * TODO add boolean option as param to skip database check
+     * 
+     * @param dir Path to the directory of documents to be added, e.g.
+     *            /user/home/job123/
+     *            This location must mirror the HDFS file structure and filenames.
+     */
+    public Record addRecordFromDirectory(Path dir) {
+        //TODO email Mark re: how to generate/find IDs for Records
+        String filepath = dir.toString();
+        String id = "123"; // TODO use a real unique id for each doc
+        dir = new Path(filepath + Path.SEPARATOR + id);
+        
+        boolean recordExists = false;
+        oldRecord = new Record(); // TODO check database to retrieve existing record
+        if ( id.equals(oldRecord.getIdentifier()) ) {
+            recordExists = true;
+        }
+
+        if (recordExists) {
+            return oldRecord; //return existing Record
+        }
+        else {
+            List<String> types = Arrays.asList("original", "PARSE", "VERB_SRL", "NOM_SRL", "TOKEN", "NER", "POS", "CHUNK", "WIKI", "COREF");
+
+            Map<String, Labeling> labels = new HashMap<String, Labeling>();
+            Map<String, Clustering> cluster = new HashMap<String, Clustering>();
+            Map<String, Forest> parse = new HashMap<String, Forest>();
+            Map<String, View> views = new HashMap<String, Views>();
+            
+            String type = "";
+            String annotation = "";
+            String raw = "ERROR: Raw text should never be null!"
+            File file;
+            Path path;
+            for (int i = 0; i < types.length(); i++) {
+                type = types[i];
+                file = new File(filepath + Path.SEPARATOR + id + Path.SEPARATOR + type + ".txt");
+                
+                if (file.exists()) { // found a valid annotation file, yay!
+                    path = new Path(file.getPath());
+                    annotation = readFileFromLocal(path);
+                    if (type.equals("original")) { // special case handling for raw text
+                        raw = annotation;
+                    }
+                    else {
+                        if (type.equals("PARSE")) {
+                            Forest anno = new Forest(annotation); //TODO how to convert string to Forest obj?
+                            parse.put("stanfordParse", anno); // same as stanfordDep
+                        }
+                        else if (type.equals("VERB_SRL")) {
+                            Forest anno = new Forest(annotation); //TODO
+                            parse.put("srl", anno);
+                        }
+                        else if (type.equals("NOM_SRL")) {
+                            Forest anno = new Forest(annotation); //TODO
+                            parse.put("nom", anno);
+                        }
+                        else if (type.equals("TOKEN")) {
+                            Labeling anno = new Labeling(annotation); //TODO convert String to Labeling obj
+                            labels.put("token", anno);
+                        }
+                        else if (type.equals("NER")) {
+                            Labeling anno = new Labeling(annotation); //TODO
+                            labels.put("ner", anno);
+                        }
+                        else if (type.equals("POS")) {
+                            Labeling anno = new Labeling(annotation); //TODO
+                            labels.put("pos", anno);
+                        }
+                        else if (type.equals("CHUNK")) {
+                            Labeling anno = new Labeling(annotation); //TODO
+                            labels.put("chunk", anno);
+                        }
+                        else if (type.equals("WIKI")) {
+                            Labeling anno = new Labeling(annotation);
+                            labels.put("wikifier", anno);
+                        }
+                        else if (type.equals("COREF")) {
+                            View anno = new View(annotation); //TODO convert String to whatever COREF takes
+                            views.put("coref", anno);
+                        }
+                        else {
+                            System.out.println("ERROR: " + type + " is not a valid annotation type!");
+                        }
+                        
+                    }
+                }
+            }
+
+            Record newRecord = new Record(id, raw, labels, cluster, parse, views, false);
+            return newRecord;
+        }
+        
+    }
+
+
+	/**
+     * Converts a Record data structure object into strings of
+     * the original raw text and each existing annotation,
+     * stored and returned in a Map.
 	 */
 	public static Map<String, String> serializeRecord(Record record) {
         Map<String, String> map = new HashMap<String, String>();
         String raw = record.getRawText();
         map.put("original", raw);
 
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Labeling> labels = record.getLabelViews();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Clustering> cluster = record.getClusterViews();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Forest> parse = record.getParseViews();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.View<F5>> views = record.getViews();
+        Map<String, Labeling> labels = record.getLabelViews();
+        Map<String, Clustering> cluster = record.getClusterViews();
+        Map<String, Forest> parse = record.getParseViews();
+        Map<String, View> views = record.getViews();
 
         String value = "";
         boolean coref = false;
@@ -82,7 +183,7 @@ public class CuratorClient {
         // if these logic statements are erroring, try checking for all known keys in each map        
         for (String key : labels.keys()) {
             if (key.equals("pos")) {
-                value = labels.get(key);
+                value = labels.get(key); // TODO fix types, class object to String
                 map.put("POS", value);
             }
             else if (key.equals("chunk")) {
@@ -169,19 +270,19 @@ public class CuratorClient {
 	}
 
     /**
-     *  Converts a Map of strings (original text and annotations)
-     *  into a Curator Record object.
+     * Converts a Map of strings (original text and annotations)
+     * into a Curator Record object.
      *  
-     *  @param map containing raw text and annotations
-     *  @param id String identifier for the Record
+     * @param map containing raw text and annotations
+     * @param id String identifier for the Record
      *
      */
 	public static Record deserializeRecord(Map<String, String> map, String id) {
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Labeling> labels = new HashMap<String, edu.illinois.cs.cogcomp.thrift.base.Labeling>();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Clustering> cluster = new HashMap<String, edu.illinois.cs.cogcomp.thrift.base.Clustering>();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Forest> parse = new HashMap<String, edu.illinois.cs.cogcomp.thrift.base.Forest>();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.View> views = new HashMap<String, edu.illinois.cs.cogcomp.thrift.base.Views>();
-
+        Map<String, Labeling> labels = new HashMap<String, Labeling>();
+        Map<String, Clustering> cluster = new HashMap<String, Clustering>();
+        Map<String, Forest> parse = new HashMap<String, Forest>();
+        Map<String, View> views = new HashMap<String, Views>();
+        
         String raw = "";
         String value = "";
 
