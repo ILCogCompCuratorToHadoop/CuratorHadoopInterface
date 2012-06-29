@@ -478,6 +478,26 @@ public class FileSystemHandler {
     }
 
     /**
+     * Checks the file to see if it was modified in the last (some number)
+     * minutes.
+     * @param path The location (file or directory) whose last modification
+     *             time we should check
+     * @param fs The file system against which to resolve the path
+     * @param minutes The max allowed number of minutes since the last
+     *                modification
+     * @return True if the file was modified within the last (parameter: minutes)
+     *         minutes.
+     * @throws IOException
+     */
+    public static boolean fileWasModifiedInLastXMins( Path path,
+                                                      FileSystem fs,
+                                                      int minutes )
+            throws IOException {
+        long timeXMinutesAgo = System.currentTimeMillis() - (minutes * 60 * 1000);
+        return (fs.getFileStatus(path).getAccessTime() > timeXMinutesAgo);
+    }
+
+    /**
      * Returns the size of the indicated file, in bytes
      * @param path The location of the file in question. Note that if this is a
      *             directory, you'll get the size of the actual Unix file

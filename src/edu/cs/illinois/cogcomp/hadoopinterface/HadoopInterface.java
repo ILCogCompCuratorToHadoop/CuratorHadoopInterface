@@ -28,6 +28,10 @@ import java.io.IOException;
  *          $ ./bin/hadoop jar CuratorHadoopInterface.jar -d some_dir -m parse
  * @example (After compiling this program to a JAR)
  *          $ ./bin/hadoop jar CuratorHadoopInterface.jar -d other_dir -m verb_srl -test
+ * @precondition (Required by the CuratorReducer)
+ *               The Hadoop node running this reduce() operation has a complete,
+ *               compiled Curator distribution located (on the local file system)
+ *               at `~/curator/dist/`.
  */
 public class HadoopInterface {
 

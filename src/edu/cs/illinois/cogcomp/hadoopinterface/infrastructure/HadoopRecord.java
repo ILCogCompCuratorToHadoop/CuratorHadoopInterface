@@ -37,6 +37,12 @@ public class HadoopRecord implements WritableComparable< HadoopRecord > {
     private Path docDir;
     private boolean isInitialized;
 
+    /**
+     * Zero-argument constructor for use by the Hadoop backend. It calls this
+     * constructor, then reads the fields in using the Writable interface.
+     * (Within the readFields() method, we call the initializeAllVars() method
+     * so that you wind up with a normal, filled object.)
+     */
     public HadoopRecord() {
     }
 

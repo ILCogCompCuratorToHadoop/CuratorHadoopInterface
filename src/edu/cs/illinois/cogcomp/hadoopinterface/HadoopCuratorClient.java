@@ -35,6 +35,35 @@ public class HadoopCuratorClient {
     }
 
     /**
+     * Requests an annotation from the indicated annotation tool (running on the
+     * local node) for the indicated document record. Stores the result in this
+     * object for later output through the writeOutputFromLastAnnotate() method.
+     * @param record
+     * @param toolToRun
+     */
+    public void annotateSingleDoc( HadoopRecord record,
+                                   AnnotationMode toolToRun ) {
+        // De-serialize the Hadoop Record
+        Record curatorFriendlyRec = deserializeHadoopRecord( record );
+
+        // Call performAnnotation() on the de-serialized record
+        lastAnnotatedRecord = performAnnotation( curatorFriendlyRec, toolToRun );
+    }
+
+    /**
+     * Writes the results of the last call to annotate() to the specified
+     * directory. This is equivalent to serializing the results of a call to
+     * performAnnotation() to the directory.
+     * @param docOutputDir The directory to which the results of the last call
+     *                     to annotate() should be written.
+     * @TODO: Write this method
+     */
+    public void writeOutputFromLastAnnotate( Path docOutputDir ) {
+
+
+    }
+
+    /**
      * Reads a number of text files in from the Hadoop File System (the location
      * of which is provided by the HadoopRecord that is passed in) and turns them
      * into a Curator-friendly Record.
@@ -80,35 +109,6 @@ public class HadoopCuratorClient {
                                      AnnotationMode annotationToGet ) {
 
         return new edu.illinois.cs.cogcomp.thrift.curator.Record();
-    }
-
-    /**
-     * Requests an annotation from the indicated annotation tool (running on the
-     * local node) for the indicated document record. Stores the result in this
-     * object for later output through the writeOutputFromLastAnnotate() method.
-     * @param record
-     * @param toolToRun
-     */
-    public void annotateSingleDoc( HadoopRecord record,
-                                   AnnotationMode toolToRun ) {
-        // De-serialize the Hadoop Record
-        Record curatorFriendlyRec = deserializeHadoopRecord( record );
-
-        // Call performAnnotation() on the de-serialized record
-        lastAnnotatedRecord = performAnnotation( curatorFriendlyRec, toolToRun );
-    }
-
-    /**
-     * Writes the results of the last call to annotate() to the specified
-     * directory. This is equivalent to serializing the results of a call to
-     * performAnnotation() to the directory.
-     * @param docOutputDir The directory to which the results of the last call
-     *                     to annotate() should be written.
-     * @TODO: Write this method
-     */
-    public void writeOutputFromLastAnnotate( Path docOutputDir ) {
-
-
     }
 
     private edu.illinois.cs.cogcomp.thrift.curator.Record lastAnnotatedRecord;
