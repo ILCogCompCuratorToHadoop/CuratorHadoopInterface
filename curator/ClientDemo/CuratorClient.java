@@ -28,6 +28,8 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 
 public class CuratorClient {
 	
+    private ArrayList<Record> newRecords;
+
 	private static String recordContents(Record record) {
 		StringBuffer result = new StringBuffer();
 		result.append("Annotations present in the record:\n");
@@ -75,7 +77,7 @@ public class CuratorClient {
     public Record addRecordFromDirectory(Path dir) {
         //TODO email Mark re: how to generate/find IDs for Records
         String filepath = dir.toString();
-        String id = "123"; // TODO use a real unique id for each doc
+        String id = "0xDEADBEEF"; // TODO use a real unique id for each doc
         dir = new Path(filepath + Path.SEPARATOR + id);
         
         boolean recordExists = false;
@@ -389,6 +391,16 @@ public class CuratorClient {
         return new Record(id, originalText, labels, cluster, parse, views, false);
     }
 
+    /** 
+     * Takes a Curator Record object and adds it to a list of newly
+     * added records for future serialization.
+     *
+     * @param record
+     */
+    public void addRecordToList(Record record) {
+        newRecords.add(record);
+    }
+
     /**
      * Serializes all Records in the list of input Records and writes them to
      * the output directory. This will later be copied to the Hadoop file system.
@@ -459,6 +471,8 @@ public class CuratorClient {
     // START OF MAIN
 
     public static void main(String[] args) throws AnnotationFailedException, FileNotFoundException {
+
+        newRecords = new ArrayList<Record>(); // initialize list
 
 	    if ( args.length != 3 ) 
 		{
