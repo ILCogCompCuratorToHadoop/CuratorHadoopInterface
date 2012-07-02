@@ -352,8 +352,8 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         String fileName = "annotators-local-" + runningTool.toString() + ".xml";
         Path configLoc = new Path( dir.config(), fileName );
 
+        // If the config file doesn't exist, go ahead and create it.
         if( !FileSystemHandler.localFileExists( configLoc ) ) {
-            // Create the config file here
             StringBuilder file = new StringBuilder();
             file.append( "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n" );
             file.append( "<curator-annotators>\n" );

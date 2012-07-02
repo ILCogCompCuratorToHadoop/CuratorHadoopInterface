@@ -82,7 +82,7 @@ public class HadoopCuratorClient extends CuratorClient {
      * @return The Curator-friendly Record, modified to include the new
      *         annotation (assuming no errors, of course!).
      *
-     * @TODO: Write method
+     * @TODO: Write method after adding it to the Thrift interface
      */
     private Record performAnnotation( Record curatorRecord,
                                       AnnotationMode annotationToGet ) {

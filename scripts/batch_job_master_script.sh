@@ -1,14 +1,22 @@
 #!/bin/bash
 
-# Get list of documents to proces
+# Usage: ./batch_job_master_script some/path/to/curator_directory SOME_ANNOTATION_MODE path/to/your_input_directory
 
-# Launch Master Curator
 
-# Get serialized records for all documents from Master Curator
+CURATOR_DIRECTORY = $1
+CURRENT_TOOL = $2
+INPUT_PATH = $3
 
-# Copy the records to the Hadoop Distributed File System (HDFS)
+echo "You said your copy of Curator is located here: $1"
+echo "You requested we run the annotation tool $2 on your input"
+echo "You requested we annotate the input text files located here: $3"
 
-# Launch MapReduce job on Hadoop cluster (probably ssh in to the cluster...?)
+# Launch the Master Curator Client, asking it to serialize the
+# records from the text in the input directory
+
+# Copy the serialized records to the Hadoop Distributed File System (HDFS)
+
+# Launch MapReduce job on Hadoop cluster
 
 # When the MapReduce job finishes, copy the data back to local disk 
 
@@ -18,3 +26,5 @@
 # New Hadoop job:
 #       Have the Hadoop nodes kill the running annotator, Curator, and 
 #       Curator Client processes
+
+exit 0
