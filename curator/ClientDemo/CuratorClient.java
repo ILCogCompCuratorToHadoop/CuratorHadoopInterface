@@ -28,7 +28,7 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 
 public class CuratorClient {
 	
-    private ArrayList<Record> newRecords;
+    private ArrayList<Record> newInputRecords;
 
 	private static String recordContents(Record record) {
 		StringBuffer result = new StringBuffer();
@@ -77,6 +77,11 @@ public class CuratorClient {
     public Record addRecordFromDirectory(Path dir) {
         //TODO email Mark re: how to generate/find IDs for Records
         String filepath = dir.toString();
+        File test = new File(filepath);
+        if (!test.isDirectory()) {
+            throw new IllegalArgumentException("The path " + filepath + " is not a directory.");
+        }
+
         String id = "0xDEADBEEF"; // TODO use a real unique id for each doc
         dir = new Path(filepath + Path.SEPARATOR + id);
         
@@ -99,7 +104,7 @@ public class CuratorClient {
             
             String type = "";
             String annotation = "";
-            String raw = "ERROR: Raw text should never be null!"
+            String raw = "ERROR: Original text not populated."
             File file;
             Path path;
             for (int i = 0; i < types.length(); i++) {
@@ -112,48 +117,47 @@ public class CuratorClient {
                     if (type.equals("original")) { // special case handling for raw text
                         raw = annotation;
                     }
-                    else {
-                        if (type.equals("PARSE")) {
-                            Forest anno = new Forest(annotation); //TODO how to convert string to Forest obj?
-                            parse.put("stanfordParse", anno); // same as stanfordDep
-                        }
-                        else if (type.equals("VERB_SRL")) {
-                            Forest anno = new Forest(annotation); //TODO
-                            parse.put("srl", anno);
-                        }
-                        else if (type.equals("NOM_SRL")) {
-                            Forest anno = new Forest(annotation); //TODO
-                            parse.put("nom", anno);
-                        }
-                        else if (type.equals("TOKEN")) {
-                            Labeling anno = new Labeling(annotation); //TODO convert String to Labeling obj
-                            labels.put("token", anno);
-                        }
-                        else if (type.equals("NER")) {
-                            Labeling anno = new Labeling(annotation); //TODO
-                            labels.put("ner", anno);
-                        }
-                        else if (type.equals("POS")) {
-                            Labeling anno = new Labeling(annotation); //TODO
-                            labels.put("pos", anno);
-                        }
-                        else if (type.equals("CHUNK")) {
-                            Labeling anno = new Labeling(annotation); //TODO
-                            labels.put("chunk", anno);
-                        }
-                        else if (type.equals("WIKI")) {
-                            Labeling anno = new Labeling(annotation);
-                            labels.put("wikifier", anno);
-                        }
-                        else if (type.equals("COREF")) {
-                            View anno = new View(annotation); //TODO convert String to whatever COREF takes
-                            views.put("coref", anno);
-                        }
-                        else {
-                            System.out.println("ERROR: " + type + " is not a valid annotation type!");
-                        }
-                        
+                    else if (type.equals("PARSE")) {
+                        Forest anno = new Forest(annotation); //TODO how to convert string to Forest obj?
+                        parse.put("stanfordParse", anno); // same as stanfordDep
                     }
+                    else if (type.equals("VERB_SRL")) {
+                        Forest anno = new Forest(annotation); //TODO
+                        parse.put("srl", anno);
+                    }
+                    else if (type.equals("NOM_SRL")) {
+                        Forest anno = new Forest(annotation); //TODO
+                        parse.put("nom", anno);
+                    }
+                    else if (type.equals("TOKEN")) {
+                        Labeling anno = new Labeling(annotation); //TODO convert String to Labeling obj
+                        labels.put("token", anno);
+                    }
+                    else if (type.equals("NER")) {
+                        Labeling anno = new Labeling(annotation); //TODO
+                        labels.put("ner", anno);
+                    }
+                    else if (type.equals("POS")) {
+                        Labeling anno = new Labeling(annotation); //TODO
+                        labels.put("pos", anno);
+                    }
+                    else if (type.equals("CHUNK")) {
+                        Labeling anno = new Labeling(annotation); //TODO
+                        labels.put("chunk", anno);
+                    }
+                    else if (type.equals("WIKI")) {
+                        Labeling anno = new Labeling(annotation);
+                        labels.put("wikifier", anno);
+                    }
+                    else if (type.equals("COREF")) {
+                        View anno = new View(annotation); //TODO convert String to whatever COREF takes
+                        views.put("coref", anno);
+                    }
+                    else {
+                        System.out.println("ERROR: " + type + " is not a valid annotation type!");
+                    }
+                        
+                    
                 }
             }
 
@@ -349,6 +353,84 @@ public class CuratorClient {
         return record;
 	}
 
+    /**
+     * Takes documents in a mirror of the HDFS directory structure
+     * and creates new Curator Records. Calls addRecordToList.
+     *
+     * @param jobDir Path pointing to a job123 directory
+     */
+    public void addExistingDocs(Path jobDir) {
+        String filepath = jobDir.toString();
+        File dir = new File(filepath);
+        int subdirectories = dir.list().length();
+        for (File i : dir.listFiles()) {
+            for (File j : i.listFiles()) {
+                try {
+                    String annotation = readFileToString(j);
+                    String fileName = j.getName();
+                    int index = fileName.length() - 4; // remove .txt from file name
+                    String type = fileName.substring(0, index);
+
+                    String id = "0xDEADBEEF"; // TODO generate proper id
+                    Map<String, Labeling> labels = new HashMap<String, Labeling>();
+                    Map<String, Clustering> cluster = new HashMap<String, Clustering>();
+                    Map<String, Forest> parse = new HashMap<String, Forest>();
+                    Map<String, View> views = new HashMap<String, View>();
+
+                    String original = "ERROR: Original text not populated.";
+                    if (type.equals("original")) {
+                        original = annotation;
+                    }
+                    else if (type.equals("PARSE")) {
+                        Forest anno = new Forest(annotation); //TODO how to convert string to Forest obj?
+                        parse.put("stanfordParse", anno); // same as stanfordDep
+                    }
+                    else if (type.equals("VERB_SRL")) {
+                        Forest anno = new Forest(annotation); //TODO
+                        parse.put("srl", anno);
+                    }
+                    else if (type.equals("NOM_SRL")) {
+                        Forest anno = new Forest(annotation); //TODO
+                        parse.put("nom", anno);
+                    }
+                    else if (type.equals("TOKEN")) {
+                        Labeling anno = new Labeling(annotation); //TODO convert String to Labeling obj
+                        labels.put("token", anno);
+                    }
+                    else if (type.equals("NER")) {
+                        Labeling anno = new Labeling(annotation); //TODO
+                        labels.put("ner", anno);
+                    }
+                    else if (type.equals("POS")) {
+                        Labeling anno = new Labeling(annotation); //TODO
+                        labels.put("pos", anno);
+                    }
+                    else if (type.equals("CHUNK")) {
+                        Labeling anno = new Labeling(annotation); //TODO
+                        labels.put("chunk", anno);
+                    }
+                    else if (type.equals("WIKI")) {
+                        Labeling anno = new Labeling(annotation);
+                        labels.put("wikifier", anno);
+                    }
+                    else if (type.equals("COREF")) {
+                        View anno = new View(annotation); //TODO convert String to whatever COREF takes
+                        views.put("coref", anno);
+                    }
+                    else {
+                        System.out.println("ERROR: " + type + " is not a valid annotation type!");
+                    }
+                    
+                    newRecord = new Record(id, original, labels, cluster, parse, views, false);
+                    addToInputList(newRecord);
+                }
+                catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                } 
+            }
+        }
+    }
+
     public void takeNewRawInputFilesFromDirectory( String inputDirectory ) {
         // Check that the input directory is valid
         File inputDir = new File( inputDirectory );
@@ -364,7 +446,7 @@ public class CuratorClient {
                 // in preparation for sending the input to Hadoop
                 String fileContents = readFileToString( f );
                 Record newRecord = generateNewRecord( fileContents );
-                addToInputList( newRecord );    // TODO: Confirm method name
+                addToInputList( newRecord );
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
@@ -395,10 +477,10 @@ public class CuratorClient {
      * Takes a Curator Record object and adds it to a list of newly
      * added records for future serialization.
      *
-     * @param record
+     * @param record A Curator Record object
      */
-    public void addRecordToList(Record record) {
-        newRecords.add(record);
+    public void addToInputList(Record record) {
+        newInputRecords.add(record);
     }
 
     /**
@@ -472,7 +554,7 @@ public class CuratorClient {
 
     public static void main(String[] args) throws AnnotationFailedException, FileNotFoundException {
 
-        newRecords = new ArrayList<Record>(); // initialize list
+        newInputRecords = new ArrayList<Record>(); // initialize list
 
 	    if ( args.length != 3 ) 
 		{
