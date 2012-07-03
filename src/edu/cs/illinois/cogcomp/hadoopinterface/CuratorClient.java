@@ -1,8 +1,12 @@
-package edu.cs.illinois.cogcomp.hadoopinterface;
+package edu.illinois.cs.cogcomp.hadoopinterface;
 
-import edu.illinois.cs.cogcomp.thrift.base.*;
-import edu.illinois.cs.cogcomp.thrift.curator.Curator;
-import edu.illinois.cs.cogcomp.thrift.curator.Record;
+import java.util.Map;
+import java.util.Stack;
+import java.util.Map.Entry;
+import java.util.Scanner;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -10,16 +14,22 @@ import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Scanner;
-import java.util.Stack;
+import edu.illinois.cs.cogcomp.thrift.base.AnnotationFailedException;
+import edu.illinois.cs.cogcomp.thrift.base.Node;
+import edu.illinois.cs.cogcomp.thrift.base.ServiceUnavailableException;
+import edu.illinois.cs.cogcomp.thrift.base.Span;
+import edu.illinois.cs.cogcomp.thrift.base.Tree;
+import edu.illinois.cs.cogcomp.thrift.curator.Curator;
+import edu.illinois.cs.cogcomp.thrift.curator.Record;
+
+import edu.illinois.cs.cogcomp.thrift.base.*;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
+
 
 public class CuratorClient {
 	
+    private ArrayList<Record> newInputRecords;
+
 	private static String recordContents(Record record) {
 		StringBuffer result = new StringBuffer();
 		result.append("Annotations present in the record:\n");
@@ -52,50 +62,155 @@ public class CuratorClient {
 		return result.toString();
 	}
 	
+    /**
+     * Takes a Path to the documents to be annotated,
+     * checks for an existing Record in the db if requested,
+     * and creates Curator Records for the new docs.
+     * Returns both old and new Records as output.
+     *
+     * TODO add boolean option as param to skip database check
+     * 
+     * @param dir Path to the directory of documents to be added, e.g.
+     *            /user/home/job123/
+     *            This location must mirror the HDFS file structure and filenames.
+     */
+    public Record addRecordFromDirectory(Path dir) {
+        String filepath = dir.toString();
+        File test = new File(filepath);
+        if (!test.isDirectory()) {
+            throw new IllegalArgumentException("The path " + filepath + " is not a directory.");
+        }
+
+        String id = "0xDEADBEEF"; // TODO use a real unique id for each doc
+        dir = new Path(filepath + Path.SEPARATOR + id);
+        
+        boolean recordExists = false;
+        oldRecord = new Record(); // TODO check database to retrieve existing record
+        if ( id.equals(oldRecord.getIdentifier()) ) {
+            recordExists = true;
+        }
+
+        if (recordExists) {
+            return oldRecord; //return existing Record
+        }
+        else {
+            List<String> types = Arrays.asList("original", "PARSE", "VERB_SRL", "NOM_SRL", "TOKEN", "NER", "POS", "CHUNK", "WIKI", "COREF");
+
+            Map<String, Labeling> labels = new HashMap<String, Labeling>();
+            Map<String, Clustering> cluster = new HashMap<String, Clustering>();
+            Map<String, Forest> parse = new HashMap<String, Forest>();
+            Map<String, View> views = new HashMap<String, Views>();
+            
+            String type = "";
+            String annotation = "";
+            String raw = "ERROR: Original text not populated."
+            File file;
+            Path path;
+            for (int i = 0; i < types.length(); i++) {
+                type = types[i];
+                file = new File(filepath + Path.SEPARATOR + id + Path.SEPARATOR + type + ".txt");
+                
+                if (file.exists()) { // found a valid annotation file, yay!
+                    path = new Path(file.getPath());
+                    annotation = readFileFromLocal(path);
+                    if (type.equals("original")) { // special case handling for raw text
+                        raw = annotation;
+                    }
+                    else if (type.equals("PARSE")) {
+                        Forest anno = new Forest(annotation); //TODO how to convert string to Forest obj?
+                        parse.put("stanfordParse", anno); // same as stanfordDep
+                    }
+                    else if (type.equals("VERB_SRL")) {
+                        Forest anno = new Forest(annotation); //TODO
+                        parse.put("srl", anno);
+                    }
+                    else if (type.equals("NOM_SRL")) {
+                        Forest anno = new Forest(annotation); //TODO
+                        parse.put("nom", anno);
+                    }
+                    else if (type.equals("TOKEN")) {
+                        Labeling anno = new Labeling(annotation); //TODO convert String to Labeling obj
+                        labels.put("token", anno);
+                    }
+                    else if (type.equals("NER")) {
+                        Labeling anno = new Labeling(annotation); //TODO
+                        labels.put("ner", anno);
+                    }
+                    else if (type.equals("POS")) {
+                        Labeling anno = new Labeling(annotation); //TODO
+                        labels.put("pos", anno);
+                    }
+                    else if (type.equals("CHUNK")) {
+                        Labeling anno = new Labeling(annotation); //TODO
+                        labels.put("chunk", anno);
+                    }
+                    else if (type.equals("WIKI")) {
+                        Labeling anno = new Labeling(annotation);
+                        labels.put("wikifier", anno);
+                    }
+                    else if (type.equals("COREF")) {
+                        Clustering anno = new Clustering(annotation); //TODO convert String to whatever COREF takes
+                        cluster.put("coref", anno);
+                    }
+                    else {
+                        System.out.println("ERROR: " + type + " is not a valid annotation type!");
+                    }
+                        
+                    
+                }
+            }
+
+            Record newRecord = new Record(id, raw, labels, cluster, parse, views, false);
+            return newRecord;
+        }
+        
+    }
+
+
 	/**
-     *  Converts a Record data structure object into strings of
-     *  the original raw text and each existing annotation,
-     *  stored and returned in a Map.
+     * Converts a Record data structure object into strings of
+     * the original raw text and each existing annotation,
+     * stored and returned in a Map.
 	 */
 	public static Map<String, String> serializeRecord(Record record) {
         Map<String, String> map = new HashMap<String, String>();
         String raw = record.getRawText();
         map.put("original", raw);
 
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Labeling> labels = record.getLabelViews();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Clustering> cluster = record.getClusterViews();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Forest> parse = record.getParseViews();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.View> views = record.getViews();
+        Map<String, Labeling> labels = record.getLabelViews();
+        Map<String, Clustering> cluster = record.getClusterViews();
+        Map<String, Forest> parse = record.getParseViews();
+        Map<String, View> views = record.getViews();
 
         String value = "";
         boolean coref = false;
 
         // if these logic statements are erroring, try checking for all known keys in each map        
-        for (String key : labels.keySet()) {
+        for (String key : labels.keys()) {
             if (key.equals("pos")) {
-                value = labels.get(key).toString();
+                value = labels.get(key); // TODO fix types, class object to String
                 map.put("POS", value);
             }
             else if (key.equals("chunk")) {
-                value = labels.get(key).toString();
+                value = labels.get(key);
                 map.put("CHUNK", value);
             }
             else if (key.equals("ner-ext")) {
-                value = labels.get(key).toString();
+                value = labels.get(key);
                 map.put("NER", value);
             }
             else if (key.equals("tokens")) {
-                value = labels.get(key).toString();
+                vlaue = labels.get(key);
                 map.put("TOKEN", value);
             }
             else if (key.equals("wikifier")) {
-                value = labels.get(key).toString();
+                value = labels.get(key);
                 map.put("WIKI", value);
             }
             else if (key.equals("coref")) {
-                if (!coref) {
+                if (coref == false) {
                     coref = true;
-                    value = labels.get(key).toString();
+                    value = labels.get(key);
                     map.put("COREF", value);
                 }
                 else {
@@ -104,23 +219,23 @@ public class CuratorClient {
             }
         }
 
-        for (String key : cluster.keySet()) {
+        for (String key : cluster.keys()) {
             if (key.equals("stanfordDep") || key.equals("stanfordParse")) {
-                value = cluster.get(key).toString();
+                value = cluster.get(key);
                 map.put("PARSE", value);
             }
             else if (key.equals("srl")) {
-                value = cluster.get(key).toString();
+                value = cluster.get(key);
                 map.put("VERB_SRL", value);
             }
             else if (key.equals("nom")) {
-                value = cluster.get(key).toString();
+                value = cluster.get(key);
                 map.put("NOM_SRL", value);
             }
             else if (key.equals("coref")) {
-                if (!coref) {
+                if (coref == false) {
                     coref = true;
-                    value = labels.get(key).toString();
+                    value = labels.get(key);
                     map.put("COREF", value);
                 }
                 else {
@@ -129,11 +244,11 @@ public class CuratorClient {
             }
         }
 
-        for (String key : parse.keySet()) {
+        for (String key : parse.keys()) { 
             if (key.equals("coref")) {
-                if (!coref) {
+                if (coref == false) {
                     coref = true;
-                    value = labels.get(key).toString();
+                    value = labels.get(key);
                     map.put("COREF", value);
                 }
                 else {
@@ -142,11 +257,11 @@ public class CuratorClient {
             }
         }
 
-        for (String key : views.keySet()) {
+        for (String key : views.keys()) { 
             if (key.equals("coref")) {
-                if (!coref) {
+                if (coref == false) {
                     coref = true;
-                    value = labels.get(key).toString();
+                    value = labels.get(key);
                     map.put("COREF", value);
                 }
                 else {
@@ -160,24 +275,24 @@ public class CuratorClient {
 	}
 
     /**
-     *  Converts a Map of strings (original text and annotations)
-     *  into a Curator Record object.
+     * Converts a Map of strings (original text and annotations)
+     * into a Curator Record object.
      *  
-     *  @param map containing raw text and annotations
-     *  @param id String identifier for the Record
+     * @param map containing raw text and annotations
+     * @param id String identifier for the Record
      *
      */
 	public static Record deserializeRecord(Map<String, String> map, String id) {
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Labeling> labels = new HashMap<String, edu.illinois.cs.cogcomp.thrift.base.Labeling>();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Clustering> cluster = new HashMap<String, edu.illinois.cs.cogcomp.thrift.base.Clustering>();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.Forest> parse = new HashMap<String, edu.illinois.cs.cogcomp.thrift.base.Forest>();
-        Map<String, edu.illinois.cs.cogcomp.thrift.base.View> views = new HashMap<String, edu.illinois.cs.cogcomp.thrift.base.Views>();
-
+        Map<String, Labeling> labels = new HashMap<String, Labeling>();
+        Map<String, Clustering> cluster = new HashMap<String, Clustering>();
+        Map<String, Forest> parse = new HashMap<String, Forest>();
+        Map<String, View> views = new HashMap<String, Views>();
+        
         String raw = "";
         String value = "";
 
-        for(String key : map.keySet()) {
-            if (key.equals("original") ) {
+        for(String key : map.keys()) {
+            if (key.equals("original") {
                 raw = map.get(key);
             }
             
@@ -236,8 +351,209 @@ public class CuratorClient {
         Record record = new Record(id, raw, labels, cluster, parse, views, false);
         return record;
 	}
-	
+
+    /**
+     * Takes documents in a mirror of the HDFS directory structure
+     * and creates new Curator Records. Calls addRecordToList.
+     *
+     * @param jobDir Path pointing to a job123 directory
+     */
+    public void addExistingDocs(Path jobDir) {
+        String filepath = jobDir.toString();
+        File dir = new File(filepath);
+        int subdirectories = dir.list().length();
+        for (File i : dir.listFiles()) {
+            for (File j : i.listFiles()) {
+                try {
+                    String annotation = readFileToString(j);
+                    String fileName = j.getName();
+                    int index = fileName.length() - 4; // remove .txt from file name
+                    String type = fileName.substring(0, index);
+
+                    String id = "0xDEADBEEF"; // TODO generate proper id
+                    Map<String, Labeling> labels = new HashMap<String, Labeling>();
+                    Map<String, Clustering> cluster = new HashMap<String, Clustering>();
+                    Map<String, Forest> parse = new HashMap<String, Forest>();
+                    Map<String, View> views = new HashMap<String, View>();
+
+                    String original = "ERROR: Original text not populated.";
+                    if (type.equals("original")) {
+                        original = annotation;
+                    }
+                    else if (type.equals("PARSE")) {
+                        Forest anno = new Forest(annotation); //TODO how to convert string to Forest obj?
+                        parse.put("stanfordParse", anno); // same as stanfordDep
+                    }
+                    else if (type.equals("VERB_SRL")) {
+                        Forest anno = new Forest(annotation); //TODO
+                        parse.put("srl", anno);
+                    }
+                    else if (type.equals("NOM_SRL")) {
+                        Forest anno = new Forest(annotation); //TODO
+                        parse.put("nom", anno);
+                    }
+                    else if (type.equals("TOKEN")) {
+                        Labeling anno = new Labeling(annotation); //TODO convert String to Labeling obj
+                        labels.put("token", anno);
+                    }
+                    else if (type.equals("NER")) {
+                        Labeling anno = new Labeling(annotation); //TODO
+                        labels.put("ner", anno);
+                    }
+                    else if (type.equals("POS")) {
+                        Labeling anno = new Labeling(annotation); //TODO
+                        labels.put("pos", anno);
+                    }
+                    else if (type.equals("CHUNK")) {
+                        Labeling anno = new Labeling(annotation); //TODO
+                        labels.put("chunk", anno);
+                    }
+                    else if (type.equals("WIKI")) {
+                        Labeling anno = new Labeling(annotation);
+                        labels.put("wikifier", anno);
+                    }
+                    else if (type.equals("COREF")) {
+                        View anno = new View(annotation); //TODO convert String to whatever COREF takes
+                        views.put("coref", anno);
+                    }
+                    else {
+                        System.out.println("ERROR: " + type + " is not a valid annotation type!");
+                    }
+                    
+                    newRecord = new Record(id, original, labels, cluster, parse, views, false);
+                    addToInputList(newRecord);
+                }
+                catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                } 
+            }
+        }
+    }
+
+    public void takeNewRawInputFilesFromDirectory( String inputDirectory ) {
+        // Check that the input directory is valid
+        File inputDir = new File( inputDirectory );
+        if( !inputDir.isDirectory() ) {
+            throw new IllegalArgumentException("The location " + inputDirectory
+                    + " does not refer to a directory.");
+        }
+
+        // For each file in the directory . . .
+        for( File f : inputDir.listFiles() ) {
+            try {
+                // Add it to the CuratorClient's queue of documents to serialize
+                // in preparation for sending the input to Hadoop
+                String fileContents = readFileToString( f );
+                Record newRecord = generateNewRecord( fileContents );
+                addToInputList( newRecord );
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    /**
+     * This should really be a constructor in Record. Whatever.
+     *
+     * Constructs a new Record object with no annotations at all to the original
+     * document text.
+     * @param originalText The document's raw text.
+     * @return A record object for the document whose original text was passed in.
+     */
+    public Record generateNewRecord( String originalText ) {
+        // TODO: How to generate ID?
+        String id = "0xDEADBEEF";
+        Map<String, Labeling> labels = new HashMap<String, Labeling>();
+        Map<String, Clustering> cluster = new HashMap<String, Clustering>();
+        Map<String, Forest> parse = new HashMap<String, Forest>();
+        Map<String, View> views = new HashMap<String, View>();
+
+        return new Record(id, originalText, labels, cluster, parse, views, false);
+    }
+
+    /** 
+     * Takes a Curator Record object and adds it to a list of newly
+     * added records for future serialization.
+     *
+     * @param record A Curator Record object
+     */
+    public void addToInputList(Record record) {
+        newInputRecords.add(record);
+    }
+
+    /**
+     * Serializes all Records in the list of input Records and writes them to
+     * the output directory. This will later be copied to the Hadoop file system.
+     * @param outputDir The location to which we should write the serialized
+     *                  records
+     */
+    public void writeSerializedInput( String outputDir ) throws IOException {
+        // TODO: Replace with the real variable
+        Iterable< Record > allInput = new LinkedList< Record >();
+
+        for( Record r : allInput ) {
+            String outputDirForRecord = outputDir + File.separator
+                    + r.getIdentifier();
+
+            Map< String, String > serializedForm = serializeRecord( r );
+            for( String key : serializedForm.keySet() ) {
+                writeFile( outputDirForRecord + File.separator + key,
+                           serializedForm.get( key ) );
+            }
+        }
+    }
+
+    /**
+     * Reads a file object from the disk and returns a string version of that
+     * file.
+     * @param f The file to be read
+     * @return A string version of the input file
+     */
+    private String readFileToString( File f ) throws FileNotFoundException {
+        // Read the file in to a String
+        Scanner fileReader = new Scanner( f );
+        StringBuilder fileContents = new StringBuilder();
+        while( fileReader.hasNextLine() ) {
+            fileContents.append(fileReader.nextLine());
+        }
+
+        fileReader.close();
+        return fileContents.toString();
+    }
+
+    /**
+     * Writes a file to the indicated path.
+     * @param path The location to which the file should be written. Probably
+     *             something like "/user/My_User/my_output_dir/a_text_file.txt".
+     * @param text The text file to be written.
+     * @throws FileExistsException If the file indicated by the path already
+     *                             exists.
+     */
+    private void writeFile( String path, String text )
+            throws IOException, FileExistsException {
+        File theFile = new File( path );
+        if( theFile.exists() ) {
+            throw new FileExistsException( "File at path " + path
+                    + " already exists; cannot overwrite it.");
+        }
+
+        BufferedWriter writer = new BufferedWriter( new FileWriter( theFile ) );
+        Scanner stringScanner = new Scanner( text );
+        while( stringScanner.hasNextLine() ) {
+            String line = stringScanner.nextLine();
+            writer.write( line );
+        }
+
+        stringScanner.close();
+        writer.close();
+    }
+
+    // START OF MAIN
+
     public static void main(String[] args) throws AnnotationFailedException, FileNotFoundException {
+
+        newInputRecords = new ArrayList<Record>(); // initialize list
 
 	    if ( args.length != 3 ) 
 		{

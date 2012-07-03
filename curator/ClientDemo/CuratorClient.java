@@ -75,7 +75,6 @@ public class CuratorClient {
      *            This location must mirror the HDFS file structure and filenames.
      */
     public Record addRecordFromDirectory(Path dir) {
-        //TODO email Mark re: how to generate/find IDs for Records
         String filepath = dir.toString();
         File test = new File(filepath);
         if (!test.isDirectory()) {
@@ -150,8 +149,8 @@ public class CuratorClient {
                         labels.put("wikifier", anno);
                     }
                     else if (type.equals("COREF")) {
-                        View anno = new View(annotation); //TODO convert String to whatever COREF takes
-                        views.put("coref", anno);
+                        Clustering anno = new Clustering(annotation); //TODO convert String to whatever COREF takes
+                        cluster.put("coref", anno);
                     }
                     else {
                         System.out.println("ERROR: " + type + " is not a valid annotation type!");
