@@ -49,8 +49,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                         Context context ) throws IOException, InterruptedException {
         fs = FileSystem.get( context.getConfiguration() );
 
-        // Pseudo-code per discussion with Mark on 27 June
-
         AnnotationMode toolToRun = AnnotationMode
                 .fromString( context.getConfiguration().get("annotationMode") );
 
