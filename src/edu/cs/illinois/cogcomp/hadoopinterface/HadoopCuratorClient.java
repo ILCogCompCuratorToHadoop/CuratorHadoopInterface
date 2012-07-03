@@ -5,6 +5,7 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import edu.illinois.cs.cogcomp.archive.Identifier;
 
 import java.io.IOException;
 import java.util.Map;
@@ -129,8 +130,8 @@ public class HadoopCuratorClient extends CuratorClient {
      */
     private Record deserializeHadoopRecord( HadoopRecord record )
             throws IOException {
-        // TODO: Figure out how to get the actual hash
-        return CuratorClient.deserializeRecord( record.toMap(), "0xDEADBEEF" );
+        return CuratorClient.deserializeRecord( record.toMap(),
+                Identifier.getId( record.getOriginalString(), true ) );
     }
 
     private edu.illinois.cs.cogcomp.thrift.curator.Record lastAnnotatedRecord;

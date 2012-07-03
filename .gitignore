@@ -14,6 +14,8 @@ out/
 
 src/META-INF/MANIFEST.MF
 
+src/edu/illinois/cs/cogcomp/archive/
+
 # Compiled source #
 ###################
 *.com
