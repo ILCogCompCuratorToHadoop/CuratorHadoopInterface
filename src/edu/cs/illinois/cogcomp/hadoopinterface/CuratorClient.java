@@ -29,6 +29,7 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 public class CuratorClient {
 	
     private ArrayList<Record> newInputRecords;
+    private Curator.Client client;
 
 	private static String recordContents(Record record) {
 		StringBuffer result = new StringBuffer();
@@ -248,12 +249,13 @@ public class CuratorClient {
     /**
      * Takes a Path to documents in a mirror of the HDFS directory structure
      * and creates new Curator Records. Calls addRecordToList to add each new record to a class variable.
-     * Checks for an existing record in the database, if requested.
+     * Checks for an existing record in the database, if requested; note that this flag will TRUST the database
+     * to have the most up-to-date Record for a given document.
      *
      * @param jobDir Path pointing to, e.g. /user/home/job123 directory
      * @param checkdb If true, checks for an existing duplicate Record in the Curator database
      */
-    public void addRecordsFromJobDirectory(Path jobDir, boolean checkdb=true) {
+    public void addRecordsFromJobDirectory(Path jobDir, boolean checkdb) {
         String filepath = jobDir.toString();
         File dir = new File(filepath);
         // check that the path is valid
@@ -267,85 +269,95 @@ public class CuratorClient {
             String id = i.getName();
             
             if (checkdb) {
-                //TODO check database
-            }
-            
-            // LOOP: for each file in a hash id directory...
-            for (File j : i.listFiles()) {
-                try {
-                    String annotation = readFileToString(j);
-                    String fileName = j.getName();
-                    int index = fileName.length() - 4; // remove .txt from file name
-                    String type = fileName.substring(0, index);
-                   
-                    Map<String, Labeling> labels = new HashMap<String, Labeling>();
-                    Map<String, Clustering> cluster = new HashMap<String, Clustering>();
-                    Map<String, Forest> parse = new HashMap<String, Forest>();
-                    Map<String, View> views = new HashMap<String, View>();
-
-                    boolean valid = true;
-                    String original = "ERROR: Original text not populated.";
-                    if (type.equals("original")) {
-                        original = annotation;
-                    }
-                    else if (type.equals("PARSE")) {
-                        Forest anno = new Forest(annotation); //TODO how to convert string to Forest obj?
-                        parse.put("stanfordParse", anno); // same as stanfordDep
-                    }
-                    else if (type.equals("VERB_SRL")) {
-                        Forest anno = new Forest(annotation); //TODO
-                        parse.put("srl", anno);
-                    }
-                    else if (type.equals("NOM_SRL")) {
-                        Forest anno = new Forest(annotation); //TODO
-                        parse.put("nom", anno);
-                    }
-                    else if (type.equals("TOKEN")) {
-                        Labeling anno = new Labeling(annotation); //TODO convert String to Labeling obj
-                        labels.put("token", anno);
-                    }
-                    else if (type.equals("NER")) {
-                        Labeling anno = new Labeling(annotation); //TODO
-                        labels.put("ner", anno);
-                    }
-                    else if (type.equals("POS")) {
-                        Labeling anno = new Labeling(annotation); //TODO
-                        labels.put("pos", anno);
-                    }
-                    else if (type.equals("CHUNK")) {
-                        Labeling anno = new Labeling(annotation); //TODO
-                        labels.put("chunk", anno);
-                    }
-                    else if (type.equals("WIKI")) {
-                        Labeling anno = new Labeling(annotation);
-                        labels.put("wikifier", anno);
-                    }
-                    else if (type.equals("COREF")) {
-                        Labeling temp = new Labeling();
-                        temp.fromString(annotation); //TODO convert String annotation to Labeling obj
-                        List<Labeling> clusters = new List<Labeling>();
-                        clusters.add(temp);
-                        Clustering anno = new Clustering();
-                        anno.setClusters(clusters);
-                        anno.setSource(id);
-                        cluster.put("coref", anno);
-                    }
-                    else {
-                        System.out.println("ERROR: " + type + " is not a valid annotation type, skipped");
-                        valid = false;
-                    }
-
-                    if (valid) {                    
-                        newRecord = new Record(id, original, labels, cluster, parse, views, false);
-                        addToInputList(newRecord);
-                    }
+                File originalFile = new File(filepath + Path.SEPARATOR + id + Path.SEPARATOR + "original.txt");
+                if (!originalFile.isFile()) {
+                    System.out.println("ERROR: Attempt to check database for nonexistent original file");
                 }
-                catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                } 
-            }
-        }
-    }
+
+                Record dbRecord = client.getRecord(original);
+                if ( (dbRecord.getClusterViewsSize() || dbRecord.getLabelViewsSize() || dbRecord.getParseViewsSize || dbRecord.getViewsSize) != 0 ) {
+                    addToInputList(dbRecord); // trust the database 
+                }
+                
+                else {
+                    // LOOP: for each file in a hash id directory...
+                    for (File j : i.listFiles()) {
+                        try {
+                            String annotation = readFileToString(j);
+                            String fileName = j.getName();
+                            int index = fileName.length() - 4; // remove .txt from file name
+                            String type = fileName.substring(0, index);
+                           
+                            Map<String, Labeling> labels = new HashMap<String, Labeling>();
+                            Map<String, Clustering> cluster = new HashMap<String, Clustering>();
+                            Map<String, Forest> parse = new HashMap<String, Forest>();
+                            Map<String, View> views = new HashMap<String, View>();
+
+                            boolean valid = true;
+                            String original = "ERROR: Original text not populated.";
+                            if (type.equals("original")) {
+                                original = annotation;
+                            }
+                            else if (type.equals("PARSE")) {
+                                Forest anno = new Forest(annotation); //TODO how to convert string to Forest obj?
+                                parse.put("stanfordParse", anno); // same as stanfordDep
+                            }
+                            else if (type.equals("VERB_SRL")) {
+                                Forest anno = new Forest(annotation); //TODO
+                                parse.put("srl", anno);
+                            }
+                            else if (type.equals("NOM_SRL")) {
+                                Forest anno = new Forest(annotation); //TODO
+                                parse.put("nom", anno);
+                            }
+                            else if (type.equals("TOKEN")) {
+                                Labeling anno = new Labeling(annotation); //TODO convert String to Labeling obj
+                                labels.put("token", anno);
+                            }
+                            else if (type.equals("NER")) {
+                                Labeling anno = new Labeling(annotation); //TODO
+                                labels.put("ner", anno);
+                            }
+                            else if (type.equals("POS")) {
+                                Labeling anno = new Labeling(annotation); //TODO
+                                labels.put("pos", anno);
+                            }
+                            else if (type.equals("CHUNK")) {
+                                Labeling anno = new Labeling(annotation); //TODO
+                                labels.put("chunk", anno);
+                            }
+                            else if (type.equals("WIKI")) {
+                                Labeling anno = new Labeling(annotation);
+                                labels.put("wikifier", anno);
+                            }
+                            else if (type.equals("COREF")) {
+                                Labeling temp = new Labeling();
+                                temp.fromString(annotation); //TODO convert String annotation to Labeling obj
+                                List<Labeling> clusters = new List<Labeling>();
+                                clusters.add(temp);
+                                Clustering anno = new Clustering();
+                                anno.setClusters(clusters);
+                                anno.setSource(id);
+                                cluster.put("coref", anno);
+                            }
+                            else {
+                                System.out.println("ERROR: " + type + " is not a valid annotation type, skipped");
+                                valid = false;
+                            }
+
+                            if (valid) {                    
+                                newRecord = new Record(id, original, labels, cluster, parse, views, false);
+                                addToInputList(newRecord);
+                            }
+                        }
+                        catch (FileNotFoundException e) {
+                            e.printStackTrace();
+                        } // END try/catch 
+                    } // END j loop
+                } // END checkdb else
+            } // END checkdb if     
+        } // END i loop
+    } // END function
 
     public void takeNewRawInputFilesFromDirectory( String inputDirectory ) {
         // Check that the input directory is valid
@@ -514,7 +526,7 @@ public class CuratorClient {
 		//Now define a protocol which will use the transport
 		TProtocol protocol = new TBinaryProtocol(transport);
 		//make the client
-		Curator.Client client = new Curator.Client(protocol);
+		client = new Curator.Client(protocol);
 
         System.out.println("We are going to be calling the Curator with the following text:\n");
         System.out.println(text);
