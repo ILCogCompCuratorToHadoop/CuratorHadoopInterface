@@ -79,7 +79,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         HadoopCuratorClient client = new HadoopCuratorClient(
                 fs, FileSystem.getLocal( new Configuration() ) );
 
-        client.annotateSingleDoc(inValue, toolToRun);
+        client.annotateSingleDoc( inValue, toolToRun );
 
         // Serialize the updated record to the output directory
         Path generalOutputDir =
@@ -290,7 +290,9 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         StringBuilder launchScript = new StringBuilder( scriptLoc.toString() );
         launchScript.append(" --annotators ");
         launchScript.append( annotatorsConfigLoc.toString() );
-        launchScript.append(" --port 9010 --threads 10 >& ");
+        launchScript.append(" --port " );
+        launchScript.append( Integer.toString( HadoopCuratorClient.PORT ) );
+        launchScript.append(" --threads 10 >& ");
         launchScript.append( getCuratorLogLocation().toString() );
         launchScript.append(" &");
 
@@ -434,8 +436,10 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      */
     private class PathStruct {
         /**
-         * Constructs all the Path objects used by the Reducer
-         * @param distDir
+         * Constructs all the Path objects used by the Reducer (which are located
+         * relative to the `dist` directory)
+         * @param distDir A Path to the local Curator's `dist` directory. Should
+         *                be something like `~/curator/dist`.
          */
         public PathStruct( Path distDir ) {
             this.distDir = distDir;
