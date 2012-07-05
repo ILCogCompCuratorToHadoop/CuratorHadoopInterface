@@ -6,6 +6,7 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.Illegal
  * Defines "modes" for the Curator-to-Hadoop interface (i.e., annotation types
  * which the tool will run with.
  * @author Tyler Young
+ * @TODO: Make sure this actually represents all the tools we need!
  */
 public enum AnnotationMode {
     CHUNK, COREF, NER, NOM_SRL, PARSE, POS, TOKEN, VERB_SRL, WIKI;
@@ -23,7 +24,7 @@ public enum AnnotationMode {
         try { 
             return AnnotationMode.valueOf( s );
         } catch ( IllegalArgumentException e ) {
-            // TODO: Use regexes instead?
+            // TODO: Use regexes instead
             if( s.contains("hunk") || s.contains("HUNK") ) {
                 return CHUNK;
             }
@@ -40,7 +41,8 @@ public enum AnnotationMode {
                 return NOM_SRL;
             }
 
-            if( s.contains("arse") || s.contains("PARS") ) {
+            if( s.contains("arse") || s.contains("PARS")
+                    || s.contains("tanford") || s.contains("STANFORD") ) {
                 return PARSE;
             }
 			
@@ -98,6 +100,46 @@ public enum AnnotationMode {
                 throw new IllegalModeException( "Mode " + mode.toString()
                                                 + " is not recognized.");
         }
+    }
 
+    /**
+     * The equivalent of calling the static version of toCuratorString() and
+     * passing it "this" AnnotationMode object
+     * @return A string version of this annotation mode
+     */
+    public String toCuratorString() {
+        return toCuratorString(this);
+    }
+
+    /**
+     * Returns the annotation mode's view type. For instance, NER is a Labeling
+     * view, but SRL is a Parse view.
+     * @param mode The annotation mode whose view type you want to know
+     * @return The view type corresponding to the indicated annotation mode
+     */
+    public static ViewType getViewType( AnnotationMode mode ) {
+        if( mode == PARSE || mode == VERB_SRL || mode == NOM_SRL ) {
+            return ViewType.PARSE;
+        }
+        else if( mode == TOKEN || mode == NER || mode == POS || mode == CHUNK
+                || mode == WIKI ) {
+            return ViewType.LABEL;
+        }
+        else if( mode == COREF ) {
+            return ViewType.CLUSTER;
+        }
+        else {
+            throw new IllegalModeException("Mode " + mode.toString()
+                    + " was not recognized.");
+        }
+    }
+
+    /**
+     * The equivalent of calling the static version of getViewType() and
+     * passing it "this" AnnotationMode object
+     * @return he view type corresponding to this annotation mode
+     */
+    public ViewType getViewType() {
+        return  getViewType( this );
     }
 }

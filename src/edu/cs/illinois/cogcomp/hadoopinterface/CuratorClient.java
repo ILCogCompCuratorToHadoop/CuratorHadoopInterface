@@ -1,249 +1,175 @@
 package edu.illinois.cs.cogcomp.hadoopinterface;
 
-import java.util.Map;
-import java.util.Stack;
-import java.util.Map.Entry;
-import java.util.Scanner;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
+import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.ViewType;
+import edu.illinois.cs.cogcomp.archive.Identifier;
+import edu.illinois.cs.cogcomp.thrift.base.*;
+import edu.illinois.cs.cogcomp.thrift.curator.Curator;
+import edu.illinois.cs.cogcomp.thrift.curator.Record;
+import org.apache.commons.io.FileExistsException;
+import org.apache.hadoop.fs.Path;
+import org.apache.thrift.TBase;
+import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
+import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 
-import edu.illinois.cs.cogcomp.thrift.base.AnnotationFailedException;
-import edu.illinois.cs.cogcomp.thrift.base.Node;
-import edu.illinois.cs.cogcomp.thrift.base.ServiceUnavailableException;
-import edu.illinois.cs.cogcomp.thrift.base.Span;
-import edu.illinois.cs.cogcomp.thrift.base.Tree;
-import edu.illinois.cs.cogcomp.thrift.curator.Curator;
-import edu.illinois.cs.cogcomp.thrift.curator.Record;
-
-import edu.illinois.cs.cogcomp.thrift.base.*;
-import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
+import java.io.*;
+import java.util.*;
+import java.util.Map.Entry;
 
 
+/**
+ * A class to handle interactions with the Curator. Used in the Curator-Hadoop
+ * interface as a means of serializing and deserializing records on the "master"
+ * machine (i.e., a user's machine, outside of Hadoop).
+ * @author Lisa Bao
+ * @author Tyler Young
+ */
 public class CuratorClient {
-	
-    private ArrayList<Record> newInputRecords;
-    private Curator.Client client;
 
-	private static String recordContents(Record record) {
-		StringBuffer result = new StringBuffer();
-		result.append("Annotations present in the record:\n");
-		result.append("- rawText: ");
-		result.append(record.isSetRawText() ? "Yes" : "No");
-		result.append("\nThe following Label Views: ");
-		for (String key : record.getLabelViews().keySet()) {
-			result.append(key);
-			result.append(" ");
-		}
-		result.append("\n");
-		result.append("The following Cluster Views: ");
-		for (String key : record.getClusterViews().keySet()) {
-			result.append(key);
-			result.append(" ");
-		}
-		result.append("\n");
-		result.append("The following Parse Views: ");
-		for (String key : record.getParseViews().keySet()) {
-			result.append(key);
-			result.append(" ");
-		}
-		result.append("\n");
-		result.append("The following general Views: ");
-		for (String key : record.getViews().keySet()) {
-			result.append(key);
-			result.append(" ");
-		}
-		result.append("\n");
-		return result.toString();
-	}
+    private Curator.Client client;
+    private static final String CHAR_ENCODING = "UTF-8";
+    // The list of all the input records that we will write to disk (to later
+    // be transferred to Hadoop by another program)
+    private static ArrayList<Record> newInputRecords;
+
+    /**
+     * Returns a string version of a Thrift data structure. Works for Clustering,
+     * Forest, and Labeling views, among many others.
+     *
+     * This method is the inverse of #getThrifStructure().
+     * @param data A Thrift data structure object
+     * @return A string version of the input data structure
+     * @throws TException
+     */
+    public static String getSerializedThriftStructure( TBase data )
+            throws TException {
+        TSerializer serializer = new TSerializer();
+        return serializer.toString( data, CHAR_ENCODING );
+    }
+
+    /**
+     * Rebuilds (i.e., deserializes) a Thrift data structure from a serialized
+     * (String) version of that data structure. Works for Strings created by
+     * Clustering, Forest, and Labeling views, among others. Modifies the input
+     * TBase object to become the object represented by the serialized data.
+     *
+     * This method is the inverse of #getSerializedThriftStructure().
+     * @param inOutBaseObject The Thrift data structure object to read into. This
+     *                        object will become a copy of the object that
+     *                        serializedData represents (it will be written to).
+     * @param serializedData A String representation of a serialized Thrift
+     *                       data structure. Created using Thrift's common
+     *                       implementation of the java.io.Serializable interface.
+     */
+    public static void getThriftStructureFromString( TBase inOutBaseObject,
+                                                     String serializedData )
+            throws TException {
+        TDeserializer deserializer = new TDeserializer();
+        deserializer.deserialize(inOutBaseObject, serializedData, CHAR_ENCODING);
+    }
 
 	/**
      * Converts a Record data structure object into strings of
-     * the original raw text and each existing annotation,
+     * the original raw text, the hash/identifier, and each existing annotation,
      * stored and returned in a Map.
+     * @param record The record to be serialized
 	 */
-	public static Map<String, String> serializeRecord(Record record) {
-        Map<String, String> map = new HashMap<String, String>();
+	public static Map<String, String> serializeRecord(Record record)
+            throws TException {
+        Map<String, String> serializedForm = new HashMap<String, String>();
         String raw = record.getRawText();
-        map.put("original", raw);
+        serializedForm.put("original", raw);
+        serializedForm.put("hash", record.getIdentifier());
 
-        Map<String, Labeling> labels = record.getLabelViews();
-        Map<String, Clustering> cluster = record.getClusterViews();
-        Map<String, Forest> parse = record.getParseViews();
-        Map<String, View> views = record.getViews();
+        // Join all the annotation views into a single data structure (we'll
+        // iterate over this momentarily)
+        Map< String, TBase > allViews = new HashMap<String, TBase>();
+        allViews.putAll( record.getLabelViews() );
+        allViews.putAll( record.getClusterViews() );
+        allViews.putAll( record.getParseViews() );
+        allViews.putAll( record.getViews() );
 
-        String value = "";
-        boolean coref = false;
+        // For each view type, get the serialized form and add it to the
+        // collection of serialized version of the record
+        TBase view;
+        String serializedLabeling;
+        String hadoopFriendlyKey;
+        for (String key : allViews.keySet()) {
+            view = allViews.get( key );
+            serializedLabeling = getSerializedThriftStructure( view );
+            hadoopFriendlyKey = AnnotationMode.fromString(key).toString();
+            serializedForm.put(hadoopFriendlyKey, serializedLabeling );
 
-        // if these logic statements are erroring, try checking for all known keys in each map        
-        for (String key : labels.keys()) {
-            if (key.equals("pos")) {
-                value = labels.get(key); // TODO fix types, class object to String
-                map.put("POS", value);
+            // Note: this is unnecessary; in the unlikely event that two maps
+            // contained the same key, that key was overwritten in the preceding
+            // putAll() operations
+            /*if (key.equals("coref") && !coref) {
+                coref = true;
             }
-            else if (key.equals("chunk")) {
-                value = labels.get(key);
-                map.put("CHUNK", value);
-            }
-            else if (key.equals("ner-ext")) {
-                value = labels.get(key);
-                map.put("NER", value);
-            }
-            else if (key.equals("tokens")) {
-                vlaue = labels.get(key);
-                map.put("TOKEN", value);
-            }
-            else if (key.equals("wikifier")) {
-                value = labels.get(key);
-                map.put("WIKI", value);
-            }
-            else if (key.equals("coref")) {
-                if (coref == false) {
-                    coref = true;
-                    value = labels.get(key);
-                    map.put("COREF", value);
-                }
-                else {
-                    System.out.println("ERROR: multiple instances of COREF");
-                }
-            }
+            else {
+                System.out.println("ERROR: multiple instances of COREF");
+            }*/
         }
 
-        for (String key : cluster.keys()) {
-            if (key.equals("stanfordDep") || key.equals("stanfordParse")) {
-                value = cluster.get(key);
-                map.put("PARSE", value);
-            }
-            else if (key.equals("srl")) {
-                value = cluster.get(key);
-                map.put("VERB_SRL", value);
-            }
-            else if (key.equals("nom")) {
-                value = cluster.get(key);
-                map.put("NOM_SRL", value);
-            }
-            else if (key.equals("coref")) {
-                if (coref == false) {
-                    coref = true;
-                    value = labels.get(key);
-                    map.put("COREF", value);
-                }
-                else {
-                    System.out.println("ERROR: multiple instances of COREF");
-                }
-            }
-        }
-
-        for (String key : parse.keys()) { 
-            if (key.equals("coref")) {
-                if (coref == false) {
-                    coref = true;
-                    value = labels.get(key);
-                    map.put("COREF", value);
-                }
-                else {
-                    System.out.println("ERROR: multiple instances of COREF");
-                }
-            }
-        }
-
-        for (String key : views.keys()) { 
-            if (key.equals("coref")) {
-                if (coref == false) {
-                    coref = true;
-                    value = labels.get(key);
-                    map.put("COREF", value);
-                }
-                else {
-                    System.out.println("ERROR: multiple instances of COREF");
-                }
-            }
-        }
-
-        return map;
-        
+        return serializedForm;
 	}
 
     /**
      * Converts a Map of strings (original text and annotations)
      * into a Curator Record object.
-     *  
-     * @param map containing raw text and annotations
-     * @param id String identifier for the Record
      *
+     * @param map containing raw text and annotations, as generated by
+     *            #serializeRecord()
      */
-	public static Record deserializeRecord(Map<String, String> map, String id) {
+	public static Record deserializeRecord( Map<String, String> map ) throws TException {
         Map<String, Labeling> labels = new HashMap<String, Labeling>();
         Map<String, Clustering> cluster = new HashMap<String, Clustering>();
         Map<String, Forest> parse = new HashMap<String, Forest>();
-        Map<String, View> views = new HashMap<String, Views>();
-        
-        String raw = "";
-        String value = "";
+        Map<String, View> views = new HashMap<String, View>();
 
-        for(String key : map.keys()) {
-            if (key.equals("original") {
-                raw = map.get(key);
-            }
-            
-            // Forest map
-            if (key.equals("PARSE")) {
-                value = map.get(key);
-                parse.put("stanfordParse", value); // arbitrary choice over stanfordDep
-            }
-            else if (key.equals("VERB_SRL")) {
-                value = map.get(key);
-                parse.put("srl", value);
-            }
-            else if (key.equals("NOM_SRL")) {
-                value = map.get(key);
-                parse.put("nom", value);
-            }
+        String raw = map.get("original");
+        String hash = map.get("hash");
 
-            // Labeling map
-            else if (key.equals("TOKEN")) {
-                value = map.get(key);
-                labels.put("tokens", value);
-            }
-            else if (key.equals("NER")) {
-                value = map.get(key);
-                labels.put("ner-ext", value);
-            }
-            else if (key.equals("POS")) {
-                value = map.get(key);
-                labels.put("pos", value);
-            }
-            else if (key.equals("CHUNK")) {
-                value = map.get(key);
-                labels.put("chunk", value);
-            }
-            else if (key.equals("WIKI")) {
-                value = map.get(key);
-                labels.put("wikifier", value);
-            }
+        // For each key, add its value to the appropriate view collection
+        for( String key : map.keySet() ) {
+            if(  !key.equals("original") && !key.equals("hash") ) {
+                // Safe to assume that the key is an annotation mode
+                AnnotationMode annotation = AnnotationMode.fromString( key );
+                ViewType view = AnnotationMode.getViewType( annotation );
 
-            // Clustering map is currently EMPTY
-            
-            // (general) View map - temporary location for coref
-            else if (key.equals("COREF")) {
-                value = map.get(key);
-                views.put("COREF", value);
+                // Add the deserialized form of this annotation to the
+                // appropriate map
+                if( view == ViewType.LABEL ) {
+                    Labeling deserialized = new Labeling();
+                    getThriftStructureFromString( deserialized, map.get(key) );
+                    labels.put( annotation.toCuratorString(), deserialized );
+                }
+                else if( view == ViewType.CLUSTER ) {
+                    Clustering deserialized = new Clustering();
+                    getThriftStructureFromString( deserialized, map.get(key) );
+                    cluster.put( annotation.toCuratorString(), deserialized );
+                }
+                else if( view == ViewType.PARSE ) {
+                    Forest deserialized = new Forest();
+                    getThriftStructureFromString( deserialized, map.get(key) );
+                    parse.put(annotation.toCuratorString(), deserialized);
+                }
+                else { // Generic view
+                    View deserialized = new View();
+                    getThriftStructureFromString( deserialized, map.get(key) );
+                    views.put( annotation.toCuratorString(), deserialized );
+                }
             }
-
-            // throw an error
-            else {
-                System.out.println("ERROR: unrecognized key of " + key + " corresponding to value of " + map.get(key));
-            }                
         }
 
-        Record record = new Record(id, raw, labels, cluster, parse, views, false);
-        return record;
+        // TODO: Should "whitespaced" be true? (Not clear what this means.)
+        return new Record( hash, raw, labels, cluster, parse, views, false);
 	}
 
     /**
@@ -267,18 +193,19 @@ public class CuratorClient {
         for (File i : dir.listFiles()) {
             // get the hash ID string from the subdirectory name
             String id = i.getName();
-            
+
             if (checkdb) {
                 File originalFile = new File(filepath + Path.SEPARATOR + id + Path.SEPARATOR + "original.txt");
                 if (!originalFile.isFile()) {
                     System.out.println("ERROR: Attempt to check database for nonexistent original file");
                 }
 
+                // TODO: original is undefined
                 Record dbRecord = client.getRecord(original);
-                if ( (dbRecord.getClusterViewsSize() || dbRecord.getLabelViewsSize() || dbRecord.getParseViewsSize || dbRecord.getViewsSize) != 0 ) {
-                    addToInputList(dbRecord); // trust the database 
+                if ( (dbRecord.getClusterViewsSize() || dbRecord.getLabelViewsSize() || dbRecord.getParseViewsSize() || dbRecord.getViewsSize() ) != 0 ) {
+                    addToInputList(dbRecord); // trust the database
                 }
-                
+
                 else {
                     // LOOP: for each file in a hash id directory...
                     for (File j : i.listFiles()) {
@@ -287,7 +214,7 @@ public class CuratorClient {
                             String fileName = j.getName();
                             int index = fileName.length() - 4; // remove .txt from file name
                             String type = fileName.substring(0, index);
-                           
+
                             Map<String, Labeling> labels = new HashMap<String, Labeling>();
                             Map<String, Clustering> cluster = new HashMap<String, Clustering>();
                             Map<String, Forest> parse = new HashMap<String, Forest>();
@@ -345,17 +272,17 @@ public class CuratorClient {
                                 valid = false;
                             }
 
-                            if (valid) {                    
+                            if (valid) {
                                 newRecord = new Record(id, original, labels, cluster, parse, views, false);
                                 addToInputList(newRecord);
                             }
                         }
                         catch (FileNotFoundException e) {
                             e.printStackTrace();
-                        } // END try/catch 
+                        } // END try/catch
                     } // END j loop
                 } // END checkdb else
-            } // END checkdb if     
+            } // END checkdb if
         } // END i loop
     } // END function
 
@@ -400,7 +327,7 @@ public class CuratorClient {
         return new Record(id, originalText, labels, cluster, parse, views, false);
     }
 
-    /** 
+    /**
      * Takes a Curator Record object and adds it to a list of newly
      * added records for future serialization.
      *
@@ -416,11 +343,9 @@ public class CuratorClient {
      * @param outputDir The location to which we should write the serialized
      *                  records
      */
-    public void writeSerializedInput( String outputDir ) throws IOException {
-        // TODO: Replace with the real variable
-        Iterable< Record > allInput = new LinkedList< Record >();
-
-        for( Record r : allInput ) {
+    public void writeSerializedInput( String outputDir )
+            throws IOException, TException {
+        for( Record r : newInputRecords ) {
             String outputDirForRecord = outputDir + File.separator
                     + r.getIdentifier();
 
@@ -477,6 +402,38 @@ public class CuratorClient {
         writer.close();
     }
 
+    private static String recordContents(Record record) {
+        StringBuilder result = new StringBuilder();
+        result.append("Annotations present in the record:\n");
+        result.append("- rawText: ");
+        result.append(record.isSetRawText() ? "Yes" : "No");
+        result.append("\nThe following Label Views: ");
+        for (String key : record.getLabelViews().keySet()) {
+            result.append(key);
+            result.append(" ");
+        }
+        result.append("\n");
+        result.append("The following Cluster Views: ");
+        for (String key : record.getClusterViews().keySet()) {
+            result.append(key);
+            result.append(" ");
+        }
+        result.append("\n");
+        result.append("The following Parse Views: ");
+        for (String key : record.getParseViews().keySet()) {
+            result.append(key);
+            result.append(" ");
+        }
+        result.append("\n");
+        result.append("The following general Views: ");
+        for (String key : record.getViews().keySet()) {
+            result.append(key);
+            result.append(" ");
+        }
+        result.append("\n");
+        return result.toString();
+    }
+
     // START OF MAIN
 
     public static void main(String[] args) throws AnnotationFailedException, FileNotFoundException {
@@ -499,21 +456,14 @@ public class CuratorClient {
 	    
 	    Scanner scanner = new Scanner(new FileInputStream(fileName) );
 	    try {
-		while (scanner.hasNextLine()){
-		    textBldr.append(scanner.nextLine() + NL);
-		}
+            while (scanner.hasNextLine()){
+                textBldr.append(scanner.nextLine());
+                textBldr.append(NL);
+            }
 	    }
 	    finally{
-		scanner.close();
+		    scanner.close();
 	    }
-
-
-// 		String text = "With less than 11 weeks to go to the final round of climate talks in "
-// 				+ "Copenhagen, the UN chief, Ban Ki-Moon did not bother to hide his frustration "
-// 				+ "in his opening remarks. \"The world's glaciers are now melting faster than "
-// 				+ "human progress to protect them -- or us,\" he said. Others shared his gloom. "
-// 				+ "\"Today we are on a path to failure,\" said France's Nicolas Sarkozy.";
-
 
 	    String text = textBldr.toString();
 
