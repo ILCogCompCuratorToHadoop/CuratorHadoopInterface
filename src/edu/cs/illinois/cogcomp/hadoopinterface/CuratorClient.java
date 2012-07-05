@@ -61,111 +61,6 @@ public class CuratorClient {
 		result.append("\n");
 		return result.toString();
 	}
-	
-    /**
-     * Takes a Path to the documents to be annotated,
-     * checks for an existing Record in the db if requested,
-     * and creates Curator Records for the new docs.
-     * Returns both old and new Records as output.
-     *
-     * TODO add boolean option as param to skip database check
-     * 
-     * @param dir Path to the directory of documents to be added, e.g.
-     *            /user/home/job123/
-     *            This location must mirror the HDFS file structure and filenames.
-     */
-    public Record addRecordFromDirectory(Path dir) {
-        String filepath = dir.toString();
-        File test = new File(filepath);
-        if (!test.isDirectory()) {
-            throw new IllegalArgumentException("The path " + filepath + " is not a directory.");
-        }
-
-        String id = "0xDEADBEEF"; // TODO use a real unique id for each doc
-        dir = new Path(filepath + Path.SEPARATOR + id);
-        
-        boolean recordExists = false;
-        oldRecord = new Record(); // TODO check database to retrieve existing record
-        if ( id.equals(oldRecord.getIdentifier()) ) {
-            recordExists = true;
-        }
-
-        if (recordExists) {
-            return oldRecord; //return existing Record
-        }
-        else {
-            List<String> types = Arrays.asList("original", "PARSE", "VERB_SRL", "NOM_SRL", "TOKEN", "NER", "POS", "CHUNK", "WIKI", "COREF");
-
-            Map<String, Labeling> labels = new HashMap<String, Labeling>();
-            Map<String, Clustering> cluster = new HashMap<String, Clustering>();
-            Map<String, Forest> parse = new HashMap<String, Forest>();
-            Map<String, View> views = new HashMap<String, Views>();
-            
-            String type = "";
-            String annotation = "";
-            String raw = "ERROR: Original text not populated."
-            File file;
-            Path path;
-            for (int i = 0; i < types.length(); i++) {
-                type = types[i];
-                file = new File(filepath + Path.SEPARATOR + id + Path.SEPARATOR + type + ".txt");
-                
-                if (file.exists()) { // found a valid annotation file, yay!
-                    path = new Path(file.getPath());
-                    annotation = readFileFromLocal(path);
-                    if (type.equals("original")) { // special case handling for raw text
-                        raw = annotation;
-                    }
-                    else if (type.equals("PARSE")) {
-                        Forest anno = new Forest(annotation); //TODO how to convert string to Forest obj?
-                        parse.put("stanfordParse", anno); // same as stanfordDep
-                    }
-                    else if (type.equals("VERB_SRL")) {
-                        Forest anno = new Forest(annotation); //TODO
-                        parse.put("srl", anno);
-                    }
-                    else if (type.equals("NOM_SRL")) {
-                        Forest anno = new Forest(annotation); //TODO
-                        parse.put("nom", anno);
-                    }
-                    else if (type.equals("TOKEN")) {
-                        Labeling anno = new Labeling(annotation); //TODO convert String to Labeling obj
-                        labels.put("token", anno);
-                    }
-                    else if (type.equals("NER")) {
-                        Labeling anno = new Labeling(annotation); //TODO
-                        labels.put("ner", anno);
-                    }
-                    else if (type.equals("POS")) {
-                        Labeling anno = new Labeling(annotation); //TODO
-                        labels.put("pos", anno);
-                    }
-                    else if (type.equals("CHUNK")) {
-                        Labeling anno = new Labeling(annotation); //TODO
-                        labels.put("chunk", anno);
-                    }
-                    else if (type.equals("WIKI")) {
-                        Labeling anno = new Labeling(annotation);
-                        labels.put("wikifier", anno);
-                    }
-                    else if (type.equals("COREF")) {
-                        Clustering anno = new Clustering(annotation); //TODO convert String to whatever COREF takes
-                        cluster.put("coref", anno);
-                    }
-                    else {
-                        System.out.println("ERROR: " + type + " is not a valid annotation type!");
-                    }
-                        
-                    
-                }
-            }
-
-            Record newRecord = new Record(id, raw, labels, cluster, parse, views, false);
-            return newRecord;
-        }
-        
-    }
-
 
 	/**
      * Converts a Record data structure object into strings of
@@ -343,39 +238,52 @@ public class CuratorClient {
             // throw an error
             else {
                 System.out.println("ERROR: unrecognized key of " + key + " corresponding to value of " + map.get(key));
-            }
-                
+            }                
         }
-
 
         Record record = new Record(id, raw, labels, cluster, parse, views, false);
         return record;
 	}
 
     /**
-     * Takes documents in a mirror of the HDFS directory structure
-     * and creates new Curator Records. Calls addRecordToList.
+     * Takes a Path to documents in a mirror of the HDFS directory structure
+     * and creates new Curator Records. Calls addRecordToList to add each new record to a class variable.
+     * Checks for an existing record in the database, if requested.
      *
-     * @param jobDir Path pointing to a job123 directory
+     * @param jobDir Path pointing to, e.g. /user/home/job123 directory
+     * @param checkdb If true, checks for an existing duplicate Record in the Curator database
      */
-    public void addExistingDocs(Path jobDir) {
+    public void addRecordsFromJobDirectory(Path jobDir, boolean checkdb=true) {
         String filepath = jobDir.toString();
         File dir = new File(filepath);
-        int subdirectories = dir.list().length();
+        // check that the path is valid
+        if (!dir.isDirectory()) {
+            throw new IllegalArgumentException("The job path " + filepath + " is not a directory.");
+        }
+
+        // LOOP: for each file in the job directory...
         for (File i : dir.listFiles()) {
+            // get the hash ID string from the subdirectory name
+            String id = i.getName();
+            
+            if (checkdb) {
+                //TODO check database
+            }
+            
+            // LOOP: for each file in a hash id directory...
             for (File j : i.listFiles()) {
                 try {
                     String annotation = readFileToString(j);
                     String fileName = j.getName();
                     int index = fileName.length() - 4; // remove .txt from file name
                     String type = fileName.substring(0, index);
-
-                    String id = "0xDEADBEEF"; // TODO generate proper id
+                   
                     Map<String, Labeling> labels = new HashMap<String, Labeling>();
                     Map<String, Clustering> cluster = new HashMap<String, Clustering>();
                     Map<String, Forest> parse = new HashMap<String, Forest>();
                     Map<String, View> views = new HashMap<String, View>();
 
+                    boolean valid = true;
                     String original = "ERROR: Original text not populated.";
                     if (type.equals("original")) {
                         original = annotation;
@@ -413,15 +321,24 @@ public class CuratorClient {
                         labels.put("wikifier", anno);
                     }
                     else if (type.equals("COREF")) {
-                        View anno = new View(annotation); //TODO convert String to whatever COREF takes
-                        views.put("coref", anno);
+                        Labeling temp = new Labeling();
+                        temp.fromString(annotation); //TODO convert String annotation to Labeling obj
+                        List<Labeling> clusters = new List<Labeling>();
+                        clusters.add(temp);
+                        Clustering anno = new Clustering();
+                        anno.setClusters(clusters);
+                        anno.setSource(id);
+                        cluster.put("coref", anno);
                     }
                     else {
-                        System.out.println("ERROR: " + type + " is not a valid annotation type!");
+                        System.out.println("ERROR: " + type + " is not a valid annotation type, skipped");
+                        valid = false;
                     }
-                    
-                    newRecord = new Record(id, original, labels, cluster, parse, views, false);
-                    addToInputList(newRecord);
+
+                    if (valid) {                    
+                        newRecord = new Record(id, original, labels, cluster, parse, views, false);
+                        addToInputList(newRecord);
+                    }
                 }
                 catch (FileNotFoundException e) {
                     e.printStackTrace();
@@ -462,8 +379,7 @@ public class CuratorClient {
      * @return A record object for the document whose original text was passed in.
      */
     public Record generateNewRecord( String originalText ) {
-        // TODO: How to generate ID?
-        String id = "0xDEADBEEF";
+        String id = Identifier.getId(originalText, false);
         Map<String, Labeling> labels = new HashMap<String, Labeling>();
         Map<String, Clustering> cluster = new HashMap<String, Clustering>();
         Map<String, Forest> parse = new HashMap<String, Forest>();
