@@ -226,45 +226,48 @@ public class CuratorClient {
                                 original = annotation;
                             }
                             else if (type.equals("PARSE")) {
-                                Forest anno = new Forest(annotation); //TODO how to convert string to Forest obj?
+                                Forest anno = new Forest();
+                                getThriftStructureFromString(anno, annotation);
                                 parse.put("stanfordParse", anno); // same as stanfordDep
                             }
                             else if (type.equals("VERB_SRL")) {
-                                Forest anno = new Forest(annotation); //TODO
+                                Forest anno = new Forest();
+                                getThriftStructureFromString(anno, annotation);
                                 parse.put("srl", anno);
                             }
                             else if (type.equals("NOM_SRL")) {
-                                Forest anno = new Forest(annotation); //TODO
+                                Forest anno = new Forest();
+                                getThriftStructureFromString(anno, annotation);
                                 parse.put("nom", anno);
                             }
                             else if (type.equals("TOKEN")) {
-                                Labeling anno = new Labeling(annotation); //TODO convert String to Labeling obj
+                                Labeling anno = new Labeling();
+                                getThriftStructureFromString(anno, annotation);
                                 labels.put("token", anno);
                             }
                             else if (type.equals("NER")) {
-                                Labeling anno = new Labeling(annotation); //TODO
+                                Labeling anno = new Labeling();
+                                getThriftStructureFromString(anno, annotation);
                                 labels.put("ner", anno);
                             }
                             else if (type.equals("POS")) {
-                                Labeling anno = new Labeling(annotation); //TODO
+                                Labeling anno = new Labeling();
+                                getThriftStructureFromString(anno, annotation);
                                 labels.put("pos", anno);
                             }
                             else if (type.equals("CHUNK")) {
-                                Labeling anno = new Labeling(annotation); //TODO
+                                Labeling anno = new Labeling();
+                                getThriftStructureFromString(anno, annotation);
                                 labels.put("chunk", anno);
                             }
                             else if (type.equals("WIKI")) {
-                                Labeling anno = new Labeling(annotation);
+                                Labeling anno = new Labeling();
+                                getThriftStructureFromString(anno, annotation);
                                 labels.put("wikifier", anno);
                             }
                             else if (type.equals("COREF")) {
-                                Labeling temp = new Labeling();
-                                temp.fromString(annotation); //TODO convert String annotation to Labeling obj
-                                List<Labeling> clusters = new List<Labeling>();
-                                clusters.add(temp);
                                 Clustering anno = new Clustering();
-                                anno.setClusters(clusters);
-                                anno.setSource(id);
+                                getThriftStructureFromString(anno, annotation);
                                 cluster.put("coref", anno);
                             }
                             else {
