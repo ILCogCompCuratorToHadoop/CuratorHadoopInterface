@@ -168,7 +168,7 @@ public class HadoopRecord implements WritableComparable< HadoopRecord > {
      * @throws IOException
      */
     public String getOriginalString() throws IOException {
-        readFileFromHDFS( getOriginal(), fs );
+        return readFileFromHDFS( getOriginal(), fs );
     }
 
     /**
