@@ -26,8 +26,7 @@ import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemH
  * @author Tyler Young
  */
 public class HadoopRecord implements WritableComparable< HadoopRecord > {
-    
-    private String inputDir;
+
     private HashSet<AnnotationMode> annotations; // Takes care of duplicates
     private Configuration config;
     private String documentHash;
@@ -75,7 +74,7 @@ public class HadoopRecord implements WritableComparable< HadoopRecord > {
         this.fs = fs;
         this.documentHash = documentHash;
         this.config = config;
-        inputDir = config.get("inputDirectory");
+        String inputDir = config.get("inputDirectory");
         docDir = new Path( inputDir + Path.SEPARATOR + documentHash );
         annotations = new HashSet<AnnotationMode>();
         initializeKnownAnnotations();

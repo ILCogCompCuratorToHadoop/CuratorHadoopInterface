@@ -2,12 +2,22 @@ package edu.cs.illinois.cogcomp.hadoopinterface;
 
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
+import edu.illinois.cs.cogcomp.thrift.base.AnnotationFailedException;
+import edu.illinois.cs.cogcomp.thrift.base.ServiceUnavailableException;
+import edu.illinois.cs.cogcomp.thrift.curator.Curator;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import edu.illinois.cs.cogcomp.archive.Identifier;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TFramedTransport;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
 
 import static edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.writeFileToHDFS;
@@ -41,6 +51,14 @@ public class HadoopCuratorClient extends CuratorClient {
         this.hdfs = hdfs;
         this.localFS = local;
 
+        // Create a Thrift transport
+        transport = new TSocket( "localhost", PORT );
+        // Use a framed transport so that we have a non-blocking server
+        transport = new TFramedTransport( transport );
+        // Define a protocol which will use the transport
+        TProtocol protocol = new TBinaryProtocol( transport );
+        // Create the client
+        client = new Curator.Client( protocol );
     }
 
     /**
@@ -81,20 +99,45 @@ public class HadoopCuratorClient extends CuratorClient {
      *                        for the input Record. This must correspond to an
      *                        annotation tool currently running on the local node.
      * @return The Curator-friendly Record, modified to include the new
-     *         annotation (assuming no errors, of course!).
-     *
-     * @TODO: Write method after adding it to the Thrift interface
+     *         annotation (assuming no errors, of course!). If there was an error
+     *         thrown, this Record may contain no new annotations; in this case,
+     *         you will get back the same Record you passed in, so it's up to you
+     *         to check that you have the requested annotation.
      */
     private Record performAnnotation( Record curatorRecord,
                                       AnnotationMode annotationToGet ) {
+        try {
+            // Ask the Curator to perform the annotation
+            transport.open();
+            String annotationMode =
+                    AnnotationMode.toCuratorString(annotationToGet);
 
-        return new edu.illinois.cs.cogcomp.thrift.curator.Record();
+            client.performAnnotation( curatorRecord, annotationMode, true );
+        } catch (ServiceUnavailableException e) {
+            HadoopInterface.logger.logError( annotationToGet.toString()
+                    + " annotations are not available.\n" + e.getReason());
+        } catch (TException e) {
+            HadoopInterface.logger.logError( "Transport exception when getting "
+                    + annotationToGet.toString() + " annotation.\n"
+                    + Arrays.toString( e.getStackTrace() ) );
+        } catch (AnnotationFailedException e) {
+            HadoopInterface.logger.logError( "Failed attempting annotation "
+                    + annotationToGet.toString() + ".\n" + e.getReason());
+        } finally {
+            if( transport.isOpen() ) {
+                transport.close();
+            }
+        }
+
+        // Should contain all of the previous annotations, along with
+        // the new one
+        return curatorRecord;
     }
 
     /**
      * Takes a Curator-friendly Record (as might be returned by the annotation
      * tools) and writes it to the Hadoop Distributed File System. (If you wish,
-     * it is easy to create a HadoopRecord based on the output directory.)
+     * it is easy to later create a HadoopRecord based on the output directory.)
      * @param curatorRecord The Curator-friendly, Thrift-based Record to write
      *                      to HDFS.
      * @param docOutputDir The location in HDFS to which the Record should be
@@ -131,10 +174,14 @@ public class HadoopCuratorClient extends CuratorClient {
     private Record deserializeHadoopRecord( HadoopRecord record )
             throws IOException {
         return CuratorClient.deserializeRecord( record.toMap(),
-                Identifier.getId( record.getOriginalString(), true ) );
+                Identifier.getId( record.getOriginalString(), false ) );
     }
 
     private edu.illinois.cs.cogcomp.thrift.curator.Record lastAnnotatedRecord;
+
     private FileSystem hdfs;
     private FileSystem localFS;
+    private Curator.Client client;
+    private TTransport transport;
+    public static final int PORT = 9010;
 }

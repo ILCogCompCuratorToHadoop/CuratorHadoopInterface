@@ -10,6 +10,15 @@ import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.exceptions.Illegal
 public enum AnnotationMode {
     CHUNK, COREF, NER, NOM_SRL, PARSE, POS, TOKEN, VERB_SRL, WIKI;
 
+    /**
+     * Takes a string version of an annotation mode and returns the equivalent
+     * value in the enumerated type
+     * @param s A string version of an annotation mode (e.g.,
+     *          "named entity recognition", "NER", "pos", "tokenizer")
+     * @return The AnnotationMode enumerated type version of the input string
+     *         (e.g., if you passed in "tokenizer", you get back
+     *         AnnotationMode.PARSE)
+     */
     public static AnnotationMode fromString( final String s ) {
         try { 
             return AnnotationMode.valueOf( s );
@@ -57,5 +66,38 @@ public enum AnnotationMode {
                                             + "    CHUNK, COREF, NOM_SRL, POS, TOKEN, "
                                             + "VERB_SRL, WIKI, PARSE, or NER." );
         }
+    }
+
+    /**
+     * Converts our own enumerated type to the string identifier used in the
+     * Curator. E.g., if you pass in AnnotationMode.NER, you get back "ner-ext".
+     * @param mode The enumerated type to convert to a Curator-friendly string
+     * @return A string version of the annotation mode
+     */
+    public static String toCuratorString( AnnotationMode mode ) {
+        switch (mode) {
+            case CHUNK:
+                return "chunk";
+            case COREF:
+                return "coref";
+            case NER:
+                return "ner-ext";
+            case NOM_SRL:
+                return "nom";
+            case PARSE:
+                return "stanfordParse";
+            case POS:
+                return "pos";
+            case TOKEN:
+                return "tokens";
+            case VERB_SRL:
+                return "srl";
+            case WIKI:
+                return "wikifier";
+            default:
+                throw new IllegalModeException( "Mode " + mode.toString()
+                                                + " is not recognized.");
+        }
+
     }
 }
