@@ -23,7 +23,6 @@ import edu.illinois.cs.cogcomp.thrift.curator.Curator;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 
 import edu.illinois.cs.cogcomp.thrift.base.*;
-import edu.cs.illinois.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 
 
 public class CuratorClient {

@@ -32,7 +32,7 @@ import java.util.Map.Entry;
  */
 public class CuratorClient {
 
-    private Curator.Client client;
+    private static Curator.Client client;
     private static final String CHAR_ENCODING = "UTF-8";
     // The list of all the input records that we will write to disk (to later
     // be transferred to Hadoop by another program)
@@ -181,7 +181,8 @@ public class CuratorClient {
      * @param jobDir Path pointing to, e.g. /user/home/job123 directory
      * @param checkdb If true, checks for an existing duplicate Record in the Curator database
      */
-    public void addRecordsFromJobDirectory(Path jobDir, boolean checkdb) {
+    public void addRecordsFromJobDirectory(Path jobDir, boolean checkdb)
+            throws TException, FileNotFoundException, ServiceUnavailableException, AnnotationFailedException {
         String filepath = jobDir.toString();
         File dir = new File(filepath);
         // check that the path is valid
@@ -199,10 +200,13 @@ public class CuratorClient {
                 if (!originalFile.isFile()) {
                     System.out.println("ERROR: Attempt to check database for nonexistent original file");
                 }
+                String originalText = readFileToString( originalFile );
 
-                // TODO: original is undefined
-                Record dbRecord = client.getRecord(original);
-                if ( (dbRecord.getClusterViewsSize() || dbRecord.getLabelViewsSize() || dbRecord.getParseViewsSize() || dbRecord.getViewsSize() ) != 0 ) {
+                Record dbRecord = client.getRecord(originalText);
+                if ( dbRecord.getClusterViewsSize() != 0
+                     || dbRecord.getLabelViewsSize() != 0
+                     || dbRecord.getParseViewsSize() != 0
+                     || dbRecord.getViewsSize() != 0 ) {
                     addToInputList(dbRecord); // trust the database
                 }
 
@@ -276,7 +280,8 @@ public class CuratorClient {
                             }
 
                             if (valid) {
-                                newRecord = new Record(id, original, labels, cluster, parse, views, false);
+                                Record newRecord = new Record( id, original,
+                                        labels, cluster, parse, views, false);
                                 addToInputList(newRecord);
                             }
                         }
@@ -439,7 +444,7 @@ public class CuratorClient {
 
     // START OF MAIN
 
-    public static void main(String[] args) throws AnnotationFailedException, FileNotFoundException {
+    public static void main(String[] args) throws AnnotationFailedException, FileNotFoundException, ServiceUnavailableException, TException {
 
         newInputRecords = new ArrayList<Record>(); // initialize list
 
@@ -503,16 +508,15 @@ public class CuratorClient {
         // (Probably) returns a record will all known annotations for the string
         // "This text string is so meta"
         Record record = client.getRecord( "This text string is so meta" );
-        Map map = record.getParseViews();
-        for (String key : map.keys()) {
-            System.out.println( "Key " + key " is associated with value " map.get(key).toString() );
+        Map<String, Forest> map = record.getParseViews();
+        for (String key : map.keySet()) {
+            System.out.println( "Key " + key + " is associated with value " + map.get(key).toString() );
         }
 
         System.out.println();
 
         System.out.println("First we'll get the named entities in the text.");
         System.out.print("Calling curator.provide(\"ner\", text, false)... ");
-        Record record = null;
 
         boolean forceUpdate = true;
         //         try {
