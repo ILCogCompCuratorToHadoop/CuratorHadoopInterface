@@ -47,7 +47,7 @@ public class CuratorClient {
      * @return A string version of the input data structure
      * @throws TException
      */
-    public static String getSerializedThriftStructure( TBase data )
+    private static String getSerializedThriftStructure( TBase data )
             throws TException {
         TSerializer serializer = new TSerializer();
         return serializer.toString( data, CHAR_ENCODING );
@@ -67,8 +67,8 @@ public class CuratorClient {
      *                       data structure. Created using Thrift's common
      *                       implementation of the java.io.Serializable interface.
      */
-    public static void getThriftStructureFromString( TBase inOutBaseObject,
-                                                     String serializedData )
+    private static void getThriftStructureFromString( TBase inOutBaseObject,
+                                                      String serializedData )
             throws TException {
         TDeserializer deserializer = new TDeserializer();
         deserializer.deserialize(inOutBaseObject, serializedData, CHAR_ENCODING);
@@ -174,15 +174,20 @@ public class CuratorClient {
 
     /**
      * Takes a Path to documents in a mirror of the HDFS directory structure
-     * and creates new Curator Records. Calls addRecordToList to add each new record to a class variable.
-     * Checks for an existing record in the database, if requested; note that this flag will TRUST the database
-     * to have the most up-to-date Record for a given document.
+     * and creates new Curator Records. Calls #addToInputList() to add each new
+     * Record to the class's list of input records.
      *
-     * @param jobDir Path pointing to, e.g. /user/home/job123 directory
-     * @param checkdb If true, checks for an existing duplicate Record in the Curator database
+     * Checks for an existing record in the database, if requested; note that
+     * this flag will trust the database to have the most up-to-date Record for
+     * a given document.
+     *
+     * @param jobDir Path pointing to, e.g. `/user/home/job123/` directory
+     * @param checkdb If true, checks for an existing Record for this document in
+     *                the Curator database
      */
-    public void addRecordsFromJobDirectory(Path jobDir, boolean checkdb)
-            throws TException, FileNotFoundException, ServiceUnavailableException, AnnotationFailedException {
+    public static void addRecordsFromJobDirectory(Path jobDir, boolean checkdb)
+            throws TException, FileNotFoundException, ServiceUnavailableException,
+            AnnotationFailedException {
         String filepath = jobDir.toString();
         File dir = new File(filepath);
         // check that the path is valid
@@ -203,10 +208,7 @@ public class CuratorClient {
                 String originalText = readFileToString( originalFile );
 
                 Record dbRecord = client.getRecord(originalText);
-                if ( dbRecord.getClusterViewsSize() != 0
-                     || dbRecord.getLabelViewsSize() != 0
-                     || dbRecord.getParseViewsSize() != 0
-                     || dbRecord.getViewsSize() != 0 ) {
+                if ( recordHasNoAnnotations(dbRecord) ) {
                     addToInputList(dbRecord); // trust the database
                 }
 
@@ -294,7 +296,31 @@ public class CuratorClient {
         } // END i loop
     } // END function
 
-    public void takeNewRawInputFilesFromDirectory( String inputDirectory ) {
+    public static boolean recordHasNoAnnotations(Record dbRecord) {
+        return ( dbRecord.getClusterViewsSize() != 0
+                 || dbRecord.getLabelViewsSize() != 0
+                 || dbRecord.getParseViewsSize() != 0
+                 || dbRecord.getViewsSize() != 0 );
+    }
+
+    /**
+     * Creates a new Record from a document's original (raw) text and adds it to
+     * the class's list of input Records. The input directory should have some
+     * number of plain text files directly inside it. For instance, if your
+     * input directory was `job123`, your directory structure might look like
+     * this:
+     *
+     * - job123
+     *      - document0.txt
+     *      - document1.txt
+     *      - document2.txt
+     *      - document3.txt
+     *
+     * Any subdirectories of your input directory will be ignored.
+     *
+     * @param inputDirectory The directory to draw original text files from
+     */
+    public static void takeNewRawInputFilesFromDirectory( String inputDirectory ) {
         // Check that the input directory is valid
         File inputDir = new File( inputDirectory );
         if( !inputDir.isDirectory() ) {
@@ -325,7 +351,7 @@ public class CuratorClient {
      * @param originalText The document's raw text.
      * @return A record object for the document whose original text was passed in.
      */
-    public Record generateNewRecord( String originalText ) {
+    public static Record generateNewRecord( String originalText ) {
         String id = Identifier.getId(originalText, false);
         Map<String, Labeling> labels = new HashMap<String, Labeling>();
         Map<String, Clustering> cluster = new HashMap<String, Clustering>();
@@ -341,8 +367,17 @@ public class CuratorClient {
      *
      * @param record A Curator Record object
      */
-    public void addToInputList(Record record) {
+    public static void addToInputList(Record record) {
         newInputRecords.add(record);
+    }
+
+    /**
+     * Gets the list of Records to be serialized. This is for testing purposes
+     * only.
+     * @return the input Records ready to be processed
+     */
+    public static List<Record> getInputList() {
+        return newInputRecords;
     }
 
     /**
@@ -351,7 +386,7 @@ public class CuratorClient {
      * @param outputDir The location to which we should write the serialized
      *                  records
      */
-    public void writeSerializedInput( String outputDir )
+    public static void writeSerializedInput( String outputDir )
             throws IOException, TException {
         for( Record r : newInputRecords ) {
             String outputDirForRecord = outputDir + File.separator
@@ -371,7 +406,7 @@ public class CuratorClient {
      * @param f The file to be read
      * @return A string version of the input file
      */
-    private String readFileToString( File f ) throws FileNotFoundException {
+    private static String readFileToString( File f ) throws FileNotFoundException {
         // Read the file in to a String
         Scanner fileReader = new Scanner( f );
         StringBuilder fileContents = new StringBuilder();
@@ -391,7 +426,7 @@ public class CuratorClient {
      * @throws FileExistsException If the file indicated by the path already
      *                             exists.
      */
-    private void writeFile( String path, String text )
+    private static void writeFile( String path, String text )
             throws IOException, FileExistsException {
         File theFile = new File( path );
         if( theFile.exists() ) {

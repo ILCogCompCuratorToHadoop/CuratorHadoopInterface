@@ -67,7 +67,31 @@ public class DummyInputCreator {
                     mode.toString() + ".txt" );
             FileSystemHandler.writeFileToHDFS( annotation, annotationPath, fs );
         }
+    }
 
+    /**
+     * Writes a number of original (raw) text files to the input directory.
+     * Useful for testing the ability to create a Record from raw text files.
+     * @param docDir The directory to which we should write the text files
+     * @param fs The file system against which we should resolve paths
+     * @param numInputFiles The number of text files we should create
+     */
+    public static void createRawTextInputDirectory( Path docDir,
+                                                    FileSystem fs,
+                                                    int numInputFiles )
+            throws IOException {
+        // Create a bunch of text files as sample "raw text" files
+        for( int i = 0; i < numInputFiles; i++ ) {
+            String docName = "document" + Integer.toString(i) + ".txt";
+            Path docPath = new Path( docDir, docName );
+            String contents = "Hello, I'm an original.txt file."
+                    + "\n\nLorem ipsum dolor sit amet, consectetur adipiscing "
+                    + "elit. Nullam eu mauris odio. Vivamus id fermentum"
+                    + "elit. Quisque placerat arcu in nibh tincidunt "
+                    + "consectetur.\n\n"
+                    + getRandomString() + "\n\n" + getRandomString();
+            FileSystemHandler.writeFileToHDFS( contents, docPath, fs );
+        }
     }
 
     public static String getRandomString()

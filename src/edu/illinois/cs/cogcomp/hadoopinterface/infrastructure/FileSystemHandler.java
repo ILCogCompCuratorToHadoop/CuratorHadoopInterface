@@ -97,7 +97,10 @@ public class FileSystemHandler {
 
     /**
      * Deletes a file or directory from a file system.
-     * @param fileOrDirectoryToDelete The location of the thing to be deleted
+     * @param fileOrDirectoryToDelete The location of the thing to be deleted.
+     *                                If this is a directory, we will perform a
+     *                                recursive delete (deleting all files within
+     *                                the directory as well).
      * @param fs The file system object against which we should resolve the path.
      *           May be constructed as either a local or HDFS file system.
      * @throws IOException
