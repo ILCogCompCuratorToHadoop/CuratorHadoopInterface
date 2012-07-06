@@ -8,7 +8,6 @@ import edu.illinois.cs.cogcomp.thrift.curator.Curator;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import edu.illinois.cs.cogcomp.archive.Identifier;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -69,7 +68,8 @@ public class HadoopCuratorClient extends CuratorClient {
      * @param toolToRun The type of annotation that we should get for the record
      */
     public void annotateSingleDoc( HadoopRecord record,
-                                   AnnotationMode toolToRun ) throws IOException {
+                                   AnnotationMode toolToRun )
+            throws IOException, TException {
         // De-serialize the Hadoop Record
         Record curatorFriendlyRec = deserializeHadoopRecord( record );
 
@@ -87,7 +87,7 @@ public class HadoopCuratorClient extends CuratorClient {
      *                     will likely be a subdirectory of the overall job
      *                     output directory.
      */
-    public void writeOutputFromLastAnnotate( Path docOutputDir ) {
+    public void writeOutputFromLastAnnotate( Path docOutputDir ) throws TException {
         serializeCuratorRecord( lastAnnotatedRecord, docOutputDir, localFS );
     }
 
@@ -146,7 +146,7 @@ public class HadoopCuratorClient extends CuratorClient {
      */
     private void serializeCuratorRecord( Record curatorRecord,
                                          Path docOutputDir,
-                                         FileSystem fs ) {
+                                         FileSystem fs ) throws TException {
         Map<String, String> recordAsText;
         recordAsText = CuratorClient.serializeRecord( curatorRecord );
 
@@ -172,9 +172,8 @@ public class HadoopCuratorClient extends CuratorClient {
      *         the record.
      */
     private Record deserializeHadoopRecord( HadoopRecord record )
-            throws IOException {
-        return CuratorClient.deserializeRecord( record.toMap(),
-                Identifier.getId( record.getOriginalString(), false ) );
+            throws IOException, TException {
+        return CuratorClient.deserializeRecord( record.toMap() );
     }
 
     private edu.illinois.cs.cogcomp.thrift.curator.Record lastAnnotatedRecord;
