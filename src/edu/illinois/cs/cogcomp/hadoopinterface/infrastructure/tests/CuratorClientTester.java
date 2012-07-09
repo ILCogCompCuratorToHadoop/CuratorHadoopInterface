@@ -3,13 +3,13 @@ package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.tests;
 import edu.illinois.cs.cogcomp.hadoopinterface.CuratorClient;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
-import junit.framework.TestCase;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 import org.junit.runners.model.InitializationError;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -17,7 +17,7 @@ import java.io.IOException;
  * Records, especially serialization of them.
  * @author Tyler Young
  */
-public class CuratorClientTester extends TestCase {
+public class CuratorClientTester {
     public CuratorClientTester() {
 
     }
@@ -40,7 +40,8 @@ public class CuratorClientTester extends TestCase {
         DummyInputCreator.createRawTextInputDirectory( dummyInputDir,
                                                        localFS,
                                                        numFiles );
-        CuratorClient.takeNewRawInputFilesFromDirectory(dummyInputDir.toString());
+        File in = new File( dummyInputDir.toString() );
+        CuratorClient.createRecordsFromRawInputFiles( in );
 
         int actualSize = CuratorClient.getInputList().size();
         if( actualSize != numFiles ) {
@@ -75,15 +76,19 @@ public class CuratorClientTester extends TestCase {
                 localFS,
                 numFiles );
 
-        CuratorClient.takeNewRawInputFilesFromDirectory(dummyInputDir.toString());
+        File in = new File( dummyInputDir.toString() );
+        CuratorClient.createRecordsFromRawInputFiles( in );
 
-        Path outDir = new Path( dummyInputDir, "output" );
-        CuratorClient.writeSerializedInput( outDir.toString() );
+        File outDir = new File( dummyInputDir.toString(), "output" );
+        CuratorClient.writeSerializedRecords( outDir );
 
+        Path outDirPath = new Path( outDir.toString() );
         int numOutputFiles = FileSystemHandler.getFilesAndDirectoriesInDirectory(
-                outDir, localFS ).size();
+                outDirPath, localFS ).size();
         if( numOutputFiles != numFiles ) {
-            throw new IOException("Failed to serialize the right number of files.");
+            throw new IOException("Failed to serialize the right number of "
+                    + "files. We found " + Integer.toString(numOutputFiles)
+                    + " files, but we expected " + Integer.toString(numFiles) );
         }
 
         FileSystemHandler.delete( dummyInputDir, localFS );
@@ -98,7 +103,10 @@ public class CuratorClientTester extends TestCase {
 
         generatesNewRecord();
         takesNewRawInputFilesFromDirectory();
+        System.out.println("Successfully got new raw input files from directory.");
+        CuratorClient.clearInputList();
         writesSerializedInput();
+        System.out.println("Successfully wrote serialized input.");
 
         FileSystemHandler.delete( dummyInputDir, localFS );
     }

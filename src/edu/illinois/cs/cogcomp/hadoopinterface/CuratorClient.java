@@ -1,13 +1,11 @@
 package edu.illinois.cs.cogcomp.hadoopinterface;
 
+import edu.illinois.cs.cogcomp.archive.Identifier;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.ViewType;
-import edu.illinois.cs.cogcomp.archive.Identifier;
 import edu.illinois.cs.cogcomp.thrift.base.*;
 import edu.illinois.cs.cogcomp.thrift.curator.Curator;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
-import org.apache.commons.io.FileExistsException;
-import org.apache.hadoop.fs.Path;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
@@ -37,6 +35,7 @@ public class CuratorClient {
     // The list of all the input records that we will write to disk (to later
     // be transferred to Hadoop by another program)
     private static ArrayList<Record> newInputRecords;
+    public static final String NL = System.getProperty("line.separator");
 
     /**
      * Returns a string version of a Thrift data structure. Works for Clustering,
@@ -173,7 +172,7 @@ public class CuratorClient {
 	}
 
     /**
-     * Takes a Path to documents in a mirror of the HDFS directory structure
+     * Takes a path to documents in a mirror of the HDFS directory structure
      * and creates new Curator Records. Calls #addToInputList() to add each new
      * Record to the class's list of input records.
      *
@@ -185,23 +184,22 @@ public class CuratorClient {
      * @param checkdb If true, checks for an existing Record for this document in
      *                the Curator database
      */
-    public static void addRecordsFromJobDirectory(Path jobDir, boolean checkdb)
+    public static void addRecordsFromJobDirectory(File jobDir, boolean checkdb)
             throws TException, FileNotFoundException, ServiceUnavailableException,
             AnnotationFailedException {
-        String filepath = jobDir.toString();
-        File dir = new File(filepath);
         // check that the path is valid
-        if (!dir.isDirectory()) {
-            throw new IllegalArgumentException("The job path " + filepath + " is not a directory.");
+        if (!jobDir.isDirectory()) {
+            throw new IllegalArgumentException( "The job path " + jobDir.toString()
+                                                + " is not a directory.");
         }
 
         // LOOP: for each file in the job directory...
-        for (File i : dir.listFiles()) {
+        for (File i : jobDir.listFiles()) {
             // get the hash ID string from the subdirectory name
             String id = i.getName();
 
             if (checkdb) {
-                File originalFile = new File(filepath + Path.SEPARATOR + id + Path.SEPARATOR + "original.txt");
+                File originalFile = new File(jobDir, id + File.separator + "original.txt");
                 if (!originalFile.isFile()) {
                     System.out.println("ERROR: Attempt to check database for nonexistent original file");
                 }
@@ -318,24 +316,25 @@ public class CuratorClient {
      *
      * Any subdirectories of your input directory will be ignored.
      *
-     * @param inputDirectory The directory to draw original text files from
+     * @param inputDir The directory to draw original text files from
      */
-    public static void takeNewRawInputFilesFromDirectory( String inputDirectory ) {
+    public static void createRecordsFromRawInputFiles( File inputDir ) {
         // Check that the input directory is valid
-        File inputDir = new File( inputDirectory );
         if( !inputDir.isDirectory() ) {
-            throw new IllegalArgumentException("The location " + inputDirectory
-                    + " does not refer to a directory.");
+            throw new IllegalArgumentException("The location "
+                    + inputDir.toString() + " does not refer to a directory.");
         }
 
         // For each file in the directory . . .
         for( File f : inputDir.listFiles() ) {
             try {
-                // Add it to the CuratorClient's queue of documents to serialize
-                // in preparation for sending the input to Hadoop
-                String fileContents = readFileToString( f );
-                Record newRecord = generateNewRecord( fileContents );
-                addToInputList( newRecord );
+                if( !f.isDirectory() && !f.isHidden() ) {
+                    // Add it to the CuratorClient's queue of documents to serialize
+                    // in preparation for sending the input to Hadoop
+                    String fileContents = readFileToString( f );
+                    Record newRecord = generateNewRecord( fileContents );
+                    addToInputList( newRecord );
+                }
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
@@ -368,7 +367,18 @@ public class CuratorClient {
      * @param record A Curator Record object
      */
     public static void addToInputList(Record record) {
+        if( newInputRecords == null ) {
+            newInputRecords = new ArrayList<Record>();
+        }
         newInputRecords.add(record);
+    }
+
+    /**
+     * Deletes all the newly added records from our memory. Probably only useful
+     * for testing purposes.
+     */
+    public static void clearInputList() {
+        newInputRecords.clear();
     }
 
     /**
@@ -386,16 +396,30 @@ public class CuratorClient {
      * @param outputDir The location to which we should write the serialized
      *                  records
      */
-    public static void writeSerializedInput( String outputDir )
+    public static void writeSerializedRecords( File outputDir )
             throws IOException, TException {
+        // Create the output directory if necessary
+        if( !outputDir.isDirectory() ) {
+            if( !outputDir.mkdir() ) {
+                throw new IOException("Failed to create output directory "
+                        + outputDir.toString() );
+            }
+        }
+        System.out.println("Writing output for " + Integer.toString(newInputRecords.size())
+                            + " records." );
         for( Record r : newInputRecords ) {
-            String outputDirForRecord = outputDir + File.separator
-                    + r.getIdentifier();
+
+            File recordOutputDir = new File( outputDir, r.getIdentifier() );
+
+            if( !recordOutputDir.mkdir() ) {
+                throw new IOException("Failed to create output directory "
+                                      + recordOutputDir.toString() );
+            }
 
             Map< String, String > serializedForm = serializeRecord( r );
             for( String key : serializedForm.keySet() ) {
-                writeFile( outputDirForRecord + File.separator + key,
-                           serializedForm.get( key ) );
+                File txtFile = new File( recordOutputDir, key + ".txt" );
+                writeFile( txtFile, serializedForm.get( key ) );
             }
         }
     }
@@ -412,6 +436,7 @@ public class CuratorClient {
         StringBuilder fileContents = new StringBuilder();
         while( fileReader.hasNextLine() ) {
             fileContents.append(fileReader.nextLine());
+            fileContents.append(NL);
         }
 
         fileReader.close();
@@ -423,18 +448,17 @@ public class CuratorClient {
      * @param path The location to which the file should be written. Probably
      *             something like "/user/My_User/my_output_dir/a_text_file.txt".
      * @param text The text file to be written.
-     * @throws FileExistsException If the file indicated by the path already
-     *                             exists.
+     * @throws IOException If the file indicated by the path already
+     *                     exists.
      */
-    private static void writeFile( String path, String text )
-            throws IOException, FileExistsException {
-        File theFile = new File( path );
-        if( theFile.exists() ) {
-            throw new FileExistsException( "File at path " + path
+    private static void writeFile( File path, String text )
+            throws IOException, IOException {
+        if( path.exists() ) {
+            throw new IOException( "File at path " + path
                     + " already exists; cannot overwrite it.");
         }
 
-        BufferedWriter writer = new BufferedWriter( new FileWriter( theFile ) );
+        BufferedWriter writer = new BufferedWriter( new FileWriter( path ) );
         Scanner stringScanner = new Scanner( text );
         while( stringScanner.hasNextLine() ) {
             String line = stringScanner.nextLine();
@@ -478,52 +502,79 @@ public class CuratorClient {
     }
 
     // START OF MAIN
-
-    public static void main(String[] args) throws AnnotationFailedException, FileNotFoundException, ServiceUnavailableException, TException {
-
+    public static void main(String[] args) throws ServiceUnavailableException,
+            TException, AnnotationFailedException, IOException {
         newInputRecords = new ArrayList<Record>(); // initialize list
 
+        // Parse input
 	    if ( args.length != 3 ) 
 		{
-		    System.err.println( "Usage: CuratorClient curatorHost curatorPort textFile" );
+		    System.err.println( "Usage: CuratorClient curatorHost curatorPort inputDir" );
 		    System.exit( -1 );
 		}
 
 	    String host = args[0];
 	    int port  = Integer.parseInt( args[1] );
-	    String fileName = args[2];
+	    File inputDir = new File( args[2] );
 
-	    StringBuilder textBldr = new StringBuilder();
-	    String NL = System.getProperty("line.separator");
-    
-	    
-	    Scanner scanner = new Scanner(new FileInputStream(fileName) );
-	    try {
-            while (scanner.hasNextLine()){
-                textBldr.append(scanner.nextLine());
-                textBldr.append(NL);
-            }
-	    }
-	    finally{
-		    scanner.close();
-	    }
+        System.out.println( "You gave us " + inputDir.toString()
+                            + " as the input directory." );
 
-	    String text = textBldr.toString();
+        // Set up Thrift Curator Client
+        TTransport transport = new TSocket(host, port );
+        transport = new TFramedTransport(transport);
+        TProtocol protocol = new TBinaryProtocol(transport);
+        client = new Curator.Client(protocol);
 
-	    System.err.println( "## read in text: " + text );
+        // Create records from the input text files
+        // TODO: Give the option of using the HDFS-style directories
+        System.out.println( "Ready to create records from the text in " +
+                            "the input directory." );
 
-		//First we need a transport
-		TTransport transport = new TSocket(host, port );
-		//we are going to use a non-blocking server so need framed transport
-		transport = new TFramedTransport(transport);
-		//Now define a protocol which will use the transport
-		TProtocol protocol = new TBinaryProtocol(transport);
-		//make the client
-		client = new Curator.Client(protocol);
+        createRecordsFromRawInputFiles(inputDir);
 
-        System.out.println("We are going to be calling the Curator with the following text:\n");
-        System.out.println(text);
+        System.out.println( "Turned " + Integer.toString( newInputRecords.size() )
+                            + " text files in the directory into records.");
 
+
+        // Check available annotations
+        transport.open();
+        Map<String, String> avail = client.describeAnnotations();
+        System.out.println("Available annotations:");
+        for (String key : avail.keySet()) {
+            System.out.println("\t" + key + " provided by " + avail.get(key) );
+        }
+        transport.close();
+
+        // Run a tool (for testing purposes)
+        System.out.println( "Running the tokenizer on those new files. "
+                            + "(For testing only)" );
+        for( Record r : newInputRecords ) {
+            transport.open();
+            client.provide( AnnotationMode.TOKEN.toCuratorString(),
+                            r.getRawText(),
+                            true );
+            transport.close();
+        }
+
+        // Serialize output
+        File outputDir = new File( inputDir, "output" );
+        System.out.println( "Serializing those records, along with the new "
+                            + "tokenization, to: " + outputDir.toString() );
+
+        writeSerializedRecords( outputDir );
+
+
+        // Begin old stuff. Let's not actually run this.
+        /*try {
+            callABunchOfAnnotationsFromDemo(transport);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }*/
+    }
+
+    private static void callABunchOfAnnotationsFromDemo(TTransport transport)
+            throws ServiceUnavailableException, AnnotationFailedException, TException {
         System.out.println("\n\nWe are going to inspect the Curator for the available annotations:\n");
 
         Map<String, String> avail = null;
@@ -550,47 +601,12 @@ public class CuratorClient {
 
         System.out.println();
 
-        System.out.println("First we'll get the named entities in the text.");
-        System.out.print("Calling curator.provide(\"ner\", text, false)... ");
-
         boolean forceUpdate = true;
-        //         try {
-        //             transport.open();
-        //             //call Curator
-        //             record = client.provide("ner", text, forceUpdate);
-        //             transport.close();
-        //         } catch (ServiceUnavailableException e) {
-        //         	if (transport.isOpen())
-        //         		transport.close();
-        //             System.out.println("ner annotations are not available");
-        //             System.out.println(e.getReason());
-
-        //         } catch (TException e) {
-        //         	if (transport.isOpen())
-        //         		transport.close();
-        //             e.printStackTrace();
-        //         }
-        // 		System.out.println("done.\n");
-        // 		System.out.println();
-        //         if (avail.containsKey("ner")) {
-        //         	System.out.println(recordContents(record));
-        //         	System.out.println();
-
-        //             System.out.println("Named Entities\n---------\n");
-        //             for (Span span : record.getLabelViews().get("ner").getLabels()) {
-        //                 System.out.println(span.getLabel() + " : "
-        //                 + record.getRawText().substring(span.getStart(), span.getEnding()));
-        //             }
-        //             System.out.println();
-        //             System.out.println();
-        //             System.out.println("The raw data structure containing the NEs looks like this:");
-        //             System.out.println(record.getLabelViews().get("ner"));
-        //         }
-        //         System.out.println();
-
 
         System.out.println("Next we'll call the extended NER (more entity types)...");
         System.out.print("Calling curator.provide(\"ner-ext\", text, false)... ");
+
+        String text = "Lorem ipsum.";
         try {
             transport.open();
             //call Curator
@@ -760,7 +776,6 @@ public class CuratorClient {
         // 	        System.out.println();
 
 
-
         // 		System.out.println();
 
 
@@ -898,39 +913,37 @@ public class CuratorClient {
         // 		System.out.println("We could continue calling the Curator for other annotations but we'll stop here.");
 
 
+        System.out.println();
+        System.out.println("Next we call the MentionDetector..." );
+        System.out.print("Calling curator.provide(\"mention\", text, forceUpdate = '" + ( forceUpdate ? "TRUE" : "FALSE" ) + "')... ");
+        try {
+            transport.open();
+            //call Curator
+            record = client.provide("mention", text, forceUpdate);
+            transport.close();
+        } catch (ServiceUnavailableException e) {
+            e.printStackTrace();
+        } catch (TException e) {
+            e.printStackTrace();
+        }
+        System.out.println("done.");
+        System.out.println();
+        System.out.println(recordContents(record));
+        System.out.println();
 
-		System.out.println();
-		System.out.println("Next we call the MentionDetector..." );
-		System.out.print("Calling curator.provide(\"mention\", text, forceUpdate = '" + ( forceUpdate ? "TRUE" : "FALSE" ) + "')... ");
-		try {
-		    transport.open();
-		    //call Curator
-		    record = client.provide("mention", text, forceUpdate);
-		    transport.close();
-		} catch (ServiceUnavailableException e) {
-		    e.printStackTrace();
-		} catch (TException e) {
-		    e.printStackTrace();
-		}
-		System.out.println("done.");
-		System.out.println();
-		System.out.println(recordContents(record));
-		System.out.println();
+        result = new StringBuffer();
+        for (Span span : record.getLabelViews().get("mention").getLabels()) {
+            result.append("Term from text: '");
+            result.append(record.getRawText().substring(span.getStart(), span.getEnding()));
+            result.append( "'\nLabel: " + span.getLabel()+ "\nProperties: \n" );
 
-		result = new StringBuffer();
-		for (Span span : record.getLabelViews().get("mention").getLabels()) {
-		    result.append("Term from text: '");
-			result.append(record.getRawText().substring(span.getStart(), span.getEnding()));
-			result.append( "'\nLabel: " + span.getLabel()+ "\nProperties: \n" );
+            for ( Entry< String, String > e : span.getAttributes().entrySet() )
+                result.append( e.getKey() + ", " + e.getValue() + "; " + "\n" );
+            result.append("----------------------\n");
+        }
+        System.out.println(result.toString());
 
-			for ( Entry< String, String > e : span.getAttributes().entrySet() )
-			    result.append( e.getKey() + ", " + e.getValue() + "; " + "\n" );
-			result.append("----------------------\n");
-		}
-		System.out.println(result.toString());
-		
-		System.out.println("\n");
+        System.out.println("\n");
+    }
 
-	}
-	
 }
