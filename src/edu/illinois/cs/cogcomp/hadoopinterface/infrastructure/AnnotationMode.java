@@ -9,7 +9,7 @@ import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions.Illegal
  * @TODO: Make sure this actually represents all the tools we need!
  */
 public enum AnnotationMode {
-    CHUNK, COREF, NER, NOM_SRL, PARSE, POS, TOKEN, VERB_SRL, WIKI;
+    CHUNK, COREF, NER, NOM_SRL, PARSE, POS, SENTENCE, TOKEN, VERB_SRL, WIKI;
 
     /**
      * Takes a string version of an annotation mode and returns the equivalent
@@ -63,6 +63,10 @@ public enum AnnotationMode {
                 return WIKI;
             }
 
+            if( s.contains("entence") || s.contains("SENTENCE") ) {
+                return SENTENCE;
+            }
+
             throw new IllegalModeException( "Parse mode " + s + " not recognized. "
                                             + "Please try one of the following: \n"
                                             + "    CHUNK, COREF, NOM_SRL, POS, TOKEN, "
@@ -90,6 +94,8 @@ public enum AnnotationMode {
                 return "stanfordParse";
             case POS:
                 return "pos";
+            case SENTENCE:
+                return "sentences";
             case TOKEN:
                 return "tokens";
             case VERB_SRL:

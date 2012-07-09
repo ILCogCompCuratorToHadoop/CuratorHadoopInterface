@@ -94,12 +94,14 @@ public class CuratorClient {
         allViews.putAll( record.getParseViews() );
         allViews.putAll( record.getViews() );
 
+        System.out.println("Serializing " + allViews.size() + " views.");
+
         // For each view type, get the serialized form and add it to the
         // collection of serialized version of the record
         TBase view;
         String serializedLabeling;
         String hadoopFriendlyKey;
-        for (String key : allViews.keySet()) {
+        for( String key : allViews.keySet() ) {
             view = allViews.get( key );
             serializedLabeling = getSerializedThriftStructure( view );
             hadoopFriendlyKey = AnnotationMode.fromString(key).toString();
@@ -294,11 +296,24 @@ public class CuratorClient {
         } // END i loop
     } // END function
 
-    public static boolean recordHasAnnotations(Record dbRecord) {
-        return ( dbRecord.getClusterViewsSize() > 0
-                 || dbRecord.getLabelViewsSize() > 0
-                 || dbRecord.getParseViewsSize() > 0
-                 || dbRecord.getViewsSize() > 0 );
+    /**
+     * Checks to see if a Record object contains annotations
+     * @param r The record in question
+     * @return True if the record contains some annotation, false otherwise
+     */
+    public static boolean recordHasAnnotations( Record r ) {
+        return getNumViews( r ) > 0;
+    }
+
+    /**
+     * Counts the number of known views for the indicated record
+     * @param r The record in question
+     * @return The total number of parse, label, cluster, and general views
+     *         known
+     */
+    private static int getNumViews(Record r) {
+        return r.getClusterViewsSize() + r.getLabelViewsSize()
+                + r.getParseViewsSize() + r.getViewsSize();
     }
 
     /**
@@ -339,6 +354,46 @@ public class CuratorClient {
                 e.printStackTrace();
             }
 
+        }
+    }
+
+    /**
+     * Takes a File of the single document to be added and creates a new
+     * Curator Record for it. Also calls addToInputList().
+     * The document should be named "original.txt" and be located in
+     * a directory named its hash code.
+     * Note that this method does not accommodate existing annotations.
+     *
+     * Presently for testing purposes, to easily input one test document.
+     *
+     * @param file a File object pointing to the specified document
+     * @return a copy of the new Curator Record for the specified document
+     */
+    public static Record addOneRecord(File file)
+            throws IllegalArgumentException, FileNotFoundException {
+        if (!file.isFile()) {
+            throw new IllegalArgumentException( "The file " + file.toString()
+                                                + " is not a valid normal file.");
+        }
+        String id = file.getParent();
+        String annotation = readFileToString(file);
+        int index = file.getName().length() - 4; // remove .txt from file name
+        String type = file.getName().substring(0, index);
+
+        Map<String, Labeling> labels = new HashMap<String, Labeling>();
+        Map<String, Clustering> cluster = new HashMap<String, Clustering>();
+        Map<String, Forest> parse = new HashMap<String, Forest>();
+        Map<String, View> views = new HashMap<String, View>();
+
+        String original = "ERROR: Original text not populated.";
+        if (type.equals("original")) {
+            original = annotation;
+            Record newRecord = new Record(id, original, labels, cluster, parse, views, false);
+            addToInputList(newRecord);
+            return newRecord;
+        }
+        else {
+            throw new IllegalArgumentException("ERROR: " + type + " is not the required original document.");
         }
     }
 
@@ -405,15 +460,17 @@ public class CuratorClient {
                         + outputDir.toString() );
             }
         }
-        System.out.println("Writing output for " + Integer.toString(newInputRecords.size())
-                            + " records." );
-        for( Record r : newInputRecords ) {
 
+        System.out.println( "Writing output for "
+                            + Integer.toString(newInputRecords.size())
+                            + " records." );
+
+        for( Record r : newInputRecords ) {
             File recordOutputDir = new File( outputDir, r.getIdentifier() );
 
-            if( !recordOutputDir.mkdir() ) {
-                throw new IOException("Failed to create output directory "
-                                      + recordOutputDir.toString() );
+            if( !recordOutputDir.mkdir() && !recordOutputDir.isDirectory() ) {
+                throw new IOException( "Failed to create output directory "
+                                       + recordOutputDir.toString() );
             }
 
             Map< String, String > serializedForm = serializeRecord( r );
@@ -462,7 +519,7 @@ public class CuratorClient {
         Scanner stringScanner = new Scanner( text );
         while( stringScanner.hasNextLine() ) {
             String line = stringScanner.nextLine();
-            writer.write( line );
+            writer.write(line);
         }
 
         stringScanner.close();
@@ -507,7 +564,7 @@ public class CuratorClient {
         newInputRecords = new ArrayList<Record>(); // initialize list
 
         // Parse input
-	    if ( args.length != 3 ) 
+	    if ( args.length != 3 )
 		{
 		    System.err.println( "Usage: CuratorClient curatorHost curatorPort inputDir" );
 		    System.exit( -1 );
@@ -536,26 +593,11 @@ public class CuratorClient {
         System.out.println( "Turned " + Integer.toString( newInputRecords.size() )
                             + " text files in the directory into records.");
 
-
         // Check available annotations
-        transport.open();
-        Map<String, String> avail = client.describeAnnotations();
-        System.out.println("Available annotations:");
-        for (String key : avail.keySet()) {
-            System.out.println("\t" + key + " provided by " + avail.get(key) );
-        }
-        transport.close();
+        printInfoOnKnownAnnotators(transport);
 
         // Run a tool (for testing purposes)
-        System.out.println( "Running the tokenizer on those new files. "
-                            + "(For testing only)" );
-        for( Record r : newInputRecords ) {
-            transport.open();
-            client.provide( AnnotationMode.TOKEN.toCuratorString(),
-                            r.getRawText(),
-                            true );
-            transport.close();
-        }
+        testPOSAndTokenizer(transport);
 
         // Serialize output
         File outputDir = new File( inputDir, "output" );
@@ -571,6 +613,72 @@ public class CuratorClient {
         } catch (Exception e) {
             e.printStackTrace();
         }*/
+    }
+
+    /**
+     * Makes the Thrift calls necessary to run the known records through both
+     * the Tokenizer and the POS tagger. Writes debugging information to the
+     * standard output.
+     * @param transport The Thrift transport to use
+     */
+    private static void testPOSAndTokenizer(TTransport transport)
+            throws ServiceUnavailableException, AnnotationFailedException, TException {
+        System.out.println( "Running the tokenizer on those new files. "
+                            + "(For testing only)" );
+
+        ArrayList<Record> replaceTheRecords = new ArrayList<Record>();
+        for( Record r : newInputRecords ) {
+            transport.open();
+
+            String tokens = AnnotationMode.TOKEN.toCuratorString(); // "tokens"
+            r = client.provide(tokens, r.getRawText(), true);
+            //client.performAnnotation(r, tokens, true);
+
+            // Confirm it worked
+            if( !recordHasAnnotation( r, AnnotationMode.TOKEN ) ) {
+                System.out.println( "Couldn't find " + tokens + " annotation!" );
+            }
+
+            client.performAnnotation(r, "pos", true);
+            transport.close();
+
+            // Confirm it worked
+            if( !recordHasAnnotation( r, AnnotationMode.POS ) ) {
+                System.out.println( "Couldn't find " + AnnotationMode.POS.toCuratorString() + " annotation!" );
+            }
+
+            int numViews = getNumViews( r );
+            System.out.println("Record now has " + numViews + " views.");
+
+            replaceTheRecords.add(r);
+        }
+        newInputRecords = replaceTheRecords;
+    }
+
+    /**
+     * Checks a record for a given annotation type
+     * @param r The record to check
+     * @param annotation The annotation type to search the record for
+     * @return True if the record contains the indicated annotation,
+     *         false otherwise
+     */
+    private static boolean recordHasAnnotation( Record r,
+                                                AnnotationMode annotation ) {
+        String annotationString = annotation.toCuratorString();
+        return r.getLabelViews().containsKey( annotationString )
+                || r.getClusterViews().containsKey( annotationString )
+                || r.getParseViews().containsKey( annotationString )
+                || r.getViews().containsKey(annotationString);
+    }
+
+    private static void printInfoOnKnownAnnotators(TTransport transport) throws TException {
+        transport.open();
+        Map<String, String> avail = client.describeAnnotations();
+        System.out.println("Available annotations:");
+        for (String key : avail.keySet()) {
+            System.out.println("\t" + key + " provided by " + avail.get(key) );
+        }
+        transport.close();
     }
 
     private static void callABunchOfAnnotationsFromDemo(TTransport transport)
