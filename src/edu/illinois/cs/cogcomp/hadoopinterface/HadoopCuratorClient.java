@@ -67,7 +67,7 @@ public class HadoopCuratorClient extends CuratorClient {
      * @param record The HadoopRecord on which we will run the annotation tool
      * @param toolToRun The type of annotation that we should get for the record
      */
-    public void annotateSingleDoc( HadoopRecord record,
+		public void annotateSingleDoc( HadoopRecord record,
                                    AnnotationMode toolToRun )
             throws IOException, TException {
         // De-serialize the Hadoop Record

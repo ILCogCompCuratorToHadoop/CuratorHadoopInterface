@@ -37,7 +37,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
     }
 
     /**
-     * Asks the Curator get an annotation (the type of which is specified in the
+     * Asks the Curator to get an annotation (the type of which is specified in the
      * context's configuration) for the document record in inValue.
      * @param inKey The document's hash
      * @param inValue The record for the document, which includes both the
@@ -88,7 +88,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                 new Path( generalOutputDir, inValue.getDocumentHash() );
         client.writeOutputFromLastAnnotate(docOutputDir);
 
-
         // TODO: As another MR job (?): after all jobs are through, kill all tools
 
         
@@ -113,7 +112,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      */
     public boolean toolIsRunning( AnnotationMode toolToCheck )
             throws EnumConstantNotPresentException {
-        // Tokenizer is a special case: no log file // TODO: No log file, right?
+        // Tokenizer is a special case: no log file
         if( toolToCheck == AnnotationMode.TOKEN ) {
             return true;
         }
@@ -122,7 +121,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         Path logLocation = getLogLocation( toolToCheck );
 
         // If the tool to check gives us an explicit "hello world" or something
-        // in it's log file
+        // in its log file
         // TODO: Figure out which ones do this, and how to check it. . .
 
             // Check the log file
