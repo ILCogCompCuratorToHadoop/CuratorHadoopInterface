@@ -208,7 +208,7 @@ public class CuratorClient {
                 String originalText = readFileToString( originalFile );
 
                 Record dbRecord = client.getRecord(originalText);
-                if ( recordHasNoAnnotations(dbRecord) ) {
+                if ( recordHasAnnotations(dbRecord) ) {
                     addToInputList(dbRecord); // trust the database
                 }
 
@@ -296,11 +296,11 @@ public class CuratorClient {
         } // END i loop
     } // END function
 
-    public static boolean recordHasNoAnnotations(Record dbRecord) {
-        return ( dbRecord.getClusterViewsSize() != 0
-                 || dbRecord.getLabelViewsSize() != 0
-                 || dbRecord.getParseViewsSize() != 0
-                 || dbRecord.getViewsSize() != 0 );
+    public static boolean recordHasAnnotations(Record dbRecord) {
+        return ( dbRecord.getClusterViewsSize() > 0
+                 || dbRecord.getLabelViewsSize() > 0
+                 || dbRecord.getParseViewsSize() > 0
+                 || dbRecord.getViewsSize() > 0 );
     }
 
     /**

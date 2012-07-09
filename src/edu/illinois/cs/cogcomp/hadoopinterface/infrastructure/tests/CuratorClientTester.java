@@ -59,7 +59,7 @@ public class CuratorClientTester extends TestCase {
     public static void generatesNewRecord() throws Exception {
         String test = "This is a test string to generate a record for.";
         Record r = CuratorClient.generateNewRecord(test);
-        if( !CuratorClient.recordHasNoAnnotations( r ) ) {
+        if( CuratorClient.recordHasAnnotations( r ) ) {
             throw new InitializationError( "Record wrongly claims to "
                                             + "have annotations." );
         }
