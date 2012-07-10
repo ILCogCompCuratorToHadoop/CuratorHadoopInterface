@@ -31,7 +31,6 @@ import java.util.Map.Entry;
 public class CuratorClient {
 
     private static Curator.Client client;
-    private static final String CHAR_ENCODING = "UTF-8";
     // The list of all the input records that we will write to disk (to later
     // be transferred to Hadoop by another program)
     private static ArrayList<Record> newInputRecords;
@@ -49,7 +48,7 @@ public class CuratorClient {
     private static String getSerializedThriftStructure( TBase data )
             throws TException {
         TSerializer serializer = new TSerializer();
-        return serializer.toString( data, CHAR_ENCODING );
+        return serializer.toString( data );
     }
 
     /**
@@ -70,7 +69,7 @@ public class CuratorClient {
                                                       String serializedData )
             throws TException {
         TDeserializer deserializer = new TDeserializer();
-        deserializer.deserialize(inOutBaseObject, serializedData, CHAR_ENCODING);
+        deserializer.deserialize( inOutBaseObject, serializedData.getBytes() );
     }
 
 	/**
@@ -148,15 +147,18 @@ public class CuratorClient {
                 // appropriate map
                 if( view == ViewType.LABEL ) {
                     Labeling deserialized = new Labeling();
+                    System.out.println("\t\tDeserializing label for " + key);
                     getThriftStructureFromString( deserialized, map.get(key) );
                     labels.put( annotation.toCuratorString(), deserialized );
                 }
                 else if( view == ViewType.CLUSTER ) {
+                    System.out.println("\t\tDeserializing cluster");
                     Clustering deserialized = new Clustering();
                     getThriftStructureFromString( deserialized, map.get(key) );
                     cluster.put( annotation.toCuratorString(), deserialized );
                 }
                 else if( view == ViewType.PARSE ) {
+                    System.out.println("\t\tDeserializing parse");
                     Forest deserialized = new Forest();
                     getThriftStructureFromString( deserialized, map.get(key) );
                     parse.put(annotation.toCuratorString(), deserialized);
@@ -180,7 +182,7 @@ public class CuratorClient {
      *                       directory named with the document's hash)
      * @return A Record form of the serialized data
      */
-    public Record deserializeRecord( File inputDirectory )
+    public static Record deserializeRecord( File inputDirectory )
             throws TException, IOException {
         // Create a map of the serialized record
         Map<String, String> serialForm = new HashMap<String, String>();
@@ -201,7 +203,6 @@ public class CuratorClient {
         }
 
         return deserializeRecord( serialForm );
-
     }
 
     /**
@@ -328,26 +329,6 @@ public class CuratorClient {
     } // END function
 
     /**
-     * Checks to see if a Record object contains annotations
-     * @param r The record in question
-     * @return True if the record contains some annotation, false otherwise
-     */
-    public static boolean recordHasAnnotations( Record r ) {
-        return getNumViews( r ) > 0;
-    }
-
-    /**
-     * Counts the number of known views for the indicated record
-     * @param r The record in question
-     * @return The total number of parse, label, cluster, and general views
-     *         known
-     */
-    private static int getNumViews(Record r) {
-        return r.getClusterViewsSize() + r.getLabelViewsSize()
-                + r.getParseViewsSize() + r.getViewsSize();
-    }
-
-    /**
      * Creates a new Record from a document's original (raw) text and adds it to
      * the class's list of input Records. The input directory should have some
      * number of plain text files directly inside it. For instance, if your
@@ -404,7 +385,7 @@ public class CuratorClient {
             throws IllegalArgumentException, FileNotFoundException {
         if (!file.isFile()) {
             throw new IllegalArgumentException( "The file " + file.toString()
-                                                + " is not a valid normal file.");
+                    + " is not a valid normal file.");
         }
         String id = file.getParent();
         String annotation = readFileToString(file);
@@ -429,6 +410,26 @@ public class CuratorClient {
     }
 
     /**
+     * Checks to see if a Record object contains annotations
+     * @param r The record in question
+     * @return True if the record contains some annotation, false otherwise
+     */
+    public static boolean recordHasAnnotations( Record r ) {
+        return getNumViews( r ) > 0;
+    }
+
+    /**
+     * Counts the number of known views for the indicated record
+     * @param r The record in question
+     * @return The total number of parse, label, cluster, and general views
+     *         known
+     */
+    private static int getNumViews(Record r) {
+        return r.getClusterViewsSize() + r.getLabelViewsSize()
+                + r.getParseViewsSize() + r.getViewsSize();
+    }
+
+    /**
      * This should really be a constructor in Record. Whatever.
      *
      * Constructs a new Record object with no annotations at all to the original
@@ -447,6 +448,22 @@ public class CuratorClient {
         r.setIdentifier(Identifier.getId(originalText, false));
 
         return r;
+    }
+
+    /**
+     * Checks a record for a given annotation type
+     * @param r The record to check
+     * @param annotation The annotation type to search the record for
+     * @return True if the record contains the indicated annotation,
+     *         false otherwise
+     */
+    private static boolean recordHasAnnotation( Record r,
+                                                AnnotationMode annotation ) {
+        String annotationString = annotation.toCuratorString();
+        return r.getLabelViews().containsKey( annotationString )
+                || r.getClusterViews().containsKey( annotationString )
+                || r.getParseViews().containsKey( annotationString )
+                || r.getViews().containsKey(annotationString);
     }
 
     /**
@@ -480,42 +497,6 @@ public class CuratorClient {
     }
 
     /**
-     * Serializes all Records in the list of input Records and writes them to
-     * the output directory. This will later be copied to the Hadoop file system.
-     * @param outputDir The location to which we should write the serialized
-     *                  records
-     */
-    public static void writeSerializedRecords( File outputDir )
-            throws IOException, TException {
-        // Create the output directory if necessary
-        if( !outputDir.isDirectory() ) {
-            if( !outputDir.mkdir() ) {
-                throw new IOException("Failed to create output directory "
-                        + outputDir.toString() );
-            }
-        }
-
-        System.out.println( "Writing output for "
-                            + Integer.toString(newInputRecords.size())
-                            + " records." );
-
-        for( Record r : newInputRecords ) {
-            File recordOutputDir = new File( outputDir, r.getIdentifier() );
-
-            if( !recordOutputDir.mkdir() && !recordOutputDir.isDirectory() ) {
-                throw new IOException( "Failed to create output directory "
-                                       + recordOutputDir.toString() );
-            }
-
-            Map< String, String > serializedForm = serializeRecord( r );
-            for( String key : serializedForm.keySet() ) {
-                File txtFile = new File( recordOutputDir, key + ".txt" );
-                writeFile( txtFile, serializedForm.get( key ) );
-            }
-        }
-    }
-
-    /**
      * Reads a file object from the disk and returns a string version of that
      * file.
      * @param f The file to be read
@@ -535,6 +516,42 @@ public class CuratorClient {
     }
 
     /**
+     * Serializes all Records in the list of input Records and writes them to
+     * the output directory. This will later be copied to the Hadoop file system.
+     * @param outputDir The location to which we should write the serialized
+     *                  records
+     */
+    public static void writeSerializedRecords( File outputDir )
+            throws IOException, TException {
+        // Create the output directory if necessary
+        if( !outputDir.isDirectory() ) {
+            if( !outputDir.mkdir() ) {
+                throw new IOException("Failed to create output directory "
+                        + outputDir.toString() );
+            }
+        }
+
+        System.out.println( "Writing output for "
+                + Integer.toString(newInputRecords.size())
+                + " records." );
+
+        for( Record r : newInputRecords ) {
+            File recordOutputDir = new File( outputDir, r.getIdentifier() );
+
+            if( !recordOutputDir.mkdir() && !recordOutputDir.isDirectory() ) {
+                throw new IOException( "Failed to create output directory "
+                        + recordOutputDir.toString() );
+            }
+
+            Map< String, String > serializedForm = serializeRecord( r );
+            for( String key : serializedForm.keySet() ) {
+                File txtFile = new File( recordOutputDir, key + ".txt" );
+                writeFile( txtFile, serializedForm.get( key ) );
+            }
+        }
+    }
+
+    /**
      * Writes a file to the indicated path.
      * @param path The location to which the file should be written. Probably
      *             something like "/user/My_User/my_output_dir/a_text_file.txt".
@@ -549,14 +566,9 @@ public class CuratorClient {
                     + " already exists; cannot overwrite it.");
         }
 
-        BufferedWriter writer = new BufferedWriter( new FileWriter( path ) );
-        Scanner stringScanner = new Scanner( text );
-        while( stringScanner.hasNextLine() ) {
-            String line = stringScanner.nextLine();
-            writer.write(line);
-        }
+        FileOutputStream writer = new FileOutputStream( path );
+        writer.write( text.getBytes() );
 
-        stringScanner.close();
         writer.close();
     }
 
@@ -689,22 +701,6 @@ public class CuratorClient {
             replaceTheRecords.add(r);
         }
         newInputRecords = replaceTheRecords;
-    }
-
-    /**
-     * Checks a record for a given annotation type
-     * @param r The record to check
-     * @param annotation The annotation type to search the record for
-     * @return True if the record contains the indicated annotation,
-     *         false otherwise
-     */
-    private static boolean recordHasAnnotation( Record r,
-                                                AnnotationMode annotation ) {
-        String annotationString = annotation.toCuratorString();
-        return r.getLabelViews().containsKey( annotationString )
-                || r.getClusterViews().containsKey( annotationString )
-                || r.getParseViews().containsKey( annotationString )
-                || r.getViews().containsKey(annotationString);
     }
 
     private static void printInfoOnKnownAnnotators(TTransport transport) throws TException {

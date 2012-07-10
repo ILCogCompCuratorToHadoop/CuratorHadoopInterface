@@ -128,7 +128,7 @@ public enum AnnotationMode {
             return ViewType.PARSE;
         }
         else if( mode == TOKEN || mode == NER || mode == POS || mode == CHUNK
-                || mode == WIKI ) {
+                || mode == WIKI || mode == SENTENCE ) {
             return ViewType.LABEL;
         }
         else if( mode == COREF ) {

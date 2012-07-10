@@ -8,6 +8,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.thrift.TException;
 
 import java.io.IOException;
 
@@ -46,7 +47,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      */
     public void reduce( Text inKey, 
                         HadoopRecord inValue,
-                        Context context ) throws IOException, InterruptedException {
+                        Context context ) throws IOException, InterruptedException, TException {
         fs = FileSystem.get( context.getConfiguration() );
 
         AnnotationMode toolToRun = AnnotationMode

@@ -24,7 +24,18 @@ public class CuratorClientTester {
 
     @Test
     public static void deserializesARecord() throws Exception {
-        CuratorClient.deserializeRecord()
+        File outputDir = new File( "samplejob", "output" );
+
+        if( !outputDir.isDirectory() ) {
+            throw new IOException(outputDir.toString() + " is not a directory.");
+        }
+
+        for( File fileDir : outputDir.listFiles() ) {
+            if( !fileDir.isHidden() ) {
+                System.out.println("Deserializing a record");
+                CuratorClient.deserializeRecord( fileDir );
+            }
+        }
 
     }
 
@@ -98,7 +109,7 @@ public class CuratorClientTester {
         generatesNewRecord();
 
         localFS = FileSystem.getLocal( new Configuration() );
-        dummyInputDir = new Path( "samplejob" );
+        dummyInputDir = new Path( "testjob" );
         DummyInputCreator.generateDocumentDirectories( dummyInputDir, localFS );
 
         generatesNewRecord();
@@ -108,7 +119,7 @@ public class CuratorClientTester {
         writesSerializedInput();
         System.out.println("Successfully wrote serialized input.");
 
-        FileSystemHandler.delete( dummyInputDir, localFS );
+        deserializesARecord();
     }
 
     private static FileSystem localFS;
