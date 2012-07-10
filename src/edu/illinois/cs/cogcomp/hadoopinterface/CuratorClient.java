@@ -698,6 +698,12 @@ public class CuratorClient {
             int numViews = getNumViews( r );
             System.out.println("Record now has " + numViews + " views.");
 
+            System.out.println("Testing serialization.");
+
+            if( !r.equals(deserializeRecord( serializeRecord( r ) ) ) ) {
+                System.out.println("Serialization didn't work.");
+            }
+
             replaceTheRecords.add(r);
         }
         newInputRecords = replaceTheRecords;
