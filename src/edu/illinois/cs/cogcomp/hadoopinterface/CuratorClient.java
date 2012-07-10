@@ -174,6 +174,37 @@ public class CuratorClient {
 	}
 
     /**
+     * Reads a serialized record from a directory and returns the record form
+     * thereof.
+     * @param inputDirectory The location of the serialized record (probably a
+     *                       directory named with the document's hash)
+     * @return A Record form of the serialized data
+     */
+    public Record deserializeRecord( File inputDirectory )
+            throws TException, IOException {
+        // Create a map of the serialized record
+        Map<String, String> serialForm = new HashMap<String, String>();
+
+        if( !inputDirectory.isDirectory() ) {
+            throw new IOException( inputDirectory.toString()
+                                   + " is not a directory." );
+        }
+
+        // Add each file in the directory
+        for( File f : inputDirectory.listFiles() ) {
+            // Annotation type is the file name minus the `.txt` extension
+            String fName = f.getName();
+            int lastCharBeforeExtension = fName.length() - 4;
+            String annotationType = fName.substring(0, lastCharBeforeExtension);
+
+            serialForm.put( annotationType, readFileToString( f ) );
+        }
+
+        return deserializeRecord( serialForm );
+
+    }
+
+    /**
      * Takes a path to documents in a mirror of the HDFS directory structure
      * and creates new Curator Records. Calls #addToInputList() to add each new
      * Record to the class's list of input records.
@@ -406,13 +437,16 @@ public class CuratorClient {
      * @return A record object for the document whose original text was passed in.
      */
     public static Record generateNewRecord( String originalText ) {
-        String id = Identifier.getId(originalText, false);
-        Map<String, Labeling> labels = new HashMap<String, Labeling>();
-        Map<String, Clustering> cluster = new HashMap<String, Clustering>();
-        Map<String, Forest> parse = new HashMap<String, Forest>();
-        Map<String, View> views = new HashMap<String, View>();
+        Record r = new Record();
+        r.setRawText(originalText);
+        r.setWhitespaced(false);
+        r.setLabelViews(new HashMap<String, Labeling>());
+        r.setClusterViews(new HashMap<String, Clustering>());
+        r.setParseViews(new HashMap<String, Forest>());
+        r.setViews(new HashMap<String, View>());
+        r.setIdentifier(Identifier.getId(originalText, false));
 
-        return new Record(id, originalText, labels, cluster, parse, views, false);
+        return r;
     }
 
     /**
@@ -632,7 +666,9 @@ public class CuratorClient {
 
             String tokens = AnnotationMode.TOKEN.toCuratorString(); // "tokens"
             r = client.provide(tokens, r.getRawText(), true);
-            //client.performAnnotation(r, tokens, true);
+
+            // This fails, for whatever reason.
+            // client.performAnnotation(r, tokens, true);
 
             // Confirm it worked
             if( !recordHasAnnotation( r, AnnotationMode.TOKEN ) ) {

@@ -23,8 +23,8 @@ public class CuratorClientTester {
     }
 
     @Test
-    public static void serializesAndDeserializesARecord() throws Exception {
-        // TODO: Write this with real record data??
+    public static void deserializesARecord() throws Exception {
+        CuratorClient.deserializeRecord()
 
     }
 
@@ -98,7 +98,7 @@ public class CuratorClientTester {
         generatesNewRecord();
 
         localFS = FileSystem.getLocal( new Configuration() );
-        dummyInputDir = new Path( "testJob123" );
+        dummyInputDir = new Path( "samplejob" );
         DummyInputCreator.generateDocumentDirectories( dummyInputDir, localFS );
 
         generatesNewRecord();
