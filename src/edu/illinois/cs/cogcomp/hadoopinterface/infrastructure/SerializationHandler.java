@@ -1,66 +1,72 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
-import org.apache.thrift.TBase;
+import edu.illinois.cs.cogcomp.thrift.curator.Record;
+import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.TSerializer;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 
 /**
- * Used for writing Thrift objects to the file system
+ * Used for writing Thrift objects to the file system. This is a thin wrapper
+ * for the Thrift TSerializer and TDeserializer classes.
  * @author Tyler Young
  */
 public class SerializationHandler {
-        // Output stream for writing to the file system
-        private BufferedOutputStream out;
-        // Used by Thrift for binary serialization of an object
-        private TBinaryProtocol binaryOut;
-
-        /**
-         * Constructs a serialization handler.
-         */
-        public SerializationHandler() {
-        }
-
     /**
-     * Write the object to disk.
-     * @param objectToSerialize A Thrift data structure object to serialize
-     * @param destination The file that will be written to
+     * Constructs a serialization handler.
      */
-    public void writeObjectToFile( TBase objectToSerialize, File destination )
-            throws IOException, TException {
-        open( destination );
-        objectToSerialize.write( binaryOut );
-        out.flush();
-        close();
+    public SerializationHandler() {
+        serializer = new TSerializer();
+        deserializer = new TDeserializer();
     }
 
-    public byte[] getSerializedForm( TBase objectToSerialize )
+    /**
+     * Returns a byte array version of a Record.
+     *
+     * This method is the inverse of #deserialize().
+     *
+     * @param data A Record object to serialize
+     * @return A string version of the input data structure
+     * @throws org.apache.thrift.TException
+     */
+    public byte[] serialize(Record data) throws TException {
+        return serializer.serialize(data);
+    }
+
+    /**
+     * Rebuilds (i.e., deserializes) a Record data structure from a serialized
+     * (byte array) version of that data structure.
+     *
+     * This method is the inverse of #serialize().
+     * @param serializedData A byte array representation of a Thrift
+     *                       data structure. Created using Thrift's common
+     *                       implementation of the java.io.Serializable interface.
+     */
+    public Record deserialize( byte[] serializedData ) throws TException {
+        Record r = new Record();
+        deserializer.deserialize( r, serializedData );
+        return r;
+    }
+
+    /**
+     * Rebuilds (i.e., deserializes) a Record data structure from a serialized
+     * (byte array) version of that data structure.
+     *
+     * This method is the inverse of #serialize().
+     * @param serializedData A file that stores a serialized Thrift
+     *                       data structure.
+     */
+    public Record deserializeFromFile( File serializedData )
             throws TException, IOException {
-        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-        out = new BufferedOutputStream( byteStream );
-        binaryOut = new TBinaryProtocol( new TIOStreamTransport( out ) );
-        objectToSerialize.write( binaryOut );
-        out.flush();
-        close();
+        byte[] byteForm = LocalFileSystemHandler.readFileToBytes(serializedData);
 
-        return byteStream.toByteArray();
+        Record r = new Record();
+        deserializer.deserialize( r, byteForm );
+        return r;
     }
 
-    /**
-     * Opens the file for writing and prepares the Thrift binary output stream
-     * @param destination The file that will be written to
-     */
-    private void open( File destination ) throws FileNotFoundException {
-        out = new BufferedOutputStream(new FileOutputStream(destination), 2048);
-        binaryOut = new TBinaryProtocol( new TIOStreamTransport( out ) );
-    }
-
-    /**
-     * Closes the file stream.
-     */
-    public void close() throws IOException {
-        out.close();
-    }
+    private TSerializer serializer;
+    private TDeserializer deserializer;
 }

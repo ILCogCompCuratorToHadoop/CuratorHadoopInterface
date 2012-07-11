@@ -2,6 +2,9 @@ package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.tests;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.CuratorClient;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.RecordTools;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure
+        .SerializationHandler;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -30,10 +33,13 @@ public class CuratorClientTester {
             throw new IOException(outputDir.toString() + " is not a directory.");
         }
 
+        SerializationHandler serializer = new SerializationHandler();
         for( File fileDir : outputDir.listFiles() ) {
             if( !fileDir.isHidden() ) {
                 System.out.println("Deserializing a record");
-                CuratorClient.deserializeRecord( fileDir );
+                File serializedData = new File( fileDir,
+                                                CuratorClient.serializedRecFileName);
+                serializer.deserializeFromFile( serializedData );
             }
         }
 
@@ -52,9 +58,10 @@ public class CuratorClientTester {
                                                        localFS,
                                                        numFiles );
         File in = new File( dummyInputDir.toString() );
-        CuratorClient.createRecordsFromRawInputFiles( in );
+        CuratorClient client = new CuratorClient("localhost", 9010);
+        client.createRecordsFromRawInputFiles( in );
 
-        int actualSize = CuratorClient.getInputList().size();
+        int actualSize = client.getNumberOfInputRecords();
         if( actualSize != numFiles ) {
             throw new IOException("Failed to create the right number of records"
                 + "from the raw text directory. There should have been "
@@ -70,8 +77,8 @@ public class CuratorClientTester {
     @Test
     public static void generatesNewRecord() throws Exception {
         String test = "This is a test string to generate a record for.";
-        Record r = CuratorClient.generateNewRecord(test);
-        if( CuratorClient.recordHasAnnotations( r ) ) {
+        Record r = RecordTools.generateNewRecord( test );
+        if( RecordTools.recordHasAnnotations( r ) ) {
             throw new InitializationError( "Record wrongly claims to "
                                             + "have annotations." );
         }
@@ -88,10 +95,11 @@ public class CuratorClientTester {
                 numFiles );
 
         File in = new File( dummyInputDir.toString() );
-        CuratorClient.createRecordsFromRawInputFiles( in );
+        CuratorClient client = new CuratorClient("localhost", 9010);
+        client.createRecordsFromRawInputFiles( in );
 
         File outDir = new File( dummyInputDir.toString(), "output" );
-        CuratorClient.writeSerializedRecords( outDir );
+        client.writeSerializedRecords( outDir );
 
         Path outDirPath = new Path( outDir.toString() );
         int numOutputFiles = FileSystemHandler.getFilesAndDirectoriesInDirectory(
@@ -115,7 +123,6 @@ public class CuratorClientTester {
         generatesNewRecord();
         takesNewRawInputFilesFromDirectory();
         System.out.println("Successfully got new raw input files from directory.");
-        CuratorClient.clearInputList();
         writesSerializedInput();
         System.out.println("Successfully wrote serialized input.");
 

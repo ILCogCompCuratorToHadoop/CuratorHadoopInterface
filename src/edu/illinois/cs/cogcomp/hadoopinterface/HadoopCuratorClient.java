@@ -1,7 +1,7 @@
 package edu.illinois.cs.cogcomp.hadoopinterface;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.SerializationHandler;
 import edu.illinois.cs.cogcomp.thrift.base.AnnotationFailedException;
 import edu.illinois.cs.cogcomp.thrift.base.ServiceUnavailableException;
 import edu.illinois.cs.cogcomp.thrift.curator.Curator;
@@ -17,7 +17,6 @@ import org.apache.thrift.transport.TTransport;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Map;
 
 import static edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.writeFileToHDFS;
 
@@ -47,6 +46,8 @@ public class HadoopCuratorClient extends CuratorClient {
      * Constructs a Curator Client.
      */
     public HadoopCuratorClient( FileSystem hdfs, FileSystem local ) {
+        // TODO: Is this construction okay?
+        super( "localhost", 9010 );
         this.hdfs = hdfs;
         this.localFS = local;
 
@@ -58,28 +59,27 @@ public class HadoopCuratorClient extends CuratorClient {
         TProtocol protocol = new TBinaryProtocol( transport );
         // Create the client
         client = new Curator.Client( protocol );
+
+        serializationHandler = new SerializationHandler();
     }
 
     /**
      * Requests an annotation from the indicated annotation tool (running on the
      * local node) for the indicated document record. Stores the result in this
      * object for later output through the writeOutputFromLastAnnotate() method.
-     * @param record The HadoopRecord on which we will run the annotation tool
+     * @param record The document record on which we will run the annotation tool
      * @param toolToRun The type of annotation that we should get for the record
      */
-	public void annotateSingleDoc( HadoopRecord record,
+	public void annotateSingleDoc( Record record,
                                    AnnotationMode toolToRun )
             throws IOException, TException {
-        // De-serialize the Hadoop Record
-        Record curatorFriendlyRec = deserializeHadoopRecord( record );
-
         try {
             // Ask the Curator to perform the annotation
             transport.open();
             String annotationMode =
                     AnnotationMode.toCuratorString( toolToRun );
 
-            client.performAnnotation( curatorFriendlyRec, annotationMode, true );
+            client.performAnnotation( record, annotationMode, true );
         } catch (ServiceUnavailableException e) {
             HadoopInterface.logger.logError( toolToRun.toString()
                     + " annotations are not available.\n" + e.getReason());
@@ -98,7 +98,7 @@ public class HadoopCuratorClient extends CuratorClient {
 
         // Should contain all of the previous annotations, along with
         // the new one
-        lastAnnotatedRecord = curatorFriendlyRec;
+        lastAnnotatedRecord = record;
     }
 
     /**
@@ -110,6 +110,7 @@ public class HadoopCuratorClient extends CuratorClient {
      *                     most likely be named with the document's hash, and it
      *                     will likely be a subdirectory of the overall job
      *                     output directory.
+     * @TODO: make this actually write to disk!
      */
     public void writeOutputFromLastAnnotate( Path docOutputDir )
             throws TException, IOException {
@@ -130,33 +131,16 @@ public class HadoopCuratorClient extends CuratorClient {
                                          Path docOutputDir,
                                          FileSystem fs )
             throws TException, IOException {
-        Map<String, byte[]> recordAsText;
-        recordAsText = CuratorClient.serializeRecord( curatorRecord );
+        byte[] recordAsBytes;
+        recordAsBytes = serializationHandler.serialize( curatorRecord );
 
-        for( String key : recordAsText.keySet() ) {
-            try {
-                writeFileToHDFS( recordAsText.get( key ),
-                                 new Path( docOutputDir, key + ".txt" ),
-                                 fs );
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        try {
+            writeFileToHDFS( recordAsBytes,
+                             new Path( docOutputDir, "record.txt" ),
+                             fs );
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-    }
-
-    /**
-     * Reads a number of text files in from the Hadoop File System (the location
-     * of which is provided by the HadoopRecord that is passed in) and turns them
-     * into a Curator-friendly Record.
-     * @param record The HadoopRecord that should be converted to a
-     *               Curator-friendly, Thrift-based Record.
-     * @return A Thrift/Curator Record containing the annotations (and original
-     *         text, of course) that were present in the HDFS version of
-     *         the record.
-     */
-    private Record deserializeHadoopRecord( HadoopRecord record )
-            throws IOException, TException {
-        return CuratorClient.deserializeRecord( record.toMap() );
     }
 
     private edu.illinois.cs.cogcomp.thrift.curator.Record lastAnnotatedRecord;
@@ -166,4 +150,5 @@ public class HadoopCuratorClient extends CuratorClient {
     private Curator.Client client;
     private TTransport transport;
     public static final int PORT = 9010;
+    private SerializationHandler serializationHandler;
 }
