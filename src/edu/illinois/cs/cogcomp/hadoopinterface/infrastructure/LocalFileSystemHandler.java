@@ -4,6 +4,8 @@ import java.io.*;
 import java.util.Scanner;
 
 public class LocalFileSystemHandler {
+    private static final String NL = System.getProperty("line.separator");
+
     /**
      * Reads a file object from the disk and returns a string version of that
      * file.
@@ -49,7 +51,6 @@ public class LocalFileSystemHandler {
 
         return buffer;
     }
-
     /**
      * Writes a file to the indicated path.
      *
@@ -73,5 +74,23 @@ public class LocalFileSystemHandler {
         writer.close();
     }
 
-    private static final String NL = System.getProperty("line.separator");
+
+    /**
+     * Checks to see if the file contains some non-hidden files or directories.
+     * Returns true if and only if the file in question is both a directory and
+     * has files/folders inside it that are not hidden.
+     * @param f The file (or directory) in question
+     * @return True if the file contains non-hidden files, false otherwise
+     */
+    public static boolean containsNonHiddenFiles( File f ) {
+        if( f.isDirectory() ) {
+            for( File inner : f.listFiles() ) {
+                if( !inner.isHidden() ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }

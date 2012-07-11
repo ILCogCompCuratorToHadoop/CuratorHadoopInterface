@@ -34,12 +34,11 @@ public class CuratorClientTester {
         }
 
         SerializationHandler serializer = new SerializationHandler();
-        for( File fileDir : outputDir.listFiles() ) {
-            if( !fileDir.isHidden() ) {
+        for( File serializedRec : outputDir.listFiles() ) {
+            // If it is a real serialized record . . .
+            if( !serializedRec.isHidden() ) {
                 System.out.println("Deserializing a record");
-                File serializedData = new File( fileDir,
-                                                CuratorClient.serializedRecFileName);
-                serializer.deserializeFromFile( serializedData );
+                serializer.deserializeFromFile( serializedRec );
             }
         }
 

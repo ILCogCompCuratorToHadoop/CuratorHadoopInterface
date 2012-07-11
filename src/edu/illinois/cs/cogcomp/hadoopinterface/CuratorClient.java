@@ -24,16 +24,18 @@ import java.util.Map.Entry;
  * @author Tyler Young
  */
 public class CuratorClient {
-    public static final String serializedRecFileName = "record.txt";
     private static final String NL = System.getProperty("line.separator");
 
+    // Two Thrift objects for interfacing with the Curator
     private Curator.Client client;
+    private TTransport transport;
 
     // The list of all the input records that we will write to disk (to later
     // be transferred to Hadoop by another program)
     private ArrayList<Record> newInputRecords;
-    private TTransport transport;
-    private SerializationHandler serializationHandler;
+
+    // Provides serialize() and deserialize() methods for Record objects
+    private SerializationHandler serializer;
 
     /**
      * Constructs a CuratorClient object
@@ -50,7 +52,7 @@ public class CuratorClient {
         TProtocol protocol = new TBinaryProtocol(transport);
         client = new Curator.Client(protocol);
 
-        serializationHandler = new SerializationHandler();
+        serializer = new SerializationHandler();
     }
 
     /**
@@ -65,6 +67,7 @@ public class CuratorClient {
      * @param jobDir Path pointing to, e.g. `/user/home/job123/` directory
      * @param checkdb If true, checks for an existing Record for this document in
      *                the Curator database
+     * @TODO: Decide on directory structure this should use!
      */
     public void addRecordsFromJobDirectory(File jobDir, boolean checkdb)
             throws TException, FileNotFoundException, ServiceUnavailableException,
@@ -74,8 +77,12 @@ public class CuratorClient {
             throw new IllegalArgumentException( "The job path " + jobDir.toString()
                                                 + " is not a directory.");
         }
+        if( !LocalFileSystemHandler.containsNonHiddenFiles( jobDir ) ) {
+            throw new IllegalArgumentException(
+                    "The job path " + jobDir.toString()
+                    + " contains no (non-hidden) files.");
+        }
 
-        // TODO: Ensure the job directory and the document directories are not empty
         // LOOP: for each file in the job directory...
         for (File docDir : jobDir.listFiles()) {
             // get the hash ID string from the subdirectory name
@@ -83,34 +90,20 @@ public class CuratorClient {
 
             Record currentRecord = null;
 
-            // TODO: Extract method here?
             // Check the database for the record, if necessary
             if (checkdb) {
-                File originalFile = new File(jobDir, id + File.separator + "original.txt");
-                if (!originalFile.isFile()) {
-                    System.out.println("ERROR: Attempt to check database for nonexistent original file");
-                }
-                String originalText = LocalFileSystemHandler
-                        .readFileToString( originalFile );
-
-                transport.open();
-                Record dbRecord = client.getRecord(originalText);
-                transport.close();
-
-                if ( RecordTools.recordHasAnnotations( dbRecord ) ) {
-                    currentRecord = dbRecord;
-                }
+                File originalTxtFile = new File(docDir, "original.txt");
+                currentRecord = getRecFromDatabase( originalTxtFile );
             }
             // If we got a record from the database, we won't try to construct
             // it from the directory
             if( currentRecord == null ) {
-                File serializedRecFile = new File( docDir, serializedRecFileName );
+                File serializedRecFile = new File( docDir, "original" );
 
                 try {
                     byte[] serializedRec = LocalFileSystemHandler
                             .readFileToBytes( serializedRecFile );
-                    currentRecord = serializationHandler
-                            .deserialize( serializedRec );
+                    currentRecord = serializer.deserialize( serializedRec );
                 } catch ( IOException e ) {
                     e.printStackTrace();
                 }
@@ -121,13 +114,35 @@ public class CuratorClient {
     } // END function
 
     /**
+     * Checks the database archive for a record corresponding to a certain
+     * original (raw) text file
+     * @param originalFile The raw text file for this document
+     * @return A filled-in record if it exists in the database, but NULL if no
+     *         record was found.
+     */
+    private Record getRecFromDatabase( File originalFile )
+            throws FileNotFoundException, ServiceUnavailableException,
+            AnnotationFailedException, TException {
+        if (!originalFile.isFile()) {
+            System.out.println("ERROR: Attempt to check database " +
+                                       "for nonexistent original file");
+        }
+
+        String text = LocalFileSystemHandler.readFileToString( originalFile );
+
+        transport.open();
+        Record dbRecord = client.getRecord( text );
+        transport.close();
+        return dbRecord;
+    }
+
+    /**
      * Takes the name of an annotation text file and extracts out the annotation
      * type. E.g., if you pass in "original.txt", this will return "original".
      * If you pass in "chunk.txt", it will return "chunk". It basically just
      * returns what you pass in minus the ".txt" extension.
      * @param fileName The filename of the annotation file in question.
      * @return The type of annotation that the filename represents
-     * @TODO: Remove since it's unused (?)
      */
     private static String getAnnotationTypeFromFileName( String fileName ) {
         int lastCharOfType = fileName.length() - 4;
@@ -187,20 +202,21 @@ public class CuratorClient {
      *
      * Presently for testing purposes, to easily input one test document.
      *
-     * @param file a File object pointing to the specified document
+     * @param originalTxt a File object pointing to the specified document's
+     *                    `original.txt` file
      * @return a copy of the new Curator Record for the specified document
      */
-    public Record addOneRecord(File file)
+    public Record addOneRecord(File originalTxt)
             throws IllegalArgumentException, FileNotFoundException {
-        if (!file.isFile()) {
-            throw new IllegalArgumentException( "The file " + file.toString()
+        if (!originalTxt.isFile()) {
+            throw new IllegalArgumentException( "The file " + originalTxt.toString()
                     + " is not a valid normal file.");
         }
 
-        String type = getAnnotationTypeFromFileName( file.getName() );
+        String type = getAnnotationTypeFromFileName( originalTxt.getName() );
         if (type.equals("original")) {
-            String id = file.getParent();
-            String original = LocalFileSystemHandler.readFileToString( file );
+            String id = originalTxt.getParent();
+            String original = LocalFileSystemHandler.readFileToString( originalTxt );
             Record newRecord = RecordTools.generateNewRecord( id, original );
 
             addToInputList(newRecord);
@@ -208,47 +224,9 @@ public class CuratorClient {
             return newRecord;
         }
         else {
-            throw new IllegalArgumentException(
-                    "ERROR: " + type + " is not the required original document.");
+            throw new IllegalArgumentException( "ERROR: " + type + " is not the "
+                    + "required original.txt (i.e., raw text) document.");
         }
-    }
-
-    /**
-     * Takes a Curator Record object and adds it to a list of newly
-     * added records for future serialization.
-     *
-     * @param record A Curator Record object
-     */
-    private void addToInputList(Record record) {
-        if( newInputRecords == null ) {
-            newInputRecords = new ArrayList<Record>();
-        }
-        newInputRecords.add(record);
-    }
-
-    /**
-     * Deletes all the newly added records from our memory. Probably only useful
-     * for testing purposes.
-     */
-    private void clearInputList() {
-        newInputRecords.clear();
-    }
-
-    /**
-     * Gets the list of Records to be serialized. This is for testing purposes
-     * only.
-     * @return the input Records ready to be processed
-     */
-    private List<Record> getInputList() {
-        return newInputRecords;
-    }
-
-    /**
-     * Gets the number of Records to be serialized.
-     * @return The number of input Records ready to be processed
-     */
-    public int getNumberOfInputRecords() {
-        return newInputRecords.size();
     }
 
     /**
@@ -272,17 +250,62 @@ public class CuratorClient {
                                     + " records." );
 
         for( Record r : newInputRecords ) {
-            File recordOutputDir = new File( outputDir, r.getIdentifier() );
-
-            if( !recordOutputDir.mkdir() && !recordOutputDir.isDirectory() ) {
-                throw new IOException( "Failed to create output directory "
-                                               + recordOutputDir.toString() );
-            }
-
-            byte[] serializedForm =  serializationHandler.serialize( r );
-            File txtFile = new File( recordOutputDir, serializedRecFileName );
-            LocalFileSystemHandler.writeFile( txtFile, serializedForm );
+            byte[] serializedForm =  serializer.serialize( r );
+            File txtFileLoc = getLocForSerializedForm( r, outputDir );
+            LocalFileSystemHandler.writeFile( txtFileLoc, serializedForm );
         }
+    }
+
+    /**
+     * Returns the location of the serialized form of the indicated record, which
+     * depends on the location that it should be written to. At present, this will
+     * always be a text file, named with the record's hash, within the containing
+     * directory. However, this is subject to change. As an example, the current
+     * structure looks like this:
+     *
+     * - [containing_directory_name]
+     *     - [document_hash].txt
+     *     - [another_documents_hash].txt
+     *
+     * @param containingDir The directory containing this serialized record
+     * @param r The record in question
+     * @return The location at which the serialized form of the record should
+     *         be found
+     */
+    private File getLocForSerializedForm( Record r, File containingDir ) {
+        return new File( containingDir, r.getIdentifier() + ".txt" );
+    }
+
+    /**
+     * Takes a Curator Record object and adds it to a list of newly
+     * added records for future serialization.
+     *
+     * @param record A Curator Record object
+     */
+    private void addToInputList(Record record) {
+        newInputRecords.add( record );
+    }
+
+    /**
+     * Gets the number of Records to be serialized.
+     * @return The number of input Records ready to be processed
+     */
+    public int getNumberOfInputRecords() {
+        return newInputRecords.size();
+    }
+
+    /**
+     * Lists the available annotators to the standard output.
+     * @throws TException
+     */
+    private void printInfoOnKnownAnnotators() throws TException {
+        transport.open();
+        Map<String, String> avail = client.describeAnnotations();
+        System.out.println("Available annotations:");
+        for (String key : avail.keySet()) {
+            System.out.println("\t" + key + " provided by " + avail.get(key) );
+        }
+        transport.close();
     }
 
     /**
@@ -318,7 +341,7 @@ public class CuratorClient {
         theClient.createRecordsFromRawInputFiles(inputDir);
 
         System.out.println( "Turned "
-                            + Integer.toString( theClient.getInputList().size() )
+                            + Integer.toString( theClient.getNumberOfInputRecords() )
                             + " text files in the directory into records.");
 
         // Check available annotations
@@ -352,7 +375,7 @@ public class CuratorClient {
             throws ServiceUnavailableException, AnnotationFailedException,
             TException, IOException {
         System.out.println( "Running the tokenizer on those new files. "
-                            + "(For testing only)" );
+                                    + "(For testing only)" );
 
         ArrayList<Record> replaceTheRecords = new ArrayList<Record>();
         for( Record r : newInputRecords ) {
@@ -383,8 +406,8 @@ public class CuratorClient {
             System.out.println("Testing serialization.");
 
             Record reconstructed = new Record();
-            reconstructed = serializationHandler
-                    .deserialize( serializationHandler.serialize( r ) );
+            reconstructed = serializer
+                    .deserialize( serializer.serialize( r ) );
             if( !r.equals(reconstructed) ) {
                 System.out.println("\tSerialization didn't work.");
                 System.out.println("\tHere's the original:");
@@ -403,20 +426,6 @@ public class CuratorClient {
             replaceTheRecords.add(r);
         }
         newInputRecords = replaceTheRecords;
-    }
-
-    /**
-     * Lists the available annotators to the standard output.
-     * @throws TException
-     */
-    private void printInfoOnKnownAnnotators() throws TException {
-        transport.open();
-        Map<String, String> avail = client.describeAnnotations();
-        System.out.println("Available annotations:");
-        for (String key : avail.keySet()) {
-            System.out.println("\t" + key + " provided by " + avail.get(key) );
-        }
-        transport.close();
     }
 
     private void callABunchOfAnnotationsFromDemo(TTransport transport)
