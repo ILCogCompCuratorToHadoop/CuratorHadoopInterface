@@ -56,6 +56,62 @@ public class CuratorClient {
     }
 
     /**
+     * Validates the required dependencies for a particular annotation.
+     *
+     * @param typeOfAnnotation The type of annotation to validate for the
+     *                         document (chunking, parsing, named entity
+     *                         recognition, etc.).
+     */
+    public boolean checkDependencies( AnnotationMode typeOfAnnotation ) { //TODO moved from HadoopRecord, make sure the vars are right
+        HadoopInterface.logger.log( "Checking if document with hash "
+                + getDocumentHash() + " satisfies the dependency requirements "
+                + "for annotation type " + typeOfAnnotation.toString() );
+
+        boolean valid = true;
+        if ( typeOfAnnotation == CHUNK ) {
+            boolean token = annotations.contains(TOKEN);
+            boolean pos = annotations.contains(POS);
+            if ( !(token || pos) ) {
+                valid = false;
+            }
+        }
+        else if ( typeOfAnnotation == COREF ) {
+            boolean token = annotations.contains(TOKEN);
+            boolean pos = annotations.contains(POS);
+            boolean ner = annotations.contains(NER);
+            if ( !(token || pos || ner) ) {
+                valid = false;
+            }
+        }
+        else if ( typeOfAnnotation == NOM_SRL || typeOfAnnotation == VERB_SRL ) {
+            boolean token = annotations.contains(TOKEN);
+            boolean pos = annotations.contains(POS);
+            boolean chunk = annotations.contains(CHUNK);
+            boolean parse = annotations.contains(PARSE); // Charniak parser
+            if ( !(token || pos || chunk || parse) ) {
+                valid = false;
+            }
+        }
+        else if ( typeOfAnnotation == PARSE || typeOfAnnotation == POS ) {
+            boolean token = annotations.contains(TOKEN);
+            if (!token) {
+                valid = false;
+            }
+        }
+        else if ( typeOfAnnotation == WIKI ) {
+            boolean token = annotations.contains(TOKEN);
+            boolean pos = annotations.contains(POS);
+            boolean chunk = annotations.contains(CHUNK);
+            boolean ner = annotations.contains(NER); // Charniak parser
+            if (!(token || pos || chunk || ner) ) {
+                valid = false;
+            }
+        }
+        // else: TOKEN has no dependencies
+        return valid;
+    }
+
+    /**
      * Takes a path to documents in a mirror of the HDFS directory structure
      * and creates new Curator Records. Calls #addToInputList() to add each new
      * Record to the class's list of input records.
