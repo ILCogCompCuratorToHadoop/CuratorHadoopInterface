@@ -135,6 +135,24 @@ public class HadoopRecord implements WritableComparable< HadoopRecord > {
     }
 
     /**
+     * Returns a byte array version of the requested annotation file.
+     * @param typeOfAnnotation The annotation type in question
+     * @return The annotation's file, as read from HDFS. If this annotation
+     *         doesn't exist in HDFS, returns an empty byte array.
+     * @throws IOException
+     */
+    public byte[] getAnnotationBytes( AnnotationMode typeOfAnnotation )
+            throws IOException {
+        if( annotationExists( typeOfAnnotation ) ) {
+            return FileSystemHandler
+                    .readBytesFromHDFS( getAnnotation( typeOfAnnotation ), fs );
+        }
+        else {
+            return new byte[0];
+        }
+    }
+
+    /**
      * Returns a string version of the requested annotation file.
      * @param typeOfAnnotation The annotation type in question
      * @return The annotation's file, as read from HDFS. If this annotation
@@ -274,6 +292,7 @@ public class HadoopRecord implements WritableComparable< HadoopRecord > {
         return knownAnnotations;
     }
 
+
     /**
      * @return The directory in HDFS containing all this document's text files
      *         (the original.txt along with the annotations). This will simply
@@ -282,7 +301,6 @@ public class HadoopRecord implements WritableComparable< HadoopRecord > {
     public Path getDocumentDirectory() {
         return docDir;
     }
-
 
     /**
      * Prints a list of the available annotations
@@ -396,13 +414,13 @@ public class HadoopRecord implements WritableComparable< HadoopRecord > {
         return stringRep;
     }
 
-    public Map<String, String> toMap() throws IOException {
-        Map< String, String > mapVersion = new HashMap<String, String>();
+    public Map<String, byte[]> toMap() throws IOException {
+        Map< String, byte[] > mapVersion = new HashMap<String, byte[]>();
         for( AnnotationMode annotation : annotations ) {
             mapVersion.put( annotation.toString(),
-                            getAnnotationString( annotation ) );
+                            getAnnotationBytes( annotation ) );
         }
-        mapVersion.put( "original", getOriginalString() );
+        mapVersion.put( "original", getOriginalString().getBytes() );
 
         return mapVersion;
     }

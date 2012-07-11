@@ -11,6 +11,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -108,7 +109,7 @@ public class FileSystemHandler {
     public static void delete(Path fileOrDirectoryToDelete, FileSystem fs)
             throws IOException {
         if( HDFSFileExists( fileOrDirectoryToDelete, fs ) ) {
-            fs.delete(fileOrDirectoryToDelete, true);
+            fs.delete( fileOrDirectoryToDelete, true );
         }
     }
 
@@ -151,7 +152,33 @@ public class FileSystemHandler {
     }
 
     public static String getFileNameFromPath( Path p ) {
-        return getFileNameFromPath(p.toString().trim());
+        return getFileNameFromPath( p.toString().trim() );
+    }
+
+    /**
+     * Returns a string version of a file on the Hadoop Distributed File System
+     * (HDFS).
+     * @param locationOfFile The file's path
+     * @param fs The FileSystem object to resolve paths against
+     * @return A string version of the requested file
+     * @throws IOException
+     */
+    public static byte[] readBytesFromHDFS( Path locationOfFile, FileSystem fs )
+            throws IOException {
+        FSDataInputStream in = fs.open( locationOfFile );
+        BufferedReader reader = new BufferedReader( new InputStreamReader(in) );
+
+        byte[] buffer = new byte[ (int)getFileSizeInBytes(locationOfFile, fs) ];
+
+        int i = 0;
+        int c = reader.read();
+
+        while (c != -1) {
+            buffer[i++] = (byte)c;
+            c = reader.read();
+        }
+
+        return buffer;
     }
 
     /**
@@ -244,6 +271,27 @@ public class FileSystemHandler {
     }
 
     /**
+     * Writes a byte array to a text file to a given location on the Hadoop
+     * Distributed File System (HDFS). Note that this will overwrite anything
+     * currently present at the location.
+     * @param input The byte array to be written to the text file
+     * @param locationForFile A path (complete with file name and extension) to
+     *                        which we should write. If data already exists at
+     *                        this location, it will be overwritten.
+     * @param fs The FileSystem object against which we will resolve paths. Note
+     *           that, technically, this need not be an HDFS path. However, if
+     *           you want to write local files, reduce the risk of error for
+     *           yourself by using #writeFileToLocal().
+     * @throws IOException
+     */
+    public static void writeFileToHDFS( byte[] input,
+                                        Path locationForFile,
+                                        FileSystem fs )
+            throws IOException {
+        writeFileToHDFS( input, locationForFile, fs, false);
+    }
+
+    /**
      * Writes a string to a text file to a given location on the Hadoop
      * Distributed File System (HDFS). Note that this is not thread-safe; Hadoop
      * recommends you not try to have multiple nodes writing to the same file,
@@ -268,6 +316,35 @@ public class FileSystemHandler {
                                         FileSystem fs,
                                         boolean appendInsteadOfOverwriting )
             throws IOException {
+        writeFileToHDFS( inputText.getBytes(), locationForFile, fs,
+                         appendInsteadOfOverwriting);
+    }
+
+    /**
+     * Writes a byte array to a text file to a given location on the Hadoop
+     * Distributed File System (HDFS). Note that this is not thread-safe; Hadoop
+     * recommends you not try to have multiple nodes writing to the same file,
+     * ever.
+     * @param input The byte array to be written to the text file
+     * @param locationForFile A path (complete with file name and extension) to
+     *                        which we should write. If data already exists at
+     *                        this location, it will be overwritten.
+     * @param fs The FileSystem object against which we will resolve paths. Note
+     *           that, technically, this need not be an HDFS path. However, if
+     *           you want to write local files, reduce the risk of error for
+     *           yourself by using #writeFileToLocal().
+     * @param appendInsteadOfOverwriting TRUE if we should append to whatever
+     *                                   currently exists at the location, FALSE
+     *                                   if it is okay to overwrite it.
+     * @bug Writing files does *not* work when called from the
+     *      InputSplit (DirectorySplit)
+     * @throws IOException
+     */
+    public static void writeFileToHDFS( byte[] input,
+                                        Path locationForFile,
+                                        FileSystem fs,
+                                        boolean appendInsteadOfOverwriting )
+            throws IOException {
         // Qualify the location to avoid errors
         Path qualifiedLoc;
         if( locationForFile != null ) {
@@ -275,7 +352,7 @@ public class FileSystemHandler {
         }
         else {
             throw new NullPointerException( "Undefined location for file with "
-                    + "contents \"" + inputText + "\".");
+                    + "contents \"" + Arrays.toString( input ) + "\".");
         }
 
         // Handle appends
@@ -284,8 +361,14 @@ public class FileSystemHandler {
             // TODO: When 2.0 is final, change to use FileSystem.append() instead
             // dos = fs.append( locationForFile );
 
-            String old = readFileFromHDFS( qualifiedLoc, fs );
-            inputText = old + inputText;
+            byte[] old = readBytesFromHDFS( qualifiedLoc, fs );
+            byte[] combined = new byte[ old.length + input.length ];
+
+            System.arraycopy( old, 0, combined, 0, old.length );
+            System.arraycopy( input, 0, combined, old.length, input.length );
+
+            input = combined;
+
             delete( qualifiedLoc, fs );
         }
 
@@ -293,7 +376,7 @@ public class FileSystemHandler {
         // NOTE: Writing using FSDataOutputStream's writeChars() or writeUTF()
         //       methods writes megabytes worth of invisible control characters,
         //       very quickly leading to hundred megabyte log files. BAD.
-        dos.write( inputText.getBytes() );
+        dos.write( input );
         dos.close();
     }
 

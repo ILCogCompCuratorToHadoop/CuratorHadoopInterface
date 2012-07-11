@@ -67,14 +67,38 @@ public class HadoopCuratorClient extends CuratorClient {
      * @param record The HadoopRecord on which we will run the annotation tool
      * @param toolToRun The type of annotation that we should get for the record
      */
-		public void annotateSingleDoc( HadoopRecord record,
+	public void annotateSingleDoc( HadoopRecord record,
                                    AnnotationMode toolToRun )
             throws IOException, TException {
         // De-serialize the Hadoop Record
         Record curatorFriendlyRec = deserializeHadoopRecord( record );
 
-        // Call performAnnotation() on the de-serialized record
-        lastAnnotatedRecord = performAnnotation( curatorFriendlyRec, toolToRun );
+        try {
+            // Ask the Curator to perform the annotation
+            transport.open();
+            String annotationMode =
+                    AnnotationMode.toCuratorString( toolToRun );
+
+            client.performAnnotation( curatorFriendlyRec, annotationMode, true );
+        } catch (ServiceUnavailableException e) {
+            HadoopInterface.logger.logError( toolToRun.toString()
+                    + " annotations are not available.\n" + e.getReason());
+        } catch (TException e) {
+            HadoopInterface.logger.logError( "Transport exception when getting "
+                    + toolToRun.toString() + " annotation.\n"
+                    + Arrays.toString( e.getStackTrace() ) );
+        } catch (AnnotationFailedException e) {
+            HadoopInterface.logger.logError( "Failed attempting annotation "
+                    + toolToRun.toString() + ".\n" + e.getReason());
+        } finally {
+            if( transport.isOpen() ) {
+                transport.close();
+            }
+        }
+
+        // Should contain all of the previous annotations, along with
+        // the new one
+        lastAnnotatedRecord = curatorFriendlyRec;
     }
 
     /**
@@ -87,51 +111,9 @@ public class HadoopCuratorClient extends CuratorClient {
      *                     will likely be a subdirectory of the overall job
      *                     output directory.
      */
-    public void writeOutputFromLastAnnotate( Path docOutputDir ) throws TException {
+    public void writeOutputFromLastAnnotate( Path docOutputDir )
+            throws TException, IOException {
         serializeCuratorRecord( lastAnnotatedRecord, docOutputDir, localFS );
-    }
-
-    /**
-     * Calls the specified annotation tool (assumed to be running locally on
-     * this node) on the specified Record.
-     * @param curatorRecord A Curator Record for the document to be annotated.
-     * @param annotationToGet The type of annotation that should be requested
-     *                        for the input Record. This must correspond to an
-     *                        annotation tool currently running on the local node.
-     * @return The Curator-friendly Record, modified to include the new
-     *         annotation (assuming no errors, of course!). If there was an error
-     *         thrown, this Record may contain no new annotations; in this case,
-     *         you will get back the same Record you passed in, so it's up to you
-     *         to check that you have the requested annotation.
-     */
-    private Record performAnnotation( Record curatorRecord,
-                                      AnnotationMode annotationToGet ) {
-        try {
-            // Ask the Curator to perform the annotation
-            transport.open();
-            String annotationMode =
-                    AnnotationMode.toCuratorString(annotationToGet);
-
-            client.performAnnotation( curatorRecord, annotationMode, true );
-        } catch (ServiceUnavailableException e) {
-            HadoopInterface.logger.logError( annotationToGet.toString()
-                    + " annotations are not available.\n" + e.getReason());
-        } catch (TException e) {
-            HadoopInterface.logger.logError( "Transport exception when getting "
-                    + annotationToGet.toString() + " annotation.\n"
-                    + Arrays.toString( e.getStackTrace() ) );
-        } catch (AnnotationFailedException e) {
-            HadoopInterface.logger.logError( "Failed attempting annotation "
-                    + annotationToGet.toString() + ".\n" + e.getReason());
-        } finally {
-            if( transport.isOpen() ) {
-                transport.close();
-            }
-        }
-
-        // Should contain all of the previous annotations, along with
-        // the new one
-        return curatorRecord;
     }
 
     /**
@@ -146,15 +128,16 @@ public class HadoopCuratorClient extends CuratorClient {
      */
     private void serializeCuratorRecord( Record curatorRecord,
                                          Path docOutputDir,
-                                         FileSystem fs ) throws TException {
-        Map<String, String> recordAsText;
+                                         FileSystem fs )
+            throws TException, IOException {
+        Map<String, byte[]> recordAsText;
         recordAsText = CuratorClient.serializeRecord( curatorRecord );
 
         for( String key : recordAsText.keySet() ) {
             try {
-                writeFileToHDFS( recordAsText.get(key),
-                        new Path( docOutputDir, key + ".txt" ),
-                        fs );
+                writeFileToHDFS( recordAsText.get( key ),
+                                 new Path( docOutputDir, key + ".txt" ),
+                                 fs );
             } catch (IOException e) {
                 e.printStackTrace();
             }
