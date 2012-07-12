@@ -31,10 +31,12 @@ public class FileSystemHandlerTest {
         FileSystem hdfs = FileSystem.get( new Configuration() );
         FileSystem localFS = FileSystem.getLocal( new Configuration( ) );
 
+        FileSystemHandler fsHandler = new FileSystemHandler( hdfs );
+
         // Create parent dir on both local FS and HDFS
         Path parent = new Path( "input_"  + System.currentTimeMillis() );
-        FileSystemHandler.mkdirLocal( parent );
-        FileSystemHandler.mkdir( parent, hdfs );
+        fsHandler.mkdirLocal( parent );
+        fsHandler.mkdir( parent );
 
 
 
@@ -44,16 +46,16 @@ public class FileSystemHandlerTest {
                 + "\t" + hdfsStat.getPermission().toString() );
         logger.logStatus("Perms are: " + Short.toString(hdfsStat.getPermission().toShort()));
 
-        if( !FileSystemHandler.HDFSFileExists( parent, hdfs ) ) {
+        if( !fsHandler.HDFSFileExists( parent ) ) {
             throw new IOException( "HDFS dir doesn't exist!" );
         }
-        if( !FileSystemHandler.isDir( parent, hdfs ) ) {
+        if( !fsHandler.isDir( parent ) ) {
             throw new IOException( "HDFS Dir isn't a directory!" );
         }
-        if( !FileSystemHandler.localFileExists( parent ) ) {
+        if( !fsHandler.localFileExists( parent ) ) {
             throw new IOException( "Local dir doesn't exist!" );
         }
-        if( !FileSystemHandler.isDir( parent, localFS ) ) {
+        if( !fsHandler.isDir( parent ) ) {
             throw new IOException( "Local dir isn't a directory!" );
         }
         if( !hdfsStat.getPermission().equals( new FsPermission("755") ) ) {
@@ -72,11 +74,12 @@ public class FileSystemHandlerTest {
 
         // Write file to HDFS
         FileSystem fs = FileSystem.get( new Configuration() );
+        FileSystemHandler fsHandler = new FileSystemHandler(fs);
 
         // Create parent dir on both local FS and HDFS
         Path parent = new Path( "input_"  + System.currentTimeMillis() );
-        FileSystemHandler.mkdirLocal( parent );
-        FileSystemHandler.mkdir(parent, fs);
+        fsHandler.mkdirLocal( parent );
+        fsHandler.mkdir( parent );
 
         Path inputPath = new Path( parent, "bogus.txt" );
 
@@ -85,14 +88,14 @@ public class FileSystemHandlerTest {
                 + UUID.randomUUID().toString()
                 + UUID.randomUUID().toString();
 
-        FileSystemHandler.writeFileToHDFS( randomString, inputPath, fs, false);
-        FileSystemHandler.writeFileToLocal( randomString, inputPath);
+        fsHandler.writeFileToHDFS( randomString, inputPath, false);
+        fsHandler.writeFileToLocal( randomString, inputPath);
 
         logger.log("The file is here: " + inputPath.toString());
 
         // Read it back
-        String readVersion = FileSystemHandler.readFileFromHDFS( inputPath, fs );
-        String readVersionLocal = FileSystemHandler.readFileFromLocal( inputPath );
+        String readVersion = fsHandler.readFileFromHDFS( inputPath );
+        String readVersionLocal = fsHandler.readFileFromLocal( inputPath );
         if( !readVersion.equals( "\n" + randomString + "\n" )) {
             throw new IOException( "Read version of HDFS file doesn't match written!\n"
                 + "Read: " + readVersion + " Wrote: " + randomString );
@@ -107,15 +110,16 @@ public class FileSystemHandlerTest {
 
         Path inputPath = new Path( "input_"  + System.currentTimeMillis() );
         FileSystem fs = FileSystem.get( new Configuration() );
+        FileSystemHandler fsHandler = new FileSystemHandler(fs);
         DummyInputCreator.createDocumentDirectory( inputPath, fs );
 
         // Copy file from HDFS to local
         Path origTxt = new Path( inputPath, "original.txt" );
         Path origTxtLocal = new Path( "originalFromHDFS.txt" );
-        FileSystemHandler.copyFileFromHDFSToLocal( origTxt, origTxtLocal, fs );
+        fsHandler.copyFileFromHDFSToLocal( origTxt, origTxtLocal );
 
-        String HDFSVersion = FileSystemHandler.readFileFromHDFS( origTxt, fs );
-        String localVersion = FileSystemHandler.readFileFromLocal( origTxtLocal );
+        String HDFSVersion = fsHandler.readFileFromHDFS( origTxt );
+        String localVersion = fsHandler.readFileFromLocal( origTxtLocal );
         if( !HDFSVersion.equals(localVersion) ) {
             throw new IOException( "HDFS version doesn't match local!" );
         }
@@ -123,11 +127,11 @@ public class FileSystemHandlerTest {
         // Copy file from local to HDFS
         Path test = new Path( "local.txt" );
         Path testInHDFS = new Path( "local.txt" );
-        FileSystemHandler.writeFileToLocal( "lorem ipsum dolar sit amet", test);
-        FileSystemHandler.copyFileFromLocalToHDFS( test, testInHDFS, fs );
+        fsHandler.writeFileToLocal( "lorem ipsum dolar sit amet", test);
+        fsHandler.copyFileFromLocalToHDFS( test, testInHDFS );
 
-        HDFSVersion = FileSystemHandler.readFileFromHDFS( testInHDFS, fs );
-        localVersion = FileSystemHandler.readFileFromLocal( test );
+        HDFSVersion = fsHandler.readFileFromHDFS( testInHDFS );
+        localVersion = fsHandler.readFileFromLocal( test );
         if( !HDFSVersion.equals(localVersion) ) {
             throw new IOException( "HDFS version doesn't match local!" );
         }
@@ -153,11 +157,12 @@ public class FileSystemHandlerTest {
         logger.logStatus( "Testing that it know what's a directory." );
 
         FileSystem fs = FileSystem.get( new Configuration() );
+        FileSystemHandler fsHandler = new FileSystemHandler(fs);
 
         Path p = new Path( "input_"  + System.currentTimeMillis() );
-        FileSystemHandler.mkdir( p, fs );
+        fsHandler.mkdir( p );
 
-        if( !FileSystemHandler.isDir( p, fs )) {
+        if( !fsHandler.isDir( p )) {
             throw new IOException( "Doesn't think path " + p.toString() +
                                    " is a real directory!" );
         }
@@ -168,6 +173,7 @@ public class FileSystemHandlerTest {
 
         Path p = new Path( "input_"  + System.currentTimeMillis() );
         FileSystem fs = FileSystem.get( new Configuration() );
+        FileSystemHandler fsHandler = new FileSystemHandler(fs);
         fs.mkdirs( p );
 
         Path file = new Path( p, "bogus.txt" );
@@ -186,12 +192,10 @@ public class FileSystemHandlerTest {
         dos.close();
 
         logger.log( "Contents of directory are: "
-                + FileSystemHandler.
-                getFilesAndDirectoriesInDirectory(p, fs).toString() );
+                + fsHandler.getFilesAndDirectoriesInDirectory( p ).toString() );
 
 
-        if( FileSystemHandler.
-                getFilesAndDirectoriesInDirectory(p, fs).size() != 2 ) {
+        if( fsHandler.getFilesAndDirectoriesInDirectory( p ).size() != 2 ) {
             throw new IOException("Can't count!");
         }
     }

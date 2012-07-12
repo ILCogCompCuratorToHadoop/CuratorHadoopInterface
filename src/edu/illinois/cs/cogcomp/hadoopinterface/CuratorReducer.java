@@ -12,9 +12,6 @@ import org.apache.thrift.TException;
 
 import java.io.IOException;
 
-import static edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.fileWasModifiedInLastXMins;
-import static edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.writeFileToLocal;
-
 /**
  * A Reducer that serves as a wrapper for the document annotation tool. It
  * handles creating a locally-running Curator, launching and calling the
@@ -28,6 +25,8 @@ import static edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemH
  * @author Lisa Y. Bao
  */
 public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopRecord> {
+
+
     /**
      * Constructs a CuratorReducer
      */
@@ -45,10 +44,11 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      *                original text file and the known annotations.
      * @param context The job context
      */
-    public void reduce( Text inKey, 
+    public void reduce( Text inKey,
                         HadoopRecord inValue,
                         Context context ) throws IOException, InterruptedException, TException {
-        fs = FileSystem.get( context.getConfiguration() );
+        FileSystem fs = FileSystem.get( context.getConfiguration() );
+        this.fsHandler = new FileSystemHandler( fs );
 
         AnnotationMode toolToRun = AnnotationMode
                 .fromString( context.getConfiguration().get("annotationMode") );
@@ -78,7 +78,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
         // Create a new Curator client object
         HadoopCuratorClient client = new HadoopCuratorClient(
-                fs, FileSystem.getLocal( new Configuration() ) );
+                FileSystem.getLocal( new Configuration() ) );
 
         client.annotateSingleDoc( inValue, toolToRun );
 
@@ -86,9 +86,13 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         Path outputDir = new Path( context.getConfiguration().get("outputDirectory") );
         client.writeOutputFromLastAnnotate(outputDir);
 
+<<<<<<< HEAD
         // TODO Run a separate MR job (e.g. KillCuratorReducer.java), 
         // after all jobs are through, to kill all tools and local Curators
         
+=======
+
+>>>>>>> Many small changes for compatibility with overhauled FileSystemHandler
         // pass Curator output back to Hadoop as Record
         context.write(inKey, inValue);
     }
@@ -127,7 +131,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         // Else, check the log file's time of last modification. If it's within
         // the last half hour, assume all is well.
         try {
-            if( fileWasModifiedInLastXMins( logLocation, fs, 30 ) ) {
+            if( fsHandler.fileWasModifiedInLastXMins( logLocation, 30 ) ) {
                 return true;
             }
         } catch( IOException e ) {
@@ -138,7 +142,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
         return false;
     }
-
 
     /**
      * Checks the log files in your Curator directory (`~/curator/dist/logs`)
@@ -154,7 +157,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         Path logLocation = getCuratorLogLocation();
 
         try {
-            if( fileWasModifiedInLastXMins( logLocation, fs, 30 ) ) {
+            if( fsHandler.fileWasModifiedInLastXMins( logLocation, 30 ) ) {
                 return true;
             }
         } catch( IOException e ) {
@@ -165,6 +168,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
         return false;
     }
+
 
     /**
      * Runs the shell script required to launch the indicated annotation tool.
@@ -185,7 +189,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
         // Make sure log directory exists
         try {
-            FileSystemHandler.mkdir( dir.log(), fs );
+            fsHandler.mkdir( dir.log() );
         } catch( IOException ignored ) { }
 
         // Figure out location of shell script based on tool in use
@@ -423,7 +427,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             file.append( "</annotator>\n" );
             file.append( "</curator-annotators>\n" );
 
-            writeFileToLocal( file.toString(), configLoc );
+            fsHandler.writeFileToLocal( file.toString(), configLoc );
         }
         return configLoc;
     }
@@ -433,6 +437,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      * directories by providing a centralized, write-once data structure.
      */
     private class PathStruct {
+
         /**
          * Constructs all the Path objects used by the Reducer (which are located
          * relative to the `dist` directory)
@@ -446,7 +451,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             binDir = new Path( distDir, "bin" );
             configDir = new Path( distDir, "configs" );
         }
-
         public Path dist() {
             return distDir;
         }
@@ -464,11 +468,12 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         }
 
         private final Path distDir;
+
         private final Path logDir;
         private final Path binDir;
         private final Path configDir;
     }
 
     private final PathStruct dir;
-    private FileSystem fs;
+    private FileSystemHandler fsHandler;
 }

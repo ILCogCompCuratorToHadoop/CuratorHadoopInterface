@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./batch_job_master_script some/path/to/curator_directory SOME_ANNOTATION_MODE path/to/your_input_directory
+# Usage: ./batch_job_master_script some/path/to/curator_directory ANNOTATION_TOOL_TO_RUN path/to/your_input_directory
 
 
 CURATOR_DIRECTORY = $1
@@ -12,14 +12,13 @@ echo "You requested we run the annotation tool $2 on your input"
 echo "You requested we annotate the input text files located here: $3"
 
 # Launch the Master Curator
-
+cd $CURATOR_DIRECTORY/dist
+./bin/curator-local.sh --annotators configs/annotators-local.xml --port 9010 --threads 10 >& logs/curator.log &
 
 # Launch the Master Curator Client, asking it to serialize the
 # records from the text in the input directory
-cd $CURATOR_DIRECTORY/dist
-./bin/curator-local.sh --annotators configs/annotators-local.xml --port 9010 --threads 10 >& logs/curator.log &
 cd client
-./runclient.sh localhost 9010 README
+./runclient.sh localhost 9010 $INPUT_PATH
 
 # Copy the serialized records to the Hadoop Distributed File System (HDFS)
 

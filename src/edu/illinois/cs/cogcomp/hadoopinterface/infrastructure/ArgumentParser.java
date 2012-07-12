@@ -31,10 +31,11 @@ public class ArgumentParser {
         testing = false;
 
         if( args.length < 2 ) {
-            String errorMsg = "Usage: " + getClass().getName()
-                    + "<document directory> <mode>\n   or:\n      "
-                    + getClass().getName() + " -d <document directory> -m <mode> "
-                    + "[-maps <number of maps>] [-reduces <number of reduces>]";
+            String errorMsg = "Parameter usage: \n\t\t"
+                    + "<document directory> <mode>\n\tor:\n\t\t"
+                    + "-d <document directory> -m <mode> "
+                    + "[-maps <number of maps>] [-reduces <number of reduces>] "
+                    + "[-test]";
             HadoopInterface.logger.logError( errorMsg );
             System.err.println( errorMsg );
             ToolRunner.printGenericCommandUsage(System.err);

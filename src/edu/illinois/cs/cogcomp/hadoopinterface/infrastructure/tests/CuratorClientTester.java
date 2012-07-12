@@ -68,7 +68,7 @@ public class CuratorClientTester {
                 + Integer.toString(actualSize) + "." );
         }
 
-        FileSystemHandler.delete( dummyInputDir, localFS );
+        FileSystemHandler.deleteLocal( dummyInputDir );
 
         // TODO: check the actual contents of the Records
     }
@@ -101,18 +101,20 @@ public class CuratorClientTester {
         client.writeSerializedRecords( outDir );
 
         Path outDirPath = new Path( outDir.toString() );
-        int numOutputFiles = FileSystemHandler.getFilesAndDirectoriesInDirectory(
-                outDirPath, localFS ).size();
+        int numOutputFiles =
+                fsHandler.getFilesAndDirectoriesInDirectory(outDirPath ).size();
         if( numOutputFiles != numFiles ) {
             throw new IOException("Failed to serialize the right number of "
                     + "files. We found " + Integer.toString(numOutputFiles)
                     + " files, but we expected " + Integer.toString(numFiles) );
         }
 
-        FileSystemHandler.delete( dummyInputDir, localFS );
+        fsHandler.deleteLocal( dummyInputDir );
     }
 
     public static void main( String[] args ) throws Exception {
+        fsHandler =
+                new FileSystemHandler( FileSystem.getLocal(new Configuration()) );
         generatesNewRecord();
 
         localFS = FileSystem.getLocal( new Configuration() );
@@ -128,6 +130,7 @@ public class CuratorClientTester {
         deserializesARecord();
     }
 
+    private static FileSystemHandler fsHandler;
     private static FileSystem localFS;
     private static Path dummyInputDir;
 }

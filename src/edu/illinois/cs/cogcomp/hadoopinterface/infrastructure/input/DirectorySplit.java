@@ -60,8 +60,9 @@ public class DirectorySplit extends InputSplit implements Writable {
      */
     @Override
     public long getLength() throws IOException, InterruptedException {
+        FileSystemHandler fsHandler = new FileSystemHandler(fs);
         Path origTxt = new Path( inputPath, "original.txt" );
-        return FileSystemHandler.getFileSizeInBytes(origTxt, fs);
+        return fsHandler.getFileSizeInBytes( origTxt );
     }
 
     /**

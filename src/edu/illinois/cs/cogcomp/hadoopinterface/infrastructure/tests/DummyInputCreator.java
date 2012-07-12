@@ -24,9 +24,11 @@ public class DummyInputCreator {
     public static void generateDocumentDirectories( Path jobDirectory,
                                                     FileSystem fs )
             throws IOException {
+        FileSystemHandler fsHandler = new FileSystemHandler( fs );
+
         // Create doc directory
-        if( FileSystemHandler.isDir( jobDirectory, fs ) ) {
-            FileSystemHandler.delete( jobDirectory, fs );
+        if( fsHandler.isDir( jobDirectory ) ) {
+            fsHandler.delete( jobDirectory );
         }
         fs.mkdirs( jobDirectory );
 
@@ -45,6 +47,9 @@ public class DummyInputCreator {
     public static void createDocumentDirectory( Path docDir,
                                                 FileSystem fs )
             throws IOException {
+        FileSystemHandler fsHandler = new FileSystemHandler( fs );
+
+
         // Create original.txt file
         String original = "Hello, I'm an original.txt file."
                 + "\n\nLorem ipsum dolor sit amet, consectetur adipiscing "
@@ -53,7 +58,7 @@ public class DummyInputCreator {
                 + "consectetur.\n\n"
                 + getRandomString() + "\n\n" + getRandomString();
         Path originalPath = new Path( docDir, "original.txt" );
-        FileSystemHandler.writeFileToHDFS( original, originalPath, fs );
+        fsHandler.writeFileToHDFS( original, originalPath );
 
         // Create annotation files
         for( AnnotationMode mode : AnnotationMode.values() ) {
@@ -65,7 +70,7 @@ public class DummyInputCreator {
                     + "consectetur.\n";
             Path annotationPath = new Path( docDir,
                     mode.toString() + ".txt" );
-            FileSystemHandler.writeFileToHDFS( annotation, annotationPath, fs );
+            fsHandler.writeFileToHDFS( annotation, annotationPath );
         }
     }
 
@@ -80,6 +85,8 @@ public class DummyInputCreator {
                                                     FileSystem fs,
                                                     int numInputFiles )
             throws IOException {
+        FileSystemHandler fsHandler = new FileSystemHandler( fs );
+
         // Create a bunch of text files as sample "raw text" files
         for( int i = 0; i < numInputFiles; i++ ) {
             String docName = "document" + Integer.toString(i) + ".txt";
@@ -90,7 +97,7 @@ public class DummyInputCreator {
                     + "elit. Quisque placerat arcu in nibh tincidunt "
                     + "consectetur.\n\n"
                     + getRandomString() + "\n\n" + getRandomString();
-            FileSystemHandler.writeFileToHDFS( contents, docPath, fs );
+            fsHandler.writeFileToHDFS( contents, docPath );
         }
     }
 

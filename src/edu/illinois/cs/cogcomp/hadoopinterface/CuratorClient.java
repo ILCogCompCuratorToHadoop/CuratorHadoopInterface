@@ -20,6 +20,14 @@ import java.util.Map.Entry;
  * A class to handle interactions with the Curator. Used in the Curator-Hadoop
  * interface as a means of serializing and deserializing records on the "master"
  * machine (i.e., a user's machine, outside of Hadoop).
+ *
+ * If you want to use this to work with your own, pre-existing Records (i.e.,
+ * not new plain text documents), you'll need to first programmatically create
+ * Records for each document. Then, construct a CuratorClient object, call its
+ * addToInputList() method for each Record that you have, and call its
+ * writeSerializedRecords() method to get serialized Records which you can later
+ * transfer to Hadoop for processing.
+ *
  * @author Lisa Bao
  * @author Tyler Young
  */
@@ -323,7 +331,7 @@ public class CuratorClient {
      *
      * @param record A Curator Record object
      */
-    private void addToInputList(Record record) {
+    public void addToInputList(Record record) {
         newInputRecords.add( record );
     }
 

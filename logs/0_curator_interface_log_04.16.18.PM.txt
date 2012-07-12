@@ -1,0 +1,7 @@
+
+04:16:18 PM  Status: Setting up job.
+
+04:16:18 PM  Error: Parameter usage: 
+	<document directory> <mode>
+or:
+	edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.ArgumentParser -d <document directory> -m <mode> [-maps <number of maps>] [-reduces <number of reduces>]

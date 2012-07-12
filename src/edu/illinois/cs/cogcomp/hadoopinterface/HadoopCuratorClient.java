@@ -1,24 +1,18 @@
 package edu.illinois.cs.cogcomp.hadoopinterface;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.SerializationHandler;
 import edu.illinois.cs.cogcomp.thrift.base.AnnotationFailedException;
 import edu.illinois.cs.cogcomp.thrift.base.ServiceUnavailableException;
-import edu.illinois.cs.cogcomp.thrift.curator.Curator;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TFramedTransport;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 
 import java.io.IOException;
 import java.util.Arrays;
-
-import static edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.writeFileToHDFS;
 
 /**
  * Similar in functionality to the CuratorClient.java (packaged with the Curator,
@@ -44,21 +38,13 @@ import static edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemH
 public class HadoopCuratorClient extends CuratorClient {
     /**
      * Constructs a Curator Client.
+     * @param localFS A FileSystem object to handle interactions with the local
+     *                file system
      */
-    public HadoopCuratorClient( FileSystem hdfs, FileSystem local ) {
-        super();
-        this.hdfs = hdfs;
-        this.localFS = local;
+    public HadoopCuratorClient( FileSystem localFS ) {
+        super("local", PORT);
 
-        // Create a Thrift transport
-        transport = new TSocket( "localhost", PORT );
-        // Use a framed transport so that we have a non-blocking server
-        transport = new TFramedTransport( transport );
-        // Define a protocol which will use the transport
-        TProtocol protocol = new TBinaryProtocol( transport );
-        // Create the client
-        client = new Curator.Client( protocol );
-
+        this.localFS = localFS;
         serializationHandler = new SerializationHandler();
     }
 
@@ -75,10 +61,7 @@ public class HadoopCuratorClient extends CuratorClient {
         try {
             // Ask the Curator to perform the annotation
             transport.open();
-            String annotationMode =
-                    AnnotationMode.toCuratorString( toolToRun );
-
-            client.annotate( record, annotationMode );
+            annotate( record, toolToRun );
         } catch (ServiceUnavailableException e) {
             HadoopInterface.logger.logError( toolToRun.toString()
                     + " annotations are not available.\n" + e.getReason());
@@ -128,12 +111,11 @@ public class HadoopCuratorClient extends CuratorClient {
                                          FileSystem fs )
             throws TException, IOException {
         byte[] recordAsBytes = serializationHandler.serialize( curatorRecord );
-		String docName = curatorRecord.getIdentifier();
-		
+        Path docLocation = new Path( outputDir,
+                                     curatorRecord.getIdentifier() + ".txt" );
+        FileSystemHandler fsHandler = new FileSystemHandler( fs );
         try {
-            writeFileToHDFS( recordAsBytes,
-                             new Path( outputDir, docName.concat(".txt") ),
-                             fs );
+            fsHandler.writeBytesToHDFS( recordAsBytes, docLocation );
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -141,9 +123,7 @@ public class HadoopCuratorClient extends CuratorClient {
 
     private Record lastAnnotatedRecord;
 
-    private FileSystem hdfs;
     private FileSystem localFS;
-    private Curator.Client client;
     private TTransport transport;
     public static final int PORT = 9010;
     private SerializationHandler serializationHandler;

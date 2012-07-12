@@ -1,0 +1,6 @@
+
+04:14:12 PM  Status: Setting up job.
+
+04:14:12 PM  Error: Usage: edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.ArgumentParser<document directory> <mode>
+   or:
+      edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.ArgumentParser -d <document directory> -m <mode> [-maps <number of maps>] [-reduces <number of reduces>]

@@ -66,28 +66,28 @@ public class FileSystemHandler {
     public void checkFileSystem( ) throws IOException {
         Path inputDirectory = job.getInputDirectory();
 
-        if( HDFSFileExists(HadoopInterface.TMP_DIR, fs) ) {
+        if( HDFSFileExists(HadoopInterface.TMP_DIR) ) {
             throw new IOException( "Temp directory "
                     + fs.makeQualified(HadoopInterface.TMP_DIR)
                     + " already exists.  Please remove it first.");
         }
-        if( !HDFSFileExists(inputDirectory, fs) ) {
+        if( !HDFSFileExists(inputDirectory) ) {
             throw new BadInputDirectoryException( "Input directory "
                     + fs.makeQualified( inputDirectory ) + " does not exist. "
                     + "Please create it in the Hadoop file system first." );
         }
-        if( !isDir(inputDirectory, fs) ) {
+        if( !isDir(inputDirectory) ) {
             throw new BadInputDirectoryException( "The file "
                     + fs.makeQualified( inputDirectory ) + " is not a directory. "
                     + "Please check the documentation for this package for "
                     + "information on how to structure the input directory.");
         }
 
-        List<Path> dirsInInput = getSubdirectories(inputDirectory, fs);
+        List<Path> dirsInInput = getSubdirectories(inputDirectory);
         for( Path dir : dirsInInput ) {
             Path originalTxt = new Path( dir, "original.txt" );
 
-            if( getFileSizeInBytes( originalTxt, fs ) < 1 ) {
+            if( getFileSizeInBytes( originalTxt  ) < 1 ) {
                 throw new EmptyInputException( "Input in document directory "
                         + fs.makeQualified( inputDirectory ) + " has no "
                         + "recognized input.  Please create input files in the "
@@ -101,40 +101,38 @@ public class FileSystemHandler {
      * @throws IOException
      */
     public void cleanUpTempFiles() throws IOException {
-        if( HDFSFileExists( HadoopInterface.TMP_DIR, fs) ) {
-            delete( HadoopInterface.TMP_DIR, fs );
+        if( HDFSFileExists( HadoopInterface.TMP_DIR ) ) {
+            delete( HadoopInterface.TMP_DIR );
         }
     }
 
     /**
-     * Deletes a file or directory from a file system.
+     * Deletes a file or directory from this object's file system.
      * @param fileOrDirectoryToDelete The location of the thing to be deleted.
      *                                If this is a directory, we will perform a
      *                                recursive delete (deleting all files within
      *                                the directory as well).
-     * @param fs The file system object against which we should resolve the path.
-     *           May be constructed as either a local or HDFS file system.
      * @throws IOException
      */
-    public static void delete(Path fileOrDirectoryToDelete, FileSystem fs)
-            throws IOException {
-        if( HDFSFileExists( fileOrDirectoryToDelete, fs ) ) {
+    public void delete( Path fileOrDirectoryToDelete ) throws IOException {
+        if( HDFSFileExists( fileOrDirectoryToDelete ) ) {
             fs.delete( fileOrDirectoryToDelete, true );
         }
     }
 
     /**
-     * Creates a directory with read/write access to anyone (777 permissions).
-     * For our purposes, this is fine. If the directory already exists, we simply
-     * exit---it's up to you to make sure you're giving a good path.
-     * @param directoryToCreate A path to the location where the directory should
-     *                          be created.
-     * @param fs The file system against which to resolve the path
+     * Deletes a file or directory from the local file system
+     * @param fileOrDirectoryToDelete The location of the thing to be deleted.
+     *                                If this is a directory, we will perform a
+     *                                recursive delete (deleting all files within
+     *                                the directory as well).
+     * @throws IOException
      */
-    public static void mkdir(Path directoryToCreate, FileSystem fs)
+    public static void deleteLocal( Path fileOrDirectoryToDelete )
             throws IOException {
-        if( !HDFSFileExists( directoryToCreate, fs ) ) {
-            fs.mkdirs( directoryToCreate );
+        if( localFileExists( fileOrDirectoryToDelete ) ) {
+            FileSystem localFS = FileSystem.getLocal( new Configuration() );
+            localFS.delete( fileOrDirectoryToDelete, true );
         }
     }
 
@@ -149,7 +147,9 @@ public class FileSystemHandler {
      *                          be created.
      */
     public void mkdir( Path directoryToCreate ) throws IOException {
-        mkdir( directoryToCreate, fs );
+        if( !HDFSFileExists( directoryToCreate ) ) {
+            fs.mkdirs( directoryToCreate );
+        }
     }
 
     /**
@@ -160,7 +160,9 @@ public class FileSystemHandler {
      *                          be created.
      */
     public static void mkdirLocal(Path directoryToCreate) throws IOException {
-        mkdir( directoryToCreate, FileSystem.getLocal(new Configuration()) );
+        if( !localFileExists( directoryToCreate ) ) {
+            FileSystem.getLocal( new Configuration() ).mkdirs( directoryToCreate );
+        }
     }
 
     /**
@@ -190,16 +192,15 @@ public class FileSystemHandler {
      * Returns a string version of a file on the Hadoop Distributed File System
      * (HDFS).
      * @param locationOfFile The file's path
-     * @param fs The FileSystem object to resolve paths against
      * @return A string version of the requested file
      * @throws IOException
      */
-    public static byte[] readBytesFromHDFS( Path locationOfFile, FileSystem fs )
+    public byte[] readBytesFromHDFS( Path locationOfFile )
             throws IOException {
         FSDataInputStream in = fs.open( locationOfFile );
         BufferedReader reader = new BufferedReader( new InputStreamReader(in) );
 
-        byte[] buffer = new byte[ (int)getFileSizeInBytes(locationOfFile, fs) ];
+        byte[] buffer = new byte[ (int)getFileSizeInBytes(locationOfFile) ];
 
         int i = 0;
         int c = reader.read();
@@ -214,35 +215,19 @@ public class FileSystemHandler {
 
     /**
      * Returns a string version of a file on the Hadoop Distributed File System
-     * (HDFS). This method resolves paths using the file system object given to
-     * this object during its construction, or created based on the Curator job
-     * configuration it was given.
-     * @param locationOfFile The file's path
-     * @return A string version of the requested file
-     * @throws IOException
-     */
-    public byte[] readBytesFromHDFS( Path locationOfFile ) throws IOException {
-        return readBytesFromHDFS( locationOfFile, fs );
-    }
-
-    /**
-     * Returns a string version of a file on the Hadoop Distributed File System
      * (HDFS).
      * @param locationOfFile The file's path
-     * @param fileSystem The FileSystem object to resolve paths against
      * @return A string version of the requested file
      * @throws IOException
      */
-    public static String readFileFromHDFS( Path locationOfFile,
-                                           FileSystem fileSystem )
-            throws IOException {
-        if ( !HDFSFileExists(locationOfFile, fileSystem) ) {
+    public String readFileFromHDFS( Path locationOfFile ) throws IOException {
+        if ( !HDFSFileExists(locationOfFile) ) {
             HadoopInterface.logger.logError( "File " + locationOfFile.toString()
                     + " does not exists" );
             return "";
         }
 
-        FSDataInputStream in = fileSystem.open( locationOfFile );
+        FSDataInputStream in = fs.open( locationOfFile );
         BufferedReader reader = new BufferedReader( new InputStreamReader(in) );
 
         String line = "";
@@ -261,19 +246,6 @@ public class FileSystemHandler {
         in.close();
 
         return fullOutput;
-    }
-
-    /**
-     * Returns a string version of a file on the Hadoop Distributed File System
-     * (HDFS). This method resolves paths using the file system object given to
-     * this object during its construction, or created based on the Curator job
-     * configuration it was given.
-     * @param locationOfFile The file's path
-     * @return A string version of the requested file
-     * @throws IOException
-     */
-    public String readFileFromHDFS( Path locationOfFile ) throws IOException {
-        return readFileFromHDFS( locationOfFile, fs );
     }
 
     /**
@@ -338,10 +310,6 @@ public class FileSystemHandler {
      * @param locationForFile A path (complete with file name and extension) to
      *                        which we should write. If data already exists at
      *                        this location, it will be overwritten.
-     * @param fs The FileSystem object against which we will resolve paths. Note
-     *           that, technically, this need not be an HDFS path. However, if
-     *           you want to write local files, reduce the risk of error for
-     *           yourself by using #writeFileToLocal().
      * @param appendInsteadOfOverwriting TRUE if we should append to whatever
      *                                   currently exists at the location, FALSE
      *                                   if it is okay to overwrite it.
@@ -354,7 +322,7 @@ public class FileSystemHandler {
                                  boolean appendInsteadOfOverwriting )
             throws IOException {
         writeBytesToHDFS( inputText.getBytes(), locationForFile,
-                         appendInsteadOfOverwriting ); // call full method on bytes
+                          appendInsteadOfOverwriting ); // call full method on bytes
     }
 
     /**
@@ -389,10 +357,6 @@ public class FileSystemHandler {
      * @param locationForFile A path (complete with file name and extension) to
      *                        which we should write. If data already exists at
      *                        this location, it will be overwritten.
-     * @param fs The FileSystem object against which we will resolve paths. Note
-     *           that, technically, this need not be an HDFS path. However, if
-     *           you want to write local files, reduce the risk of error for
-     *           yourself by using #writeFileToLocal().
      * @param appendInsteadOfOverwriting TRUE if we should append to whatever
      *                                   currently exists at the location, FALSE
      *                                   if it is okay to overwrite it.
@@ -401,8 +365,8 @@ public class FileSystemHandler {
      * @throws IOException
      */
     public void writeBytesToHDFS( byte[] input,
-                                        Path locationForFile,
-                                        boolean appendInsteadOfOverwriting )
+                                  Path locationForFile,
+                                  boolean appendInsteadOfOverwriting )
             throws IOException {
         // Qualify the location to avoid errors
         Path qualifiedLoc;
@@ -415,12 +379,12 @@ public class FileSystemHandler {
         }
 
         // Handle appends
-        if( appendInsteadOfOverwriting && HDFSFileExists(qualifiedLoc, fs) ) {
+        if( appendInsteadOfOverwriting && HDFSFileExists(qualifiedLoc) ) {
             // Append is *not* supported in Hadoop r1.0.3. Damn.
             // TODO: When 2.0 is final, change to use FileSystem.append() instead
             // dos = fs.append( locationForFile );
 
-            byte[] old = readBytesFromHDFS( qualifiedLoc, fs );
+            byte[] old = readBytesFromHDFS( qualifiedLoc );
             byte[] combined = new byte[ old.length + input.length ];
 
             System.arraycopy( old, 0, combined, 0, old.length );
@@ -428,7 +392,7 @@ public class FileSystemHandler {
 
             input = combined;
 
-            delete( qualifiedLoc, fs );
+            delete( qualifiedLoc );
         }
 
         FSDataOutputStream dos = fs.create( qualifiedLoc, true );
@@ -448,8 +412,8 @@ public class FileSystemHandler {
      *                        should be written
      * @throws IOException
      */
-    public static void writeFileToLocal( String inputText,
-                                         Path locationForFile )
+    public void writeFileToLocal( String inputText,
+                                  Path locationForFile )
             throws IOException {
         writeFileToLocal( inputText, locationForFile, false );
     }
@@ -470,27 +434,11 @@ public class FileSystemHandler {
                                          boolean appendInsteadOfOverwriting )
             throws IOException {
         FileSystem localFS = FileSystem.getLocal( new Configuration() );
+        FileSystemHandler localHandler = new FileSystemHandler( localFS );
 
-        writeFileToHDFS( inputText,
-                         locationForFile,
-                         localFS,
-                         appendInsteadOfOverwriting );
-    }
-
-    /**
-     * Copies a file from the local file system into HDFS
-     * @param inLocalFileSystem The file in the local file system to be written
-     *                          to HDFS.
-     * @param inHDFS The location of the file to be written to. This will contain
-     *               a copy of the file in the local file system.
-     * @param fs An HDFS file system object which will be (used to access HDFS)
-     * @throws IOException
-     */
-    public static void copyFileFromLocalToHDFS( Path inLocalFileSystem,
-                                                Path inHDFS,
-                                                FileSystem fs )
-            throws IOException {
-        fs.copyFromLocalFile( inLocalFileSystem, inHDFS );
+        localHandler.writeFileToHDFS( inputText,
+                                      locationForFile,
+                                      appendInsteadOfOverwriting );
     }
 
     /**
@@ -505,23 +453,7 @@ public class FileSystemHandler {
      */
     public void copyFileFromLocalToHDFS( Path inLocalFileSystem,
                                          Path inHDFS ) throws IOException {
-        copyFileFromLocalToHDFS( inLocalFileSystem, inHDFS, fs );
-    }
-
-    /**
-     * Copies a file from HDFS to the local file system
-     * @param inHDFS The location of the file in HDFS that will be copied to
-     *               the local file system.
-     * @param inLocalFileSystem The file in the local file system that will
-     *                          contain a copy of the file in HDFS.
-     * @param fs An HDFS file system object which will be (used to access HDFS)
-     * @throws IOException
-     */
-    public static void copyFileFromHDFSToLocal( Path inHDFS,
-                                                Path inLocalFileSystem,
-                                                FileSystem fs )
-            throws IOException {
-        fs.copyToLocalFile( inHDFS, inLocalFileSystem );
+        fs.copyFromLocalFile( inLocalFileSystem, inHDFS );
     }
 
     /**
@@ -537,34 +469,7 @@ public class FileSystemHandler {
     public void copyFileFromHDFSToLocal( Path inHDFS,
                                          Path inLocalFileSystem )
             throws IOException {
-        copyFileFromHDFSToLocal( inHDFS, inLocalFileSystem, fs );
-    }
-
-    /**
-     * Returns an array of strings naming the files and directories in the
-     * directory denoted by this abstract path name.
-     *
-     * There is no guarantee that the name strings in the resulting array will
-     * appear in any specific order; they are not, in particular, guaranteed to
-     * appear in alphabetical order.
-     *
-     * @param dir The path whose files you want a list of
-     * @param fs The filesystem that the directory should be resolved against
-     *           (before doing anything with the path, we make it fully qualified
-     *           against this filesystem).
-     * @return A list of all files and sub-directories found in the directory
-     * @throws IOException
-     */
-    public static List<String> getFilesAndDirectoriesInDirectory( Path dir,
-                                                                  FileSystem fs )
-            throws IOException {
-        ArrayList<String> listOfPaths = new ArrayList<String>();
-
-        FileStatus fileStatuses[] = fs.listStatus(dir);
-        for( FileStatus status : fileStatuses ) {
-            listOfPaths.add( status.getPath().toString() );
-        }
-        return listOfPaths;
+        fs.copyToLocalFile( inHDFS, inLocalFileSystem );
     }
 
     /**
@@ -583,27 +488,11 @@ public class FileSystemHandler {
      */
     public List<String> getFilesAndDirectoriesInDirectory( Path dir )
             throws IOException {
-        return getFilesAndDirectoriesInDirectory( dir, fs );
-    }
+        ArrayList<String> listOfPaths = new ArrayList<String>();
 
-    /**
-     * Gets a list of Paths that contains all subdirectories in the directory in
-     * question.
-     * @param dir The directory whose subdirectories we shall get the list of.
-     * @param fs The file system against which the path will be resolved
-     * @return A list of Paths which point to the subdirectories of the input
-     *         directory.
-     * @throws IOException
-     */
-    public static List<Path> getSubdirectories( Path dir, FileSystem fs )
-            throws IOException {
-        List<Path> listOfPaths = new ArrayList<Path>();
-
-        FileStatus fileStatuses[] = fs.listStatus(dir);
+        FileStatus fileStatuses[] = fs.listStatus( dir );
         for( FileStatus status : fileStatuses ) {
-            if( status.isDir() ) {
-                listOfPaths.add( status.getPath() );
-            }
+            listOfPaths.add( status.getPath().toString() );
         }
         return listOfPaths;
     }
@@ -620,7 +509,15 @@ public class FileSystemHandler {
      */
     public List<Path> getSubdirectories( Path dir )
             throws IOException {
-        return getSubdirectories( dir, fs );
+        List<Path> listOfPaths = new ArrayList<Path>();
+
+        FileStatus fileStatuses[] = fs.listStatus(dir);
+        for( FileStatus status : fileStatuses ) {
+            if( status.isDir() ) {
+                listOfPaths.add( status.getPath() );
+            }
+        }
+        return listOfPaths;
     }
 
     /**
@@ -634,17 +531,6 @@ public class FileSystemHandler {
 
     /**
      * Returns TRUE if the file exists at the specified path, and false otherwise.
-     * @param fileLocation A Path to the file in question
-     * @param fs The FileSystem object against which to resolve the path
-     * @return TRUE if and only if the specified file exists.
-     */
-    public static boolean HDFSFileExists( Path fileLocation, FileSystem fs )
-            throws IOException {
-        return fs.exists(fileLocation);
-    }
-
-    /**
-     * Returns TRUE if the file exists at the specified path, and false otherwise.
      *
      * This method resolves paths using the file system object given to this
      * object during its construction, or created based on the Curator job
@@ -654,25 +540,7 @@ public class FileSystemHandler {
      */
     public boolean HDFSFileExists( Path fileLocation )
             throws IOException {
-        return HDFSFileExists( fileLocation, fs );
-    }
-
-
-    /**
-     * Checks whether a given path refers to a directory. Note that the path does
-     * *not* need to actually exist---if the file is not found, we simply return
-     * false.
-     * @param path The location of the file/directory in question
-     * @param fs A file system object to resolve paths relative to
-     * @return True if path points to a directory, false otherwise.
-     * @throws IOException
-     */
-    public static boolean isDir( Path path, FileSystem fs ) throws IOException {
-        try {
-            return fs.getFileStatus( path ).isDir();
-        } catch( FileNotFoundException e ) {
-            return false;
-        }
+        return fs.exists( fileLocation );
     }
 
     /**
@@ -689,28 +557,11 @@ public class FileSystemHandler {
      * @throws IOException
      */
     public boolean isDir( Path path ) throws IOException {
-        return isDir(path, fs);
-    }
-
-
-    /**
-     * Checks the file to see if it was modified in the last (some number)
-     * minutes.
-     * @param path The location (file or directory) whose last modification
-     *             time we should check
-     * @param fs The file system against which to resolve the path
-     * @param minutes The max allowed number of minutes since the last
-     *                modification
-     * @return True if the file was modified within the last (parameter: minutes)
-     *         minutes.
-     * @throws IOException
-     */
-    public static boolean fileWasModifiedInLastXMins( Path path,
-                                                      FileSystem fs,
-                                                      int minutes )
-            throws IOException {
-        long timeXMinutesAgo = System.currentTimeMillis() - (minutes * 60 * 1000);
-        return (fs.getFileStatus(path).getAccessTime() > timeXMinutesAgo);
+        try {
+            return fs.getFileStatus( path ).isDir();
+        } catch( FileNotFoundException e ) {
+            return false;
+        }
     }
 
     /**
@@ -731,22 +582,8 @@ public class FileSystemHandler {
      */
     public boolean fileWasModifiedInLastXMins( Path path, int minutes )
             throws IOException {
-        return fileWasModifiedInLastXMins( path, fs, minutes );
-    }
-
-    /**
-     * Returns the size of the indicated file, in bytes
-     * @param path The location of the file in question. Note that if this is a
-     *             directory, you'll get the size of the actual Unix file
-     *             representing the directory, *not* the size of the sum of
-     *             the contents.
-     * @param fs The file system against which to resolve paths
-     * @return The size in bytes of the entity at the indicated path
-     * @throws IOException
-     */
-    public static long getFileSizeInBytes(Path path, FileSystem fs)
-            throws IOException {
-        return fs.getFileStatus( path ).getLen();
+        long timeXMinutesAgo = System.currentTimeMillis() - ( minutes * 60 * 1000);
+        return ( fs.getFileStatus( path ).getAccessTime() > timeXMinutesAgo);
     }
 
     /**
@@ -764,7 +601,7 @@ public class FileSystemHandler {
      * @throws IOException
      */
     public long getFileSizeInBytes( Path path ) throws IOException {
-        return getFileSizeInBytes( path, fs );
+        return fs.getFileStatus( path ).getLen();
     }
 
     /**

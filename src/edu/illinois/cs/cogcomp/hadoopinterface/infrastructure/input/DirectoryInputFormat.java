@@ -40,11 +40,12 @@ public class DirectoryInputFormat extends InputFormat< Text, HadoopRecord> {
         // Get location of the input document directory from job context
         Configuration conf = context.getConfiguration();
         FileSystem fs = FileSystem.get(conf);
+        FileSystemHandler fsHandler = new FileSystemHandler(fs);
 
         HadoopInterface.logger.log("Input dir is " + conf.get("inputDirectory"));
 
-        List<Path> subDirsOfInputDirs = FileSystemHandler.getSubdirectories(
-                new Path( conf.get("inputDirectory") ), fs);
+        List<Path> subDirsOfInputDirs = fsHandler.getSubdirectories(
+                new Path( conf.get("inputDirectory") ) );
 
         HadoopInterface.logger.log( "Found " + subDirsOfInputDirs.size()
                 + " documents in the input directory. "
