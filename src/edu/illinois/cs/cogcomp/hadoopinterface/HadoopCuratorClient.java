@@ -103,18 +103,15 @@ public class HadoopCuratorClient extends CuratorClient {
 
     /**
      * Writes the results of the last call to annotate() to the specified
-     * directory. This is equivalent to serializing the results of a call to
+     * directory in HDFS. This is equivalent to serializing the results of a call to
      * performAnnotation() to the directory.
-     * @param docOutputDir The directory to which the results of the last call
-     *                     to annotate() should be written. This directory will
-     *                     most likely be named with the document's hash, and it
-     *                     will likely be a subdirectory of the overall job
-     *                     output directory.
-     * @TODO: make this actually write to disk!
+     * @param outputDir The directory to which the results of the last call
+     *                  to annotate() should be written. Each serialized document
+     *                  should be named with the document's hash.
      */
-    public void writeOutputFromLastAnnotate( Path docOutputDir )
+    public void writeOutputFromLastAnnotate( Path outputDir )
             throws TException, IOException {
-        serializeCuratorRecord( lastAnnotatedRecord, docOutputDir, localFS );
+        serializeCuratorRecord( lastAnnotatedRecord, outputDir, localFS );
     }
 
     /**
@@ -123,27 +120,27 @@ public class HadoopCuratorClient extends CuratorClient {
      * it is easy to later create a HadoopRecord based on the output directory.)
      * @param curatorRecord The Curator-friendly, Thrift-based Record to write
      *                      to HDFS.
-     * @param docOutputDir The location in HDFS to which the Record should be
-     *                     written.
+     * @param outputDir The location in HDFS to which the Record should be
+     *                  written.
      * @param fs The filesystem against which the path will be resolved
      */
     private void serializeCuratorRecord( Record curatorRecord,
-                                         Path docOutputDir,
+                                         Path outputDir,
                                          FileSystem fs )
             throws TException, IOException {
-        byte[] recordAsBytes;
-        recordAsBytes = serializationHandler.serialize( curatorRecord );
-
+        byte[] recordAsBytes = serializationHandler.serialize( curatorRecord );
+		String docName = curatorRecord.getIdentifier();
+		
         try {
             writeFileToHDFS( recordAsBytes,
-                             new Path( docOutputDir, "record.txt" ),
+                             new Path( docOutputDir, docName.concat(".txt") ),
                              fs );
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private edu.illinois.cs.cogcomp.thrift.curator.Record lastAnnotatedRecord;
+    private Record lastAnnotatedRecord;
 
     private FileSystem hdfs;
     private FileSystem localFS;
