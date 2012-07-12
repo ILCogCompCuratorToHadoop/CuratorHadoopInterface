@@ -86,13 +86,9 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         Path outputDir = new Path( context.getConfiguration().get("outputDirectory") );
         client.writeOutputFromLastAnnotate(outputDir);
 
-<<<<<<< HEAD
-        // TODO Run a separate MR job (e.g. KillCuratorReducer.java), 
+        // TODO Run a separate MR job (e.g. KillCuratorReducer.java),
         // after all jobs are through, to kill all tools and local Curators
-        
-=======
 
->>>>>>> Many small changes for compatibility with overhauled FileSystemHandler
         // pass Curator output back to Hadoop as Record
         context.write(inKey, inValue);
     }
@@ -345,7 +341,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
     /**
      * Checks the XML file used to point the Curator to the locally running
-     * annotators. If the file doesn't exist, create it.
+     * annotators. If the file doesn't exist, creates it.
      *
      * @param runningTool The annotator currently running on this node
      * @return The location at which the config file can be accessed.
