@@ -29,7 +29,7 @@ public enum AnnotationMode {
         try { 
             return AnnotationMode.valueOf( s );
         } catch ( IllegalArgumentException e ) {
-            // This will contain a bunch of strings which we will turn into
+            // This map will contain a bunch of strings which we will turn into
             // case insensitive regular expressions. If we match one of them,
             // we will return the AnnotationMode that the string is mapped to.
             Map<String, AnnotationMode> regexes =
