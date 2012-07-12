@@ -46,8 +46,7 @@ public class HadoopCuratorClient extends CuratorClient {
      * Constructs a Curator Client.
      */
     public HadoopCuratorClient( FileSystem hdfs, FileSystem local ) {
-        // TODO: Is this construction okay?
-        super( "localhost", 9010 );
+        super();
         this.hdfs = hdfs;
         this.localFS = local;
 

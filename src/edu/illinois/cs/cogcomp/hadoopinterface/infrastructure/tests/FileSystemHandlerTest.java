@@ -161,9 +161,6 @@ public class FileSystemHandlerTest {
             throw new IOException( "Doesn't think path " + p.toString() +
                                    " is a real directory!" );
         }
-        if( !FileSystemHandler.isDir( p.toString(), fs )) {
-            throw new IOException( "Doesn't think string version of path is a real dir!" );
-        }
     }
 
     public void getsRightNumOfFilesAndDirectories() throws IOException {

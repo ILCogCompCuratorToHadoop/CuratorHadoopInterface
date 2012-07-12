@@ -17,7 +17,6 @@ import java.util.List;
 /**
  * A class to handle all the filesystem interactions in the Hadoop interface.
  *
- * @TODO: Non-static versions of the static methods requiring a filesystem obj
  * @bug Writing files does *not* work when called from the
  *      InputSplit (DirectorySplit)
  * @author Tyler Young
@@ -33,8 +32,18 @@ public class FileSystemHandler {
     }
 
     /**
+     * Constructs a file system handler
+     * @param fs The file system against which we should resolve paths
+     */
+    public FileSystemHandler( FileSystem fs ) {
+        this.fs = fs;
+    }
+
+    /**
      * Sets up the input and output directories for this job in the Hadoop
-     * Distributed File System (HDFS).
+     * Distributed File System (HDFS). This method resolves paths using the file
+     * system object given to this object during its construction or created
+     * based on the Curator job configuration it was given.
      * @throws IOException Possible IOException from file operations
      */
     public void setUpIODirectories() throws IOException {
@@ -50,7 +59,8 @@ public class FileSystemHandler {
     /**
      * Confirms that the required directories exist (or don't exist, as the case
      * may be) and that we have valid inputs, and throws an IO Exception if we
-     * do not.
+     * do not. This method resolves paths using the file system object given to
+     * this object during its construction.
      * @throws IOException Possible IOException from file operations
      */
     public void checkFileSystem( ) throws IOException {
@@ -129,6 +139,20 @@ public class FileSystemHandler {
     }
 
     /**
+     * Creates a directory with read/write access to anyone (777 permissions).
+     * For our purposes, this is fine. If the directory already exists, we simply
+     * exit---it's up to you to make sure you're giving a good path. This method
+     * resolves paths using the file system object given to this object during
+     * its construction, or created based on the Curator job configuration it
+     * was given.
+     * @param directoryToCreate A path to the location where the directory should
+     *                          be created.
+     */
+    public void mkdir( Path directoryToCreate ) throws IOException {
+        mkdir( directoryToCreate, fs );
+    }
+
+    /**
      * Creates a directory on the local file system with 777 permissions.
      * For our purposes, this is fine. If the directory already exists, we simply
      * exit---it's up to you to make sure you're giving a good path.
@@ -151,8 +175,15 @@ public class FileSystemHandler {
                 pathAsString.length());
     }
 
+    /**
+     * Returns the filename from a path. For instance, if p was /foo/bar/bas.txt,
+     * it would return "bas.txt".
+     * @param p A path that ends in a file
+     * @return The final path component
+     */
     public static String getFileNameFromPath( Path p ) {
-        return getFileNameFromPath( p.toString().trim() );
+        String name = p.getName();
+        return name.substring( 0, name.lastIndexOf('.') + 1 );
     }
 
     /**
@@ -179,6 +210,19 @@ public class FileSystemHandler {
         }
 
         return buffer;
+    }
+
+    /**
+     * Returns a string version of a file on the Hadoop Distributed File System
+     * (HDFS). This method resolves paths using the file system object given to
+     * this object during its construction, or created based on the Curator job
+     * configuration it was given.
+     * @param locationOfFile The file's path
+     * @return A string version of the requested file
+     * @throws IOException
+     */
+    public byte[] readBytesFromHDFS( Path locationOfFile ) throws IOException {
+        return readBytesFromHDFS( locationOfFile, fs );
     }
 
     /**
@@ -217,6 +261,19 @@ public class FileSystemHandler {
         in.close();
 
         return fullOutput;
+    }
+
+    /**
+     * Returns a string version of a file on the Hadoop Distributed File System
+     * (HDFS). This method resolves paths using the file system object given to
+     * this object during its construction, or created based on the Curator job
+     * configuration it was given.
+     * @param locationOfFile The file's path
+     * @return A string version of the requested file
+     * @throws IOException
+     */
+    public String readFileFromHDFS( Path locationOfFile ) throws IOException {
+        return readFileFromHDFS( locationOfFile, fs );
     }
 
     /**
@@ -271,6 +328,23 @@ public class FileSystemHandler {
     }
 
     /**
+     * Writes a string to a text file to a given location on the Hadoop
+     * Distributed File System (HDFS). Note that this will overwrite anything
+     * currently present at the location. This method resolves paths using the
+     * file system object given to this object during its construction, or
+     * created based on the Curator job configuration it was given.
+     * @param inputText The string to be written to the text file
+     * @param locationForFile A path (complete with file name and extension) to
+     *                        which we should write. If data already exists at
+     *                        this location, it will be overwritten.
+     * @throws IOException
+     */
+    public void writeFileToHDFS( String inputText,
+                                 Path locationForFile ) throws IOException {
+        writeFileToHDFS( inputText, locationForFile, fs );
+    }
+
+    /**
      * Writes a byte array to a text file to a given location on the Hadoop
      * Distributed File System (HDFS). Note that this will overwrite anything
      * currently present at the location.
@@ -289,6 +363,24 @@ public class FileSystemHandler {
                                         FileSystem fs )
             throws IOException {
         writeFileToHDFS( input, locationForFile, fs, false);
+    }
+
+    /**
+     * Writes a byte array to a text file to a given location on the Hadoop
+     * Distributed File System (HDFS). Note that this will overwrite anything
+     * currently present at the location. This method resolves paths using the
+     * file system object given to this object during its construction, or
+     * created based on the Curator job configuration it was given.
+     * @param input The byte array to be written to the text file
+     * @param locationForFile A path (complete with file name and extension) to
+     *                        which we should write. If data already exists at
+     *                        this location, it will be overwritten.
+     * @throws IOException
+     */
+    public void writeFileToHDFS( byte[] input,
+                                        Path locationForFile )
+            throws IOException {
+        writeFileToHDFS( input, locationForFile, fs );
     }
 
     /**
@@ -318,6 +410,32 @@ public class FileSystemHandler {
             throws IOException {
         writeFileToHDFS( inputText.getBytes(), locationForFile, fs,
                          appendInsteadOfOverwriting);
+    }
+
+    /**
+     * Writes a string to a text file to a given location on the Hadoop
+     * Distributed File System (HDFS). Note that this is not thread-safe; Hadoop
+     * recommends you not try to have multiple nodes writing to the same file,
+     * ever. This method resolves paths using the file system object given to
+     * this object during its construction, or created based on the Curator job
+     * configuration it was given.
+     * @param inputText The string to be written to the text file
+     * @param locationForFile A path (complete with file name and extension) to
+     *                        which we should write. If data already exists at
+     *                        this location, it will be overwritten.
+     * @param appendInsteadOfOverwriting TRUE if we should append to whatever
+     *                                   currently exists at the location, FALSE
+     *                                   if it is okay to overwrite it.
+     * @bug Writing files does *not* work when called from the
+     *      InputSplit (DirectorySplit)
+     * @throws IOException
+     */
+    public void writeFileToHDFS( String inputText,
+                                 Path locationForFile,
+                                 boolean appendInsteadOfOverwriting )
+            throws IOException {
+        writeFileToHDFS( inputText, locationForFile, fs,
+                         appendInsteadOfOverwriting );
     }
 
     /**
@@ -381,6 +499,32 @@ public class FileSystemHandler {
     }
 
     /**
+     * Writes a byte array to a text file to a given location on the Hadoop
+     * Distributed File System (HDFS). Note that this is not thread-safe; Hadoop
+     * recommends you not try to have multiple nodes writing to the same file,
+     * ever. Resolves paths using the file system object given to this object
+     * during its construction, or created based on the Curator job
+     * configuration it was given.
+     * @param input The byte array to be written to the text file
+     * @param locationForFile A path (complete with file name and extension) to
+     *                        which we should write. If data already exists at
+     *                        this location, it will be overwritten.
+     * @param appendInsteadOfOverwriting TRUE if we should append to whatever
+     *                                   currently exists at the location, FALSE
+     *                                   if it is okay to overwrite it.
+     * @bug Writing files does *not* work when called from the
+     *      InputSplit (DirectorySplit)
+     * @throws IOException
+     */
+    public void writeFileToHDFS( byte[] input,
+                                 Path locationForFile,
+                                 boolean appendInsteadOfOverwriting )
+            throws IOException {
+        writeFileToHDFS( input, locationForFile, fs,
+                         appendInsteadOfOverwriting );
+    }
+
+    /**
      * Writes a string to a specified file on the local (i.e., non-Hadoop
      * Distributed) file system. Note that this method overwrites any data
      * previously present in the requested location.
@@ -412,31 +556,73 @@ public class FileSystemHandler {
             throws IOException {
         FileSystem localFS = FileSystem.getLocal( new Configuration() );
 
-        writeFileToHDFS(inputText,
-                locationForFile,
-                localFS,
-                appendInsteadOfOverwriting);
+        writeFileToHDFS( inputText,
+                         locationForFile,
+                         localFS,
+                         appendInsteadOfOverwriting );
     }
 
     /**
      * Copies a file from the local file system into HDFS
-     * @param inLocalFileSystem
-     * @param inHDFS
-     * @param fs
+     * @param inLocalFileSystem The file in the local file system to be written
+     *                          to HDFS.
+     * @param inHDFS The location of the file to be written to. This will contain
+     *               a copy of the file in the local file system.
+     * @param fs An HDFS file system object which will be (used to access HDFS)
      * @throws IOException
      */
     public static void copyFileFromLocalToHDFS( Path inLocalFileSystem,
                                                 Path inHDFS,
                                                 FileSystem fs )
             throws IOException {
-        fs.copyFromLocalFile(inLocalFileSystem, inHDFS);
+        fs.copyFromLocalFile( inLocalFileSystem, inHDFS );
     }
 
+    /**
+     * Copies a file from the local file system into HDFS. Resolves paths using
+     * the file system object given to this object during its construction, or
+     * created based on the Curator job configuration it was given.
+     * @param inLocalFileSystem The file in the local file system to be written
+     *                          to HDFS.
+     * @param inHDFS The location of the file to be written to. This will contain
+     *               a copy of the file in the local file system.
+     * @throws IOException
+     */
+    public void copyFileFromLocalToHDFS( Path inLocalFileSystem,
+                                         Path inHDFS ) throws IOException {
+        copyFileFromLocalToHDFS( inLocalFileSystem, inHDFS, fs );
+    }
+
+    /**
+     * Copies a file from HDFS to the local file system
+     * @param inHDFS The location of the file in HDFS that will be copied to
+     *               the local file system.
+     * @param inLocalFileSystem The file in the local file system that will
+     *                          contain a copy of the file in HDFS.
+     * @param fs An HDFS file system object which will be (used to access HDFS)
+     * @throws IOException
+     */
     public static void copyFileFromHDFSToLocal( Path inHDFS,
                                                 Path inLocalFileSystem,
                                                 FileSystem fs )
             throws IOException {
-        fs.copyToLocalFile(inHDFS, inLocalFileSystem);
+        fs.copyToLocalFile( inHDFS, inLocalFileSystem );
+    }
+
+    /**
+     * Copies a file from HDFS to the local file system. Resolves paths using the
+     * file system object given to this object during its construction, or
+     * created based on the Curator job configuration it was given.
+     * @param inHDFS The location of the file in HDFS that will be copied to
+     *               the local file system.
+     * @param inLocalFileSystem The file in the local file system that will
+     *                          contain a copy of the file in HDFS.
+     * @throws IOException
+     */
+    public void copyFileFromHDFSToLocal( Path inHDFS,
+                                         Path inLocalFileSystem )
+            throws IOException {
+        copyFileFromHDFSToLocal( inHDFS, inLocalFileSystem, fs );
     }
 
     /**
@@ -468,27 +654,21 @@ public class FileSystemHandler {
 
     /**
      * Returns an array of strings naming the files and directories in the
-     * directory denoted by this abstract path name.
+     * directory denoted by this abstract path name. Resolves paths using the
+     * file system object given to this object during its construction, or
+     * created based on the Curator job configuration it was given.
      *
      * There is no guarantee that the name strings in the resulting array will
      * appear in any specific order; they are not, in particular, guaranteed to
      * appear in alphabetical order.
      *
      * @param dir The path whose files you want a list of
-     * @param fs The filesystem that the directory should be resolved against
-     *           (before doing anything with the path, we make it fully qualified
-     *           against this filesystem).
      * @return A list of all files and sub-directories found in the directory
      * @throws IOException
      */
-    public static List<String> getFilesAndDirectoriesInDirectory( String dir,
-                                                                  FileSystem fs )
+    public List<String> getFilesAndDirectoriesInDirectory( Path dir )
             throws IOException {
-        if( dir == null || dir.equals("") ) {
-            throw new IllegalArgumentException(
-                    "The empty string is not a valid path." );
-        }
-        return getFilesAndDirectoriesInDirectory( new Path(dir), fs );
+        return getFilesAndDirectoriesInDirectory( dir, fs );
     }
 
     /**
@@ -511,7 +691,21 @@ public class FileSystemHandler {
             }
         }
         return listOfPaths;
+    }
 
+    /**
+     * Gets a list of Paths that contains all subdirectories in the directory in
+     * question. Resolves paths using the file system object given to this object
+     * during its construction, or created based on the Curator job
+     * configuration it was given.
+     * @param dir The directory whose subdirectories we shall get the list of.
+     * @return A list of Paths which point to the subdirectories of the input
+     *         directory.
+     * @throws IOException
+     */
+    public List<Path> getSubdirectories( Path dir )
+            throws IOException {
+        return getSubdirectories( dir, fs );
     }
 
     /**
@@ -535,16 +729,19 @@ public class FileSystemHandler {
     }
 
     /**
-     * Checks whether a given path refers to a directory.
-     * @param pathAsString The location of the file/directory in question
-     * @param fs A file system object to resolve paths relative to
-     * @return True if path points to a directory, false otherwise.
-     * @throws IOException
+     * Returns TRUE if the file exists at the specified path, and false otherwise.
+     *
+     * This method resolves paths using the file system object given to this
+     * object during its construction, or created based on the Curator job
+     * configuration it was given.
+     * @param fileLocation A Path to the file in question
+     * @return TRUE if and only if the specified file exists.
      */
-    public static boolean isDir( String pathAsString, FileSystem fs )
+    public boolean HDFSFileExists( Path fileLocation )
             throws IOException {
-        return isDir( new Path(pathAsString), fs );
+        return HDFSFileExists( fileLocation, fs );
     }
+
 
     /**
      * Checks whether a given path refers to a directory. Note that the path does
@@ -562,6 +759,24 @@ public class FileSystemHandler {
             return false;
         }
     }
+
+    /**
+     * Checks whether a given path refers to a directory. Note that the path does
+     * *not* need to actually exist---if the file is not found, we simply return
+     * false.
+     *
+     * This method resolves paths using the file system object given to this
+     * object during its construction, or created based on the Curator job
+     * configuration it was given.
+     *
+     * @param path The location of the file/directory in question
+     * @return True if path points to a directory, false otherwise.
+     * @throws IOException
+     */
+    public boolean isDir( Path path ) throws IOException {
+        return isDir(path, fs);
+    }
+
 
     /**
      * Checks the file to see if it was modified in the last (some number)
@@ -584,6 +799,27 @@ public class FileSystemHandler {
     }
 
     /**
+     * Checks the file to see if it was modified in the last (some number)
+     * minutes.
+     *
+     * This method resolves paths using the file system object given to this
+     * object during its construction, or created based on the Curator job
+     * configuration it was given.
+     *
+     * @param path The location (file or directory) whose last modification
+     *             time we should check
+     * @param minutes The max allowed number of minutes since the last
+     *                modification
+     * @return True if the file was modified within the last (parameter: minutes)
+     *         minutes.
+     * @throws IOException
+     */
+    public boolean fileWasModifiedInLastXMins( Path path, int minutes )
+            throws IOException {
+        return fileWasModifiedInLastXMins( path, fs, minutes );
+    }
+
+    /**
      * Returns the size of the indicated file, in bytes
      * @param path The location of the file in question. Note that if this is a
      *             directory, you'll get the size of the actual Unix file
@@ -596,6 +832,24 @@ public class FileSystemHandler {
     public static long getFileSizeInBytes(Path path, FileSystem fs)
             throws IOException {
         return fs.getFileStatus( path ).getLen();
+    }
+
+    /**
+     * Returns the size of the indicated file, in bytes
+     *
+     * This method resolves paths using the file system object given to this
+     * object during its construction, or created based on the Curator job
+     * configuration it was given.
+     *
+     * @param path The location of the file in question. Note that if this is a
+     *             directory, you'll get the size of the actual Unix file
+     *             representing the directory, *not* the size of the sum of
+     *             the contents.
+     * @return The size in bytes of the entity at the indicated path
+     * @throws IOException
+     */
+    public long getFileSizeInBytes( Path path ) throws IOException {
+        return getFileSizeInBytes( path, fs );
     }
 
     /**

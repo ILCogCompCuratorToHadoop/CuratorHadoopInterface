@@ -38,6 +38,14 @@ public class CuratorClient {
     private SerializationHandler serializer;
 
     /**
+     * Constructs a CuratorClient object with the default Curator host and port
+     * (i.e., "localhost" and port 9010)
+     */
+    public CuratorClient() {
+        this("localhost", 9010);
+    }
+
+    /**
      * Constructs a CuratorClient object
      * @param host The host name for the Curator we will connect to (e.g., in
      *             local mode, this is "localhost").
