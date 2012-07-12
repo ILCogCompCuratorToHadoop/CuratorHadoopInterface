@@ -1,21 +1,17 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
-import edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface;
+import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.WritableComparable;
-// TODO import Curator Record class
+import org.apache.thrift.TException;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.*;
 
-import static edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.AnnotationMode.*;
-import static edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.delete;
-import static edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.readFileFromHDFS;
-import static edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler.writeFileToHDFS;
+// TODO import Curator Record class
 
 /**
  * A version of the Curator's document record, for use on the Hadoop Distributed
@@ -26,7 +22,7 @@ import static edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemH
  * @author Lisa Bao
  * @author Tyler Young
  */
-public class HadoopRecord extends Record implements WritableComparable< HadoopRecord > {
+public class HadoopRecord extends Record implements WritableComparable< Record > {
 
     private Configuration config;
     private String documentHash;
@@ -34,6 +30,7 @@ public class HadoopRecord extends Record implements WritableComparable< HadoopRe
     private MessageLogger logger;
     private Path doc;
     private boolean isInitialized;
+    private SerializationHandler serializer;
 
     /**
      * Zero-argument constructor for use by the Hadoop backend. It calls this
@@ -42,6 +39,7 @@ public class HadoopRecord extends Record implements WritableComparable< HadoopRe
      * so that you wind up with a normal, filled object.)
      */
     public HadoopRecord() {
+        serializer = new SerializationHandler();
     }
 
     /**
@@ -97,33 +95,45 @@ public class HadoopRecord extends Record implements WritableComparable< HadoopRe
     public String getDocumentHash() {
         return documentHash;
     }
-    
+
     @Override
-    public int compareTo( HadoopRecord record ) {
+    public int compareTo( Record record ) {
         logger.log( "Comparing record for " + getDocumentHash()
-                                    + "to record for " + record.getDocumentHash() );
-        return getDocumentHash().compareTo( record.getDocumentHash() );
+                                    + "to record for " + record.getIdentifier() );
+        return getDocumentHash().compareTo( record.getIdentifier() );
     }
 
     @Override
     public void write( DataOutput out ) throws IOException {
-        if( isInitialized ) {
-            logger.log( "Writing data output for " + getDocumentHash() );
-            String stringRep = getDocumentHash() + "\n";
-            out.write( stringRep.getBytes() );
-            // Have the configuration serialize its data
-            config.write( out );
+        try {
+            out.write( serializer.serialize(this) );
+        } catch ( TException e ) {
+            e.printStackTrace();
         }
     }
 
     @Override
     public void readFields( DataInput in ) throws IOException {
-        String newDocumentHash = in.readLine();
-        Configuration newConfig = new Configuration();
-        newConfig.readFields( in );
-        FileSystem newFileSystem = FileSystem.get( newConfig );
-        if( newDocumentHash != null ) {
-            initializeAllVars( newDocumentHash, newFileSystem, newConfig );
+        byte[] serializedForm = new byte[10240];
+
+        int i = 0;
+        int c = in.readByte();
+
+        while ( c != -1 ) {
+            serializedForm[i++] = (byte) c;
+            c = in.readByte();
+
+            if( i == serializedForm.length ) {
+                byte[] newBuffer = new byte[serializedForm.length * 2];
+                System.arraycopy(serializedForm, 0, newBuffer, 0, serializedForm.length);
+                serializedForm = newBuffer;
+            }
+        }
+
+        try {
+            serializer.deserialize( serializedForm );
+        } catch ( TException e ) {
+            e.printStackTrace();
         }
     }
 
