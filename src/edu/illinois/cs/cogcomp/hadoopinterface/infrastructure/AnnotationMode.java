@@ -1,6 +1,10 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions.IllegalModeException;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions
+        .IllegalModeException;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Defines "modes" for the Curator-to-Hadoop interface (i.e., annotation types
@@ -147,5 +151,81 @@ public enum AnnotationMode {
      */
     public ViewType getViewType() {
         return  getViewType( this );
+    }
+
+    /**
+     * Gets the set of annotations required in order to perform an annotation.
+     * @return The set of dependencies for the given annotation type. For example,
+     *         if the annotation is TOKEN (tokenization), this will return the
+     *         empty set (there are no dependencies for tokenization). If,
+     *         however, the annotation is CHUNK (chunking), it will return
+     *         a set containing POS and TOKEN, since chunking depends on both
+     *         part of speech and tokenization.
+     */
+    public Set<AnnotationMode> getDependencies(AnnotationMode typeOfAnnotation) {
+        HashSet<AnnotationMode> deps = new HashSet<AnnotationMode>();
+
+        // Note: a set of nested `if` statements would be more efficient (less
+        // duplicated code), but a switch makes it super easy to confirm that we
+        // have accounted for all cases. This is important for maintainability.
+        switch ( typeOfAnnotation ) {
+            case CHUNK:
+                deps.add(TOKEN);
+                deps.add(POS);
+                break;
+            case COREF:
+                deps.add(TOKEN);
+                deps.add(POS);
+                deps.add(NER);
+                break;
+            case NER:
+                // No dependencies.
+                break;
+            case NOM_SRL:
+                deps.add(TOKEN);
+                deps.add(POS);
+                deps.add(CHUNK);
+                deps.add(PARSE);
+                break;
+            case PARSE:
+                deps.add(TOKEN);
+                break;
+            case POS:
+                deps.add(TOKEN);
+                break;
+            case SENTENCE:
+                // No dependencies.
+                break;
+            case TOKEN:
+                // No dependencies.
+                break;
+            case VERB_SRL:
+                deps.add(TOKEN);
+                deps.add(POS);
+                deps.add(CHUNK);
+                deps.add(PARSE);
+                break;
+            case WIKI:
+                deps.add(TOKEN);
+                deps.add(POS);
+                deps.add(CHUNK);
+                deps.add(NER);
+                break;
+        }
+
+        return deps;
+    }
+
+    /**
+     * Gets the set of annotations required in order to perform this annotation.
+     * @return The set of dependencies for this annotation type. For instance,
+     *         if this annotation is TOKEN (tokenization), this will return the
+     *         empty set (there are no dependencies for tokenization). If,
+     *         however, this annotation is CHUNK (chunking), it will return
+     *         a set containing POS and TOKEN, since chunking depends on both
+     *         part of speech and tokenization.
+     */
+    public Set<AnnotationMode> getDependencies() {
+        return getDependencies( this );
     }
 }

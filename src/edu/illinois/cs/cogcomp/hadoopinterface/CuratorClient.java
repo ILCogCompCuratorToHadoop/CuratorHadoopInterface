@@ -37,6 +37,8 @@ public class CuratorClient {
     // Provides serialize() and deserialize() methods for Record objects
     private SerializationHandler serializer;
 
+    private MessageLogger logger;
+
     /**
      * Constructs a CuratorClient object
      * @param host The host name for the Curator we will connect to (e.g., in
@@ -53,62 +55,38 @@ public class CuratorClient {
         client = new Curator.Client(protocol);
 
         serializer = new SerializationHandler();
+
+        logger = new MessageLogger( true );
     }
 
     /**
-     * Validates the required dependencies for a particular annotation.
+     * Checks that the record provides the required dependencies for a particular
+     * annotation tool. For instance, if you indicate that the annotation to be
+     * performed is tokenization, this will always return true (there are no
+     * dependencies for tokenization). If, however, you indicate the annotation
+     * to perform is chunking, it will only return true if the record contains
+     * both part of speech (POS) and tokenization annotations.
      *
-     * @param typeOfAnnotation The type of annotation to validate for the
-     *                         document (chunking, parsing, named entity
-     *                         recognition, etc.).
+     * @param r The record to check for dependencies
+     * @param annoToPerform The type of annotation to validate the record's
+     *                      existing views against.
+     * @return True if the record provides all annotations required by the
+     *         annotation to be performed, false otherwise.
      */
-    public boolean checkDependencies( AnnotationMode typeOfAnnotation ) { //TODO moved from HadoopRecord, make sure the vars are right
-        HadoopInterface.logger.log( "Checking if document with hash "
-                + getDocumentHash() + " satisfies the dependency requirements "
-                + "for annotation type " + typeOfAnnotation.toString() );
+    public boolean recordMeetsDependencyReqs( Record r,
+                                              AnnotationMode annoToPerform ) {
+        logger.log( "Checking if document with hash "
+                + r.getIdentifier() + " satisfies the dependency requirements "
+                + "for annotation type " + annoToPerform.toString() );
 
-        boolean valid = true;
-        if ( typeOfAnnotation == CHUNK ) {
-            boolean token = annotations.contains(TOKEN);
-            boolean pos = annotations.contains(POS);
-            if ( !(token || pos) ) {
-                valid = false;
+        Set<AnnotationMode> dependencies = annoToPerform.getDependencies();
+        for( AnnotationMode dep : dependencies ) {
+            if( !RecordTools.hasAnnotation( r, dep ) ) {
+                return false;
             }
         }
-        else if ( typeOfAnnotation == COREF ) {
-            boolean token = annotations.contains(TOKEN);
-            boolean pos = annotations.contains(POS);
-            boolean ner = annotations.contains(NER);
-            if ( !(token || pos || ner) ) {
-                valid = false;
-            }
-        }
-        else if ( typeOfAnnotation == NOM_SRL || typeOfAnnotation == VERB_SRL ) {
-            boolean token = annotations.contains(TOKEN);
-            boolean pos = annotations.contains(POS);
-            boolean chunk = annotations.contains(CHUNK);
-            boolean parse = annotations.contains(PARSE); // Charniak parser
-            if ( !(token || pos || chunk || parse) ) {
-                valid = false;
-            }
-        }
-        else if ( typeOfAnnotation == PARSE || typeOfAnnotation == POS ) {
-            boolean token = annotations.contains(TOKEN);
-            if (!token) {
-                valid = false;
-            }
-        }
-        else if ( typeOfAnnotation == WIKI ) {
-            boolean token = annotations.contains(TOKEN);
-            boolean pos = annotations.contains(POS);
-            boolean chunk = annotations.contains(CHUNK);
-            boolean ner = annotations.contains(NER); // Charniak parser
-            if (!(token || pos || chunk || ner) ) {
-                valid = false;
-            }
-        }
-        // else: TOKEN has no dependencies
-        return valid;
+
+        return true;
     }
 
     /**
