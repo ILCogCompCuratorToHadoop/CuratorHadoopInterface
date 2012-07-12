@@ -78,7 +78,7 @@ public class HadoopCuratorClient extends CuratorClient {
             String annotationMode =
                     AnnotationMode.toCuratorString( toolToRun );
 
-            client.performAnnotation( record, annotationMode, true );
+            client.annotate( record, annotationMode );
         } catch (ServiceUnavailableException e) {
             HadoopInterface.logger.logError( toolToRun.toString()
                     + " annotations are not available.\n" + e.getReason());
@@ -103,7 +103,7 @@ public class HadoopCuratorClient extends CuratorClient {
     /**
      * Writes the results of the last call to annotate() to the specified
      * directory in HDFS. This is equivalent to serializing the results of a call to
-     * performAnnotation() to the directory.
+     * annotate() to the directory.
      * @param outputDir The directory to which the results of the last call
      *                  to annotate() should be written. Each serialized document
      *                  should be named with the document's hash.
@@ -132,7 +132,7 @@ public class HadoopCuratorClient extends CuratorClient {
 		
         try {
             writeFileToHDFS( recordAsBytes,
-                             new Path( docOutputDir, docName.concat(".txt") ),
+                             new Path( outputDir, docName.concat(".txt") ),
                              fs );
         } catch (IOException e) {
             e.printStackTrace();

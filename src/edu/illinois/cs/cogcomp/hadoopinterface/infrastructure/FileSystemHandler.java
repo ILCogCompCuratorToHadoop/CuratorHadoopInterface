@@ -309,30 +309,12 @@ public class FileSystemHandler {
     /**
      * Writes a string to a text file to a given location on the Hadoop
      * Distributed File System (HDFS). Note that this will overwrite anything
-     * currently present at the location.
-     * @param inputText The string to be written to the text file
-     * @param locationForFile A path (complete with file name and extension) to
-     *                        which we should write. If data already exists at
-     *                        this location, it will be overwritten.
-     * @param fs The FileSystem object against which we will resolve paths. Note
-     *           that, technically, this need not be an HDFS path. However, if
-     *           you want to write local files, reduce the risk of error for
-     *           yourself by using #writeFileToLocal().
-     * @throws IOException
-     */
-    public static void writeFileToHDFS( String inputText,
-                                        Path locationForFile,
-                                        FileSystem fs )
-            throws IOException {
-        writeFileToHDFS( inputText, locationForFile, fs, false);
-    }
-
-    /**
-     * Writes a string to a text file to a given location on the Hadoop
-     * Distributed File System (HDFS). Note that this will overwrite anything
      * currently present at the location. This method resolves paths using the
      * file system object given to this object during its construction, or
      * created based on the Curator job configuration it was given.
+     *
+     * Takes String. Defaults to override mode.
+     *
      * @param inputText The string to be written to the text file
      * @param locationForFile A path (complete with file name and extension) to
      *                        which we should write. If data already exists at
@@ -341,53 +323,17 @@ public class FileSystemHandler {
      */
     public void writeFileToHDFS( String inputText,
                                  Path locationForFile ) throws IOException {
-        writeFileToHDFS( inputText, locationForFile, fs );
+        writeFileToHDFS( inputText, locationForFile, false );
     }
-
-    /**
-     * Writes a byte array to a text file to a given location on the Hadoop
-     * Distributed File System (HDFS). Note that this will overwrite anything
-     * currently present at the location.
-     * @param input The byte array to be written to the text file
-     * @param locationForFile A path (complete with file name and extension) to
-     *                        which we should write. If data already exists at
-     *                        this location, it will be overwritten.
-     * @param fs The FileSystem object against which we will resolve paths. Note
-     *           that, technically, this need not be an HDFS path. However, if
-     *           you want to write local files, reduce the risk of error for
-     *           yourself by using #writeFileToLocal().
-     * @throws IOException
-     */
-    public static void writeFileToHDFS( byte[] input,
-                                        Path locationForFile,
-                                        FileSystem fs )
-            throws IOException {
-        writeFileToHDFS( input, locationForFile, fs, false);
-    }
-
-    /**
-     * Writes a byte array to a text file to a given location on the Hadoop
-     * Distributed File System (HDFS). Note that this will overwrite anything
-     * currently present at the location. This method resolves paths using the
-     * file system object given to this object during its construction, or
-     * created based on the Curator job configuration it was given.
-     * @param input The byte array to be written to the text file
-     * @param locationForFile A path (complete with file name and extension) to
-     *                        which we should write. If data already exists at
-     *                        this location, it will be overwritten.
-     * @throws IOException
-     */
-    public void writeFileToHDFS( byte[] input,
-                                        Path locationForFile )
-            throws IOException {
-        writeFileToHDFS( input, locationForFile, fs );
-    }
-
+	
     /**
      * Writes a string to a text file to a given location on the Hadoop
      * Distributed File System (HDFS). Note that this is not thread-safe; Hadoop
      * recommends you not try to have multiple nodes writing to the same file,
      * ever.
+     *
+     * Takes String. Specifies append/overwrite mode. 
+     *
      * @param inputText The string to be written to the text file
      * @param locationForFile A path (complete with file name and extension) to
      *                        which we should write. If data already exists at
@@ -396,33 +342,6 @@ public class FileSystemHandler {
      *           that, technically, this need not be an HDFS path. However, if
      *           you want to write local files, reduce the risk of error for
      *           yourself by using #writeFileToLocal().
-     * @param appendInsteadOfOverwriting TRUE if we should append to whatever
-     *                                   currently exists at the location, FALSE
-     *                                   if it is okay to overwrite it.
-     * @bug Writing files does *not* work when called from the
-     *      InputSplit (DirectorySplit)
-     * @throws IOException
-     */
-    public static void writeFileToHDFS( String inputText,
-                                        Path locationForFile,
-                                        FileSystem fs,
-                                        boolean appendInsteadOfOverwriting )
-            throws IOException {
-        writeFileToHDFS( inputText.getBytes(), locationForFile, fs,
-                         appendInsteadOfOverwriting);
-    }
-
-    /**
-     * Writes a string to a text file to a given location on the Hadoop
-     * Distributed File System (HDFS). Note that this is not thread-safe; Hadoop
-     * recommends you not try to have multiple nodes writing to the same file,
-     * ever. This method resolves paths using the file system object given to
-     * this object during its construction, or created based on the Curator job
-     * configuration it was given.
-     * @param inputText The string to be written to the text file
-     * @param locationForFile A path (complete with file name and extension) to
-     *                        which we should write. If data already exists at
-     *                        this location, it will be overwritten.
      * @param appendInsteadOfOverwriting TRUE if we should append to whatever
      *                                   currently exists at the location, FALSE
      *                                   if it is okay to overwrite it.
@@ -434,8 +353,28 @@ public class FileSystemHandler {
                                  Path locationForFile,
                                  boolean appendInsteadOfOverwriting )
             throws IOException {
-        writeFileToHDFS( inputText, locationForFile, fs,
-                         appendInsteadOfOverwriting );
+        writeBytesToHDFS( inputText.getBytes(), locationForFile,
+                         appendInsteadOfOverwriting ); // call full method on bytes
+    }
+
+    /**
+     * Writes a byte array to a text file to a given location on the Hadoop
+     * Distributed File System (HDFS). Note that this will overwrite anything
+     * currently present at the location. This method resolves paths using the
+     * file system object given to this object during its construction, or
+     * created based on the Curator job configuration it was given.
+     *
+     * Takes byte[]. Defaults to overwrite mode.
+     *
+     * @param input The byte array to be written to the text file
+     * @param locationForFile A path (complete with file name and extension) to
+     *                        which we should write. If data already exists at
+     *                        this location, it will be overwritten.
+     * @throws IOException
+     */
+    public void writeBytesToHDFS( byte[] input, Path locationForFile )
+            throws IOException {
+        writeBytesToHDFS( input, locationForFile, false );
     }
 
     /**
@@ -443,6 +382,9 @@ public class FileSystemHandler {
      * Distributed File System (HDFS). Note that this is not thread-safe; Hadoop
      * recommends you not try to have multiple nodes writing to the same file,
      * ever.
+     *
+     * Takes byte[]. Specifies append/overwrite mode.
+     *
      * @param input The byte array to be written to the text file
      * @param locationForFile A path (complete with file name and extension) to
      *                        which we should write. If data already exists at
@@ -458,9 +400,8 @@ public class FileSystemHandler {
      *      InputSplit (DirectorySplit)
      * @throws IOException
      */
-    public static void writeFileToHDFS( byte[] input,
+    public void writeBytesToHDFS( byte[] input,
                                         Path locationForFile,
-                                        FileSystem fs,
                                         boolean appendInsteadOfOverwriting )
             throws IOException {
         // Qualify the location to avoid errors
@@ -496,32 +437,6 @@ public class FileSystemHandler {
         //       very quickly leading to hundred megabyte log files. BAD.
         dos.write( input );
         dos.close();
-    }
-
-    /**
-     * Writes a byte array to a text file to a given location on the Hadoop
-     * Distributed File System (HDFS). Note that this is not thread-safe; Hadoop
-     * recommends you not try to have multiple nodes writing to the same file,
-     * ever. Resolves paths using the file system object given to this object
-     * during its construction, or created based on the Curator job
-     * configuration it was given.
-     * @param input The byte array to be written to the text file
-     * @param locationForFile A path (complete with file name and extension) to
-     *                        which we should write. If data already exists at
-     *                        this location, it will be overwritten.
-     * @param appendInsteadOfOverwriting TRUE if we should append to whatever
-     *                                   currently exists at the location, FALSE
-     *                                   if it is okay to overwrite it.
-     * @bug Writing files does *not* work when called from the
-     *      InputSplit (DirectorySplit)
-     * @throws IOException
-     */
-    public void writeFileToHDFS( byte[] input,
-                                 Path locationForFile,
-                                 boolean appendInsteadOfOverwriting )
-            throws IOException {
-        writeFileToHDFS( input, locationForFile, fs,
-                         appendInsteadOfOverwriting );
     }
 
     /**
