@@ -188,8 +188,7 @@ public class CuratorClient {
                     // in preparation for sending the input to Hadoop
                     String fileContents = LocalFileSystemHandler
                             .readFileToString( f );
-                    Record newRecord = RecordTools
-                            .generateNewRecord( fileContents );
+                    Record newRecord = RecordTools.generateNew( fileContents );
                     addToInputList( newRecord );
                 }
             } catch (FileNotFoundException e) {
@@ -223,7 +222,7 @@ public class CuratorClient {
         if (type.equals("original")) {
             String id = originalTxt.getParent();
             String original = LocalFileSystemHandler.readFileToString( originalTxt );
-            Record newRecord = RecordTools.generateNewRecord( id, original );
+            Record newRecord = RecordTools.generateNew( id, original );
 
             addToInputList(newRecord);
 
@@ -481,7 +480,7 @@ public class CuratorClient {
         System.out.println("done.\n");
         System.out.println();
         if (avail.containsKey("ner-ext")) {
-            System.out.println( RecordTools.getRecordContents( record ) );
+            System.out.println( RecordTools.getContents( record ) );
             System.out.println();
 
             System.out.println("Extended Named Entities\n---------\n");
@@ -511,7 +510,7 @@ public class CuratorClient {
         }
         System.out.println("done.");
         System.out.println();
-        System.out.println( RecordTools.getRecordContents( record ) );
+        System.out.println( RecordTools.getContents( record ) );
         System.out.println();
         System.out.println("Notice that the record now contains chunk and sentences, tokens and pos fields.\n" +
 				"This is because pos tags are required for chunking.  And tokenization is required by the pos tagger");
@@ -597,7 +596,7 @@ public class CuratorClient {
         }
         System.out.println("done.");
         System.out.println();
-        System.out.println( RecordTools.getRecordContents( record ) );
+        System.out.println( RecordTools.getContents( record ) );
         System.out.println();
 
         result = new StringBuffer();
@@ -729,7 +728,7 @@ public class CuratorClient {
         }
         System.out.println("done.");
         System.out.println();
-        System.out.println( RecordTools.getRecordContents( record ) );
+        System.out.println( RecordTools.getContents( record ) );
         System.out.println();
 
         result = new StringBuffer();

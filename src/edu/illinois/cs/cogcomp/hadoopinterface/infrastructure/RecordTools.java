@@ -17,7 +17,7 @@ public class RecordTools {
      * @param r The record in question
      * @return True if the record contains some annotation, false otherwise
      */
-    public static boolean recordHasAnnotations( Record r ) {
+    public static boolean hasAnnotations( Record r ) {
         return getNumViews( r ) > 0;
     }
 
@@ -42,12 +42,12 @@ public class RecordTools {
      * @return A record object for the document whose original text was passed
      *         in.
      */
-    public static Record generateNewRecord( String originalText ) {
-        return generateNewRecord( Identifier.getId( originalText, false ),
+    public static Record generateNew( String originalText ) {
+        return generateNew( Identifier.getId( originalText, false ),
                                   originalText );
     }
 
-    public static Record generateNewRecord(
+    public static Record generateNew(
             String documentHash, String originalText ) {
         Record r = new Record();
         r.setRawText( originalText );
@@ -84,7 +84,7 @@ public class RecordTools {
      * @param record The records whose (string-version) contents you want to get
      * @return A string version of the record's contents
      */
-    public static String getRecordContents( Record record ) {
+    public static String getContents( Record record ) {
         StringBuilder result = new StringBuilder();
         result.append( "Annotations present in the record:\n" );
         result.append( "- rawText: " );
