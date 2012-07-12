@@ -10,8 +10,9 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.tests;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.MessageLogger;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.MessageLogger;
+import edu.illinois.cs.cogcomp.thrift.base.Labeling;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
@@ -56,7 +57,7 @@ public class RecordTesterMapper extends Mapper<Text, HadoopRecord, Text, HadoopR
 
         logger.logStatus( "Re-adding POS annotation. "
                           + "Should be silent." );
-        testValue.addAnnotation( AnnotationMode.POS, "[Some POS annotation body]" );
+        testValue.addAnnotation( AnnotationMode.POS, new Labeling() );
 
         for( int i = 0; i < 4; i++ ) {
             AnnotationMode mode = getRandomMode();

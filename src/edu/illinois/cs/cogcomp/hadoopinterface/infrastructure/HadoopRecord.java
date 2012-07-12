@@ -16,8 +16,6 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-// TODO import Curator Record class
-
 /**
  * A version of the Curator's document record, for use on the Hadoop Distributed
  * File System (HDFS), which does not rely on database calls.
