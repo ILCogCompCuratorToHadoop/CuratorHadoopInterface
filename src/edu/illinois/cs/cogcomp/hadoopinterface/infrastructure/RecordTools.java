@@ -8,6 +8,7 @@ import edu.illinois.cs.cogcomp.thrift.base.View;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 
 import java.util.HashMap;
+import java.util.Set;
 
 public class RecordTools {
     /**
@@ -113,5 +114,31 @@ public class RecordTools {
         }
         result.append( "\n" );
         return result.toString();
+    }
+
+    /**
+     * Checks that the record provides the required dependencies for a particular
+     * annotation tool. For instance, if you indicate that the annotation to be
+     * performed is tokenization, this will always return true (there are no
+     * dependencies for tokenization). If, however, you indicate the annotation
+     * to perform is chunking, it will only return true if the record contains
+     * both part of speech (POS) and tokenization annotations.
+     *
+     * @param r The record to check for dependencies
+     * @param annoToPerform The type of annotation to validate the record's
+     *                      existing views against.
+     * @return True if the record provides all annotations required by the
+     *         annotation to be performed, false otherwise.
+     */
+    public boolean meetsDependencyReqs( Record r,
+                                        AnnotationMode annoToPerform ) {
+        Set<AnnotationMode> dependencies = annoToPerform.getDependencies();
+        for( AnnotationMode dep : dependencies ) {
+            if( !RecordTools.hasAnnotation( r, dep ) ) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
