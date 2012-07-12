@@ -3,8 +3,9 @@ package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions
         .IllegalModeException;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Defines "modes" for the Curator-to-Hadoop interface (i.e., annotation types
@@ -28,54 +29,61 @@ public enum AnnotationMode {
         try { 
             return AnnotationMode.valueOf( s );
         } catch ( IllegalArgumentException e ) {
-            // TODO: Use regexes instead
-            if( s.contains("hunk") || s.contains("HUNK") ) {
-                return CHUNK;
+            // This will contain a bunch of strings which we will turn into
+            // case insensitive regular expressions. If we match one of them,
+            // we will return the AnnotationMode that the string is mapped to.
+            Map<String, AnnotationMode> regexes =
+                    new HashMap<String, AnnotationMode>();
+            regexes.put( "chunk", CHUNK );
+            regexes.put( "coref", COREF );
+            regexes.put( "ner", NER );
+            regexes.put( "named", NER );
+            regexes.put( "parse", PARSE );
+            regexes.put( "stanford", PARSE );
+            regexes.put( "pos", POS );
+            regexes.put( "part", POS );
+            regexes.put( "sentence", SENTENCE );
+            regexes.put( "token", TOKEN );
+            regexes.put( "verb", VERB_SRL );
+            regexes.put( "wiki", WIKI );
+
+            for( String key : regexes.keySet() ) {
+                Matcher matcher = Pattern.compile( Pattern.quote( key ),
+                                                   Pattern.CASE_INSENSITIVE ).matcher(
+                        s );
+                if( matcher.find() ) {
+                    return regexes.get(key);
+                }
             }
 
-            if( s.contains("oref") || s.contains("OREF") ) {
-                return COREF;
-            }
-
-			if( s.contains("ner") || s.contains("NER") || s.contains("amed") || s.contains("AMED") ) {
-				return NER;
-			}
-
-            if( s.contains("nom") || s.contains("NOM") ) {
-                return NOM_SRL;
-            }
-
-            if( s.contains("arse") || s.contains("PARS")
-                    || s.contains("tanford") || s.contains("STANFORD") ) {
-                return PARSE;
-            }
-			
-            if( s.contains("pos") || s.contains("art") || s.contains("POS")
-                    || s.contains("ART") ) {
-                return POS;
-            }
-
-            if( s.contains("oken") || s.contains("TOKEN") ) {
-                return TOKEN;
-            }
-
-            if( s.contains("erb") || s.contains("VERB") ) {
-                return VERB_SRL;
-            }
-
-            if( s.contains("iki") || s.contains("WIKI") ) {
-                return WIKI;
-            }
-
-            if( s.contains("entence") || s.contains("SENTENCE") ) {
-                return SENTENCE;
-            }
-
-            throw new IllegalModeException( "Parse mode " + s + " not recognized. "
-                                            + "Please try one of the following: \n"
-                                            + "    CHUNK, COREF, NOM_SRL, POS, TOKEN, "
-                                            + "VERB_SRL, WIKI, PARSE, or NER." );
+            throw new IllegalModeException(
+                    "Parse mode " + s + " not recognized. Please try one of "
+                    + "the following: \n\t" + getKnownAnnotations() );
         }
+    }
+
+    /**
+     * @return A comma-separated list of the known annotation modes
+     */
+    public static String getKnownAnnotations() {
+        StringBuilder sBuilder = new StringBuilder();
+        List<AnnotationMode> allModes = Arrays.asList( AnnotationMode.values() );
+        Iterator itr = allModes.iterator();
+        while( itr.hasNext() ) {
+            String mode = itr.next().toString();
+
+            if( !itr.hasNext() ) {
+                sBuilder.append("and ");
+            }
+
+            sBuilder.append( mode );
+
+            if( itr.hasNext() ) {
+                sBuilder.append(", ");
+            }
+        }
+
+        return sBuilder.toString();
     }
 
     /**
