@@ -37,8 +37,6 @@ public class CuratorClient {
     // Provides serialize() and deserialize() methods for Record objects
     private SerializationHandler serializer;
 
-    private MessageLogger logger;
-
     /**
      * Constructs a CuratorClient object
      * @param host The host name for the Curator we will connect to (e.g., in
@@ -55,10 +53,40 @@ public class CuratorClient {
         client = new Curator.Client(protocol);
 
         serializer = new SerializationHandler();
-
-        logger = new MessageLogger( true );
     }
 
+    /**
+     * Run the indicated annotator on the record to be annotated. Returns the
+     * updated version of that record. Note, however, that there is no guarantee
+     * that the toBeAnnotated record will not be modified---treat it as a
+     * potentially in/out parameter, but rely on the returned record for the
+     * canonical updated version.
+     * @param toBeAnnotated The record that should have an annotation performed
+     *                      on it
+     * @param annotator The annotator to run on the record
+     * @return A version of the input record updated to include the new
+     *         annotation type.
+     * @throws AnnotationFailedException If the record being returned was for
+     *                                   some reason not actually updated with
+     *                                   the requested annotation type.
+     */
+    public Record annotate( Record toBeAnnotated, AnnotationMode annotator )
+            throws ServiceUnavailableException, TException,
+            AnnotationFailedException {
+        transport.open();
+        client.performAnnotation( toBeAnnotated,
+                                  annotator.toCuratorString(), true );
+        transport.close();
+
+        if( !RecordTools.hasAnnotation( toBeAnnotated, annotator ) ) {
+            throw new AnnotationFailedException(
+                    "Failed to annotate document whose hash is "
+                    + toBeAnnotated.getIdentifier()
+                    + " with annotation type " + annotator.toString() + "." );
+        }
+
+        return toBeAnnotated;
+    }
 
 
     /**
@@ -323,17 +351,18 @@ public class CuratorClient {
      */
     public static void main(String[] args) throws ServiceUnavailableException,
             TException, AnnotationFailedException, IOException {
+        // Parse input
+        if ( args.length != 3 )
+        {
+            System.err.println( "Usage: CuratorClient curatorHost curatorPort inputDir" );
+            System.exit( -1 );
+        }
+
         String host = args[0];
         int port  = Integer.parseInt( args[1] );
         File inputDir = new File( args[2] );
         CuratorClient theClient = new CuratorClient( host, port );
 
-        // Parse input
-	    if ( args.length != 3 )
-		{
-		    System.err.println( "Usage: CuratorClient curatorHost curatorPort inputDir" );
-		    System.exit( -1 );
-		}
 
         System.out.println( "You gave us " + inputDir.toString()
                             + " as the input directory." );
@@ -425,7 +454,7 @@ public class CuratorClient {
                                     + reconstructed.getRawText() );
             }
             else {
-                System.out.println("\tSerialization worked!!.");
+                System.out.println("\tSerialization worked!!");
             }
 
             replaceTheRecords.add(r);

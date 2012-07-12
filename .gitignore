@@ -84,3 +84,7 @@ src/edu/cs/illinois/cogcomp/hadoopinterface/takeNewRawInputFilesFromDirectory.ja
 src/edu/cs/illinois/cogcomp/hadoopinterface/takeNewRawInputFilesFromDirectory.java
 
 src/edu/cs/illinois/cogcomp/hadoopinterface/takeNewRawInputFilesFromDirectory.java
+
+logs/.0_curator_interface_log_11.42.26.AM.txt.crc
+
+logs/0_curator_interface_log_11.42.26.AM.txt
