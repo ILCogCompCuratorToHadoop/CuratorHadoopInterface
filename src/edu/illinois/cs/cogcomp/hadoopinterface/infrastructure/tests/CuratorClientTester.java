@@ -76,8 +76,8 @@ public class CuratorClientTester {
     @Test
     public static void generatesNewRecord() throws Exception {
         String test = "This is a test string to generate a record for.";
-        Record r = RecordTools.generateNewRecord( test );
-        if( RecordTools.recordHasAnnotations( r ) ) {
+        Record r = RecordTools.generateNew( test );
+        if( RecordTools.hasAnnotations( r ) ) {
             throw new InitializationError( "Record wrongly claims to "
                                             + "have annotations." );
         }

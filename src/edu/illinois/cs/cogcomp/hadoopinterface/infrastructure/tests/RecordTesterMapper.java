@@ -53,32 +53,18 @@ public class RecordTesterMapper extends Mapper<Text, HadoopRecord, Text, HadoopR
                           + "\n\tand test value: " + testValue.toString() );
 
         // Test rec's add and remove capabilities //
-        logger.logStatus( "Adding POS annotation. "
-                          + "Should throw an already-exists error." );
-        try {
-            testValue.addAnnotation( AnnotationMode.POS, "This is the POS annotation body." );
-        } catch ( IllegalArgumentException expected ) { }
 
-        logger.logStatus( "Removing POS annotation, then re-adding. "
+        logger.logStatus( "Re-adding POS annotation. "
                           + "Should be silent." );
-        testValue.removeAnnotation( AnnotationMode.POS );
         testValue.addAnnotation( AnnotationMode.POS, "[Some POS annotation body]" );
-
-        logger.logStatus( "That new POS annotation is: "
-                          + testValue.getAnnotationString( AnnotationMode.POS ) );
-
-
-        logger.logStatus("Informing of an already existing annotation ");
-        testValue.informAnnotation( AnnotationMode.NER );
 
         for( int i = 0; i < 4; i++ ) {
             AnnotationMode mode = getRandomMode();
             logger.log( "Dumping the contents of file " + mode.toString() );
-            logger.log( testValue.getAnnotationString( mode ) );
         }
 
-        Boolean pos_bool = testValue.checkDependencies( AnnotationMode.POS );
-        Boolean ner_bool = testValue.checkDependencies( AnnotationMode.NER );
+        Boolean pos_bool = testValue.meetsDependencyReqs( AnnotationMode.POS );
+        Boolean ner_bool = testValue.meetsDependencyReqs( AnnotationMode.NER );
         if( pos_bool ) {
             logger.log("We have satisfied the deps for POS");
         }

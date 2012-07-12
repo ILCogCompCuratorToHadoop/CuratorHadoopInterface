@@ -1,10 +1,15 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
+import edu.illinois.cs.cogcomp.thrift.base.Clustering;
+import edu.illinois.cs.cogcomp.thrift.base.Forest;
+import edu.illinois.cs.cogcomp.thrift.base.Labeling;
+import edu.illinois.cs.cogcomp.thrift.base.View;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.WritableComparable;
+import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 
 import java.io.DataInput;
@@ -153,5 +158,43 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
      */
     public void setMessageLogger( MessageLogger logger ) {
         this.logger = logger;
+    }
+
+    /**
+     * Adds an annotation to the record. If that annotation type already exists
+     * in the record, it will be silently overwritten.
+     * @param type The type of annotation being added
+     * @param annotation The Thrift data structure representing the annotation
+     */
+    public void addAnnotation( AnnotationMode type, TBase annotation ) {
+        ViewType viewType = type.getViewType();
+        String curatorAnnoType = type.toCuratorString();
+
+        switch ( viewType ) {
+            case PARSE:
+                putToParseViews( curatorAnnoType, (Forest)annotation );
+                break;
+            case CLUSTER:
+                putToClusterViews( curatorAnnoType, (Clustering)annotation );
+                break;
+            case LABEL:
+                putToLabelViews( curatorAnnoType, (Labeling)annotation );
+                break;
+            case VIEW:
+                putToViews( curatorAnnoType, (View)annotation );
+                break;
+        }
+    }
+
+    /**
+     * Checks that this record provides all annotations required by a particular
+     * annotation tool.
+     * @param annotationToPerform The type of annotation to be performed on the
+     *                            record.
+     * @return True if this record contains all annotations on which the
+     *         annotation to be performed depends, false otherwise.
+     */
+    public boolean meetsDependencyReqs( AnnotationMode annotationToPerform ) {
+        return RecordTools.meetsDependencyReqs( this, annotationToPerform );
     }
 } // THE END!

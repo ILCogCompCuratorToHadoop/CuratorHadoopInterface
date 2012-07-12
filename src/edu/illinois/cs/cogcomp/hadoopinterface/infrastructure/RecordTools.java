@@ -10,6 +10,11 @@ import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import java.util.HashMap;
 import java.util.Set;
 
+/**
+ * A utility class for working with Records. Most of these should really, really
+ * be a part of the Record's interface, but changing that is a pain.
+ * @author Tyler Young
+ */
 public class RecordTools {
     /**
      * Checks to see if a Record object contains annotations
@@ -44,7 +49,7 @@ public class RecordTools {
      */
     public static Record generateNew( String originalText ) {
         return generateNew( Identifier.getId( originalText, false ),
-                                  originalText );
+                            originalText );
     }
 
     public static Record generateNew(
@@ -130,8 +135,9 @@ public class RecordTools {
      * @return True if the record provides all annotations required by the
      *         annotation to be performed, false otherwise.
      */
-    public boolean meetsDependencyReqs( Record r,
-                                        AnnotationMode annoToPerform ) {
+    public static boolean meetsDependencyReqs(
+            Record r,
+            AnnotationMode annoToPerform ) {
         Set<AnnotationMode> dependencies = annoToPerform.getDependencies();
         for( AnnotationMode dep : dependencies ) {
             if( !RecordTools.hasAnnotation( r, dep ) ) {
