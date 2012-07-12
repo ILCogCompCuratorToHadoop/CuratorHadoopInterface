@@ -83,14 +83,11 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         client.annotateSingleDoc( inValue, toolToRun );
 
         // Serialize the updated record to the output directory
-        Path generalOutputDir =
-                new Path( context.getConfiguration().get("outputDirectory") );
-        Path docOutputDir =
-                new Path( generalOutputDir, inValue.getDocumentHash() );
-        client.writeOutputFromLastAnnotate(docOutputDir);
+        Path outputDir = new Path( context.getConfiguration().get("outputDirectory") );
+        client.writeOutputFromLastAnnotate(outputDir);
 
-        // TODO: As another MR job (?): after all jobs are through, kill all tools
-
+        // TODO Run a separate MR job (e.g. KillCuratorReducer.java), 
+        // after all jobs are through, to kill all tools and local Curators
         
         // pass Curator output back to Hadoop as Record
         context.write(inKey, inValue);
@@ -147,6 +144,8 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      * Checks the log files in your Curator directory (`~/curator/dist/logs`)
      * to see if the indicated tool has finished launching.
      * @return TRUE if the log file indicates the Curator is running.
+     *
+     * @TODO Is there a more reliable way to check the Curator's run status?
      */
     public boolean curatorIsRunning() {
         // Basically, since we assume that the Curator isn't launched until all
@@ -179,7 +178,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
     public void startTool( AnnotationMode toolToLaunch )
             throws IOException {
         // Tokenizer is a special case (started with Curator . . .?)
-        // TODO: Confirm Tokenizer starts with Curator
+        // TODO: Confirm that Tokenizer starts with Curator
         if( toolToLaunch == AnnotationMode.TOKEN ) {
             return;
         }
@@ -286,7 +285,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         Path annotatorsConfigLoc = getAnnotatorConfigLoc( runningTool );
         // Ensure the config file exists; create it if not
 
-
         StringBuilder launchScript = new StringBuilder( scriptLoc.toString() );
         launchScript.append(" --annotators ");
         launchScript.append( annotatorsConfigLoc.toString() );
@@ -299,7 +297,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         Runtime.getRuntime().exec( launchScript.toString() );
 
     }
-
+    
     /**
      * Returns the log location on the local node for the specified annotation
      * tool.
@@ -343,7 +341,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
     /**
      * Checks the XML file used to point the Curator to the locally running
-     * annotators. If the file doesn't exist, it creates it.
+     * annotators. If the file doesn't exist, create it.
      *
      * @param runningTool The annotator currently running on this node
      * @return The location at which the config file can be accessed.
