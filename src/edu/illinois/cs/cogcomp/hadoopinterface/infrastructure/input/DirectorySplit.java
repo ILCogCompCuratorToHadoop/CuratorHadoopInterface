@@ -15,11 +15,12 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Set;
 
 /**
- * A document directory within the input directory.
+ * A document within the input directory.
  * Returned by DirectoryInputFormat.getSplits() and passed to
- * DirectoryInputFormat.createRecordReader().  Note that a split doesn’t contain
+ * DirectoryInputFormat.createRecordReader().  Note that a split doesn't contain
  * the input data, but is just a reference to the data.
  *
  * Represents the data to be processed by an individual Map process.
@@ -33,22 +34,20 @@ public class DirectorySplit extends InputSplit implements Writable {
 
     /**
      * Constructs a DirectorySplit object
-     * @param docDirectoryInHDFS The location (in HDFS) of the
-     *            document's directory, complete with all annotations.
+     * @param serializedRecInHDFS The location (in HDFS) of the
+     *            document's serialized record, complete with all annotations.
      *
-     *            This directory should
-     *            be named with the document's hash, and should contain both an
-     *            original.txt and an < annotation name >.txt for each dependency.
+     *            This file should be in the job directory, and it should be named
+     *            < record hash/ID >.txt.
      * @param fs The filesystem associated with this job
      */
-    public  DirectorySplit( Path docDirectoryInHDFS, FileSystem fs,
+    public  DirectorySplit( Path serializedRecInHDFS, FileSystem fs,
                             Configuration config )
             throws IOException {
         this.config = config;
-        this.inputPath = docDirectoryInHDFS;
+        this.inputPath = serializedRecInHDFS;
         this.fs = fs;
-        hash = FileSystemHandler.getFileNameFromPath(
-                FileSystemHandler.stripTrailingSlash(inputPath));
+        hash = FileSystemHandler.getFileNameWithoutExtension( inputPath );
     }
 
     /**
@@ -61,8 +60,7 @@ public class DirectorySplit extends InputSplit implements Writable {
     @Override
     public long getLength() throws IOException, InterruptedException {
         FileSystemHandler fsHandler = new FileSystemHandler(fs);
-        Path origTxt = new Path( inputPath, "original.txt" );
-        return fsHandler.getFileSizeInBytes( origTxt );
+        return fsHandler.getFileSizeInBytes( inputPath );
     }
 
     /**
@@ -81,7 +79,7 @@ public class DirectorySplit extends InputSplit implements Writable {
         BlockLocation[] blockLocs = fs.getFileBlockLocations( status, 0,
                                                               status.getLen() );
 
-        HashSet<String> allBlockHosts = new HashSet<String>();
+        Set<String> allBlockHosts = new HashSet<String>();
         for( BlockLocation blockLoc : blockLocs ) {
             allBlockHosts.addAll( Arrays.asList( blockLoc.getHosts() ) );
         }
@@ -103,17 +101,18 @@ public class DirectorySplit extends InputSplit implements Writable {
 
     @Override
     public void readFields(DataInput dataInput) throws IOException {
-        hash = dataInput.readLine();
+        inputPath = new Path( dataInput.readLine() );
+        hash = FileSystemHandler.getFileNameWithoutExtension( inputPath );
         config = new Configuration();
         config.readFields( dataInput );
         fs = FileSystem.get(config);
     }
 
     /**
-     * @return The hash of the document that this split handles
+     * @return The input path for this document
      */
     public String toString() {
-        return hash;
+        return inputPath.toString();
     }
 
     private Path inputPath;

@@ -168,24 +168,24 @@ public class FileSystemHandler {
     /**
      * Returns the filename from a path. For instance, if p was /foo/bar/bas.txt,
      * it would return "bas.txt".
-     * @param pathAsString A path that ends in a file
-     * @return The final path component
-     */
-    public static String getFileNameFromPath( String pathAsString ) {
-        return pathAsString.substring(
-                pathAsString.lastIndexOf(Path.SEPARATOR) + 1,
-                pathAsString.length());
-    }
-
-    /**
-     * Returns the filename from a path. For instance, if p was /foo/bar/bas.txt,
-     * it would return "bas.txt".
      * @param p A path that ends in a file
      * @return The final path component
      */
     public static String getFileNameFromPath( Path p ) {
         String name = p.getName();
         return name.substring( 0, name.lastIndexOf('.') + 1 );
+    }
+
+    /**
+     * Returns the file name without its extension from a path. For instance, if
+     * <code>p</code> was <code>/foo/bar/bas.txt</code>, this would return "bas".
+     * @param p A path that ends in a file
+     * @return The file's name, without its extension
+     */
+    public static String getFileNameWithoutExtension( Path p ) {
+        String name = getFileNameFromPath( p );
+        return name.substring( 0, name.lastIndexOf('.') );
+
     }
 
     /**

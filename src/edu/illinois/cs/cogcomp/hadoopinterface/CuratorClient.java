@@ -207,11 +207,13 @@ public class CuratorClient {
      * input directory was `job123`, your directory structure might look like
      * this:
      *
-     * - job123
-     *      - document0.txt
-     *      - document1.txt
-     *      - document2.txt
-     *      - document3.txt
+     * <h4>job123</h4>
+     * <ul>
+     *     <li>document0.txt</ul>
+     *     <li>document1.txt</ul>
+     *     <li>document2.txt</ul>
+     *     <li>document3.txt</ul>
+     * </ul>
      *
      * Any subdirectories of your input directory will be ignored.
      *
@@ -295,7 +297,7 @@ public class CuratorClient {
         }
 
         System.out.println( "Writing output for "
-                                    + Integer.toString(newInputRecords.size())
+                                    + Integer.toString( newInputRecords.size() )
                                     + " records." );
 
         for( Record r : newInputRecords ) {
@@ -312,9 +314,12 @@ public class CuratorClient {
      * directory. However, this is subject to change. As an example, the current
      * structure looks like this:
      *
-     * - [containing_directory_name]
-     *     - [document_hash].txt
-     *     - [another_documents_hash].txt
+     * <ul>
+     *     <li>[containing_directory_name] <ul>
+     *         <li>[document_hash].txt</li>
+     *         <li>[another_documents_hash].txt</li>
+     *     </ul></li>
+     * </ul>
      *
      * @param containingDir The directory containing this serialized record
      * @param r The record in question
@@ -368,24 +373,36 @@ public class CuratorClient {
     public static void main(String[] args) throws ServiceUnavailableException,
             TException, AnnotationFailedException, IOException {
         // Parse input
-        if ( args.length != 3 )
-        {
-            System.err.println( "Usage: CuratorClient curatorHost curatorPort inputDir" );
-            System.exit( -1 );
-        }
+        confirmArgsAreGood( args );
 
         String host = args[0];
         int port  = Integer.parseInt( args[1] );
         File inputDir = new File( args[2] );
         CuratorClient theClient = new CuratorClient( host, port );
+        boolean testing = false;
 
+        File outputDir = new File( inputDir, "output" );
+
+        if( args.length >= 4 ) {
+            if( args[3].equals("-test") ) {
+                testing = true;
+            }
+            else { // Must be an output directory
+                outputDir = new File( args[3] );
+
+                if( args.length == 5 ) { // final arg must be -test
+                    testing = true;
+
+                }
+            }
+        }
 
         System.out.println( "You gave us " + inputDir.toString()
                             + " as the input directory." );
 
 
         // Create records from the input text files
-        System.out.println( "Ready to create records from the text in " +
+        System.out.println( "Ready to create records from the plain text in " +
                             "the input directory." );
 
         theClient.createRecordsFromRawInputFiles(inputDir);
@@ -394,14 +411,15 @@ public class CuratorClient {
                             + Integer.toString( theClient.getNumberOfInputRecords() )
                             + " text files in the directory into records.");
 
-        // Check available annotations
-        theClient.printInfoOnKnownAnnotators();
+        if( testing ) {
+            // Check available annotations
+            theClient.printInfoOnKnownAnnotators();
 
-        // Run a tool (for testing purposes)
-        theClient.testPOSAndTokenizer();
+            // Run a tool (for testing purposes)
+            theClient.testPOSAndTokenizer();
+        }
 
         // Serialize output
-        File outputDir = new File( inputDir, "output" );
         System.out.println( "Serializing those records, along with the new "
                             + "tokenization, to: " + outputDir.toString() );
 
@@ -414,6 +432,25 @@ public class CuratorClient {
         } catch (Exception e) {
             e.printStackTrace();
         }*/
+    }
+
+    private static void confirmArgsAreGood( String[] args ) {
+        if ( args.length < 3 )
+        {
+            System.err.println( "Usage: CuratorClient curatorHost curatorPort "
+                                + "inputDir [outputDir] [-test]" );
+
+            StringBuilder argUsage = new StringBuilder();
+            for( String arg : args ) {
+                argUsage.append( arg );
+                argUsage.append( " " );
+            }
+
+            System.err.println( "You tried to use this: CuratorClient "
+                                + argUsage.toString() );
+
+            System.exit( -1 );
+        }
     }
 
     /**
