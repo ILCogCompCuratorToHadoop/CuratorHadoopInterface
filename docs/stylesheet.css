@@ -53,3 +53,4 @@ h1 { font-size: 1.5em; line-height: 1.286em;}
 .NavBarCell2    { background-color:#FFFFFF; color:#000000}
 .NavBarCell3    { background-color:#FFFFFF; color:#000000}
 
+pre { font-family: Consolas, "Andale Mono WT", "Andale Mono", "Lucida Console", "Lucida Sans Typewriter", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Liberation Mono", "Nimbus Mono L", Monaco, "Courier New", Courier, monospace; }
