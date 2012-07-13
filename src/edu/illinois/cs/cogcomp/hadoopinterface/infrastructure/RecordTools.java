@@ -52,8 +52,20 @@ public class RecordTools {
                             originalText );
     }
 
-    public static Record generateNew(
-            String documentHash, String originalText ) {
+    /**
+     * This should really be a constructor in Record. Whatever.
+     *
+     * Constructs a new Record object with no annotations at all to the original
+     * document text.
+     *
+     * @param documentHash The identifier to be used in this Record, obtained
+     *                     from a call to Identifier.getId()
+     * @param originalText The document's raw text.
+     * @return A record object for the document whose original text was passed
+     *         in.
+     */
+    public static Record generateNew( String documentHash,
+                                      String originalText ) {
         Record r = new Record();
         r.setRawText( originalText );
         r.setWhitespaced( false );

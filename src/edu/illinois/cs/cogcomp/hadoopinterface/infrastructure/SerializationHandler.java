@@ -1,23 +1,44 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions.EmptyInputException;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
+import org.apache.thrift.transport.TFramedTransport;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 
 import java.io.File;
 import java.io.IOException;
 
 /**
  * Used for writing Thrift objects to the file system. This is a thin wrapper
- * for the Thrift TSerializer and TDeserializer classes.
+ * for the Thrift TSerializer and TDeserializer classes. Because it uses Thrift,
+ * it relies on having a Thrift server (in our case, a Curator) that it can
+ * connect to. You can either specify manually which such Curator to connect to
+ * (by passing in a Transport), or let us just connect to localhost on port
+ * 9010 (the default configuration for the Curator).
  * @author Tyler Young
  */
 public class SerializationHandler {
     /**
-     * Constructs a serialization handler.
+     * Constructs a serialization handler. Creates a Thrift transport assuming
+     * a Curator exists at localhost on port 9010.
      */
     public SerializationHandler() {
+        this( new TFramedTransport( new TSocket("localhost", 9010) ) );
+    }
+
+    /**
+     * Constructs a serialization handler that relies on a specified Transport
+     * to connect to the Curator.
+     * @param transport The Thrift transport with which we can connect to a
+     *                  Curator
+     */
+    public SerializationHandler( TTransport transport ) {
+        this.transport = transport;
+
         serializer = new TSerializer();
         deserializer = new TDeserializer();
     }
@@ -44,9 +65,18 @@ public class SerializationHandler {
      *                       data structure. Created using Thrift's common
      *                       implementation of the java.io.Serializable interface.
      */
-    public Record deserialize( byte[] serializedData ) throws TException {
+    public Record deserialize( byte[] serializedData )
+            throws TException, EmptyInputException {
+        if( serializedData.length == 0 ) {
+            throw new EmptyInputException( "Can't deserialize an empty string." );
+        }
+
+        if( !transport.isOpen() ) {
+            transport.open();
+        }
         Record r = new Record();
         deserializer.deserialize( r, serializedData );
+        transport.close();
         return r;
     }
 
@@ -69,4 +99,5 @@ public class SerializationHandler {
 
     private TSerializer serializer;
     private TDeserializer deserializer;
+    private TTransport transport;
 }

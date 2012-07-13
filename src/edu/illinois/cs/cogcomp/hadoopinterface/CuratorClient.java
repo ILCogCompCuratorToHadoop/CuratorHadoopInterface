@@ -68,7 +68,7 @@ public class CuratorClient {
         TProtocol protocol = new TBinaryProtocol(transport);
         client = new Curator.Client(protocol);
 
-        serializer = new SerializationHandler();
+        serializer = new SerializationHandler( transport );
     }
 
     /**
@@ -296,10 +296,6 @@ public class CuratorClient {
             }
         }
 
-        System.out.println( "Writing output for "
-                                    + Integer.toString( newInputRecords.size() )
-                                    + " records." );
-
         for( Record r : newInputRecords ) {
             byte[] serializedForm =  serializer.serialize( r );
             File txtFileLoc = getLocForSerializedForm( r, outputDir );
@@ -421,18 +417,51 @@ public class CuratorClient {
         }
 
         // Serialize output
-        System.out.println( "Serializing those records, along with the new "
-                            + "tokenization, to: " + outputDir.toString() );
+        System.out.println( "Serializing those records to: "
+                                    + outputDir.toString() );
 
         theClient.writeSerializedRecords( outputDir );
 
+        if( theClient.serializationWorked( outputDir ) ) {
+            System.out.println( "Serialization worked!" );
+        }
+    }
 
-        // Begin old stuff. Let's not actually run this.
-        /*try {
-            callABunchOfAnnotationsFromDemo(transport);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }*/
+    private boolean serializationWorked( File outputDir )
+            throws IOException, TException {
+        // Read all the documents back
+        LinkedList<byte[]> byteVersions = new LinkedList<byte[]>();
+        for( File serialized : outputDir.listFiles() ) {
+            if( !serialized.isDirectory() ) {
+                byteVersions.add(
+                        LocalFileSystemHandler.readFileToBytes( serialized ) );
+            }
+        }
+
+        // Reconstruct each document
+        for( byte[] byteForm : byteVersions ) {
+            Record reconstructed = new Record();
+            Record master = serializer.deserialize( byteForm );
+
+            reconstructed.setClusterViews( master.getClusterViews() );
+            reconstructed.setLabelViews( master.getLabelViews() );
+            reconstructed.setParseViews( master.getParseViews() );
+            reconstructed.setViews( master.getViews() );
+
+            reconstructed.setIdentifier( master.getIdentifier() );
+            reconstructed.setWhitespaced( master.isWhitespaced() );
+
+            // Confirm the document matches the original
+            for( Record existing : newInputRecords ) {
+                if( existing.getIdentifier()
+                            .equals( reconstructed.getIdentifier() ) ) {
+                    if( !reconstructed.equals(existing) ) {
+                        throw new TException("Deserialized form does not match original!");
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     private static void printArgsInterpretation(

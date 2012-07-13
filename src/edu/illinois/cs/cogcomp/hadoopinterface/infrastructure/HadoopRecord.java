@@ -1,6 +1,7 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions.*;
 import edu.illinois.cs.cogcomp.thrift.base.Clustering;
 import edu.illinois.cs.cogcomp.thrift.base.Forest;
 import edu.illinois.cs.cogcomp.thrift.base.Labeling;
@@ -89,12 +90,12 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
         byte[] byteForm = new byte[0];
         try {
             byteForm = fsHandler.readBytesFromHDFS( doc );
+            configureFromSerialized( byteForm );
         } catch ( IOException e ) {
-            logger.logError("IOException reading serial form of document "
-                                    + documentHash + " from HDFS." );
+            logger.logError( "IOException reading serial form of document "
+                                     + documentHash + " from HDFS." );
+            logger.logError( e.getMessage() );
         }
-
-        configureFromSerialized( byteForm );
 
         logger.log( "Initialized record for document with hash " + documentHash );
     }
@@ -106,7 +107,8 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
      * had.
      * @param byteForm The serialized form of the record that this one will mirror
      */
-    private void configureFromSerialized( byte[] byteForm ) {
+    private void configureFromSerialized( byte[] byteForm )
+            throws EmptyInputException {
         try {
             Record master = serializer.deserialize( byteForm );
             setClusterViews( master.getClusterViews() );
