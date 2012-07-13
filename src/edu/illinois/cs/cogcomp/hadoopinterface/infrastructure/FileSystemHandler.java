@@ -83,15 +83,17 @@ public class FileSystemHandler {
                     + "information on how to structure the input directory.");
         }
 
-        List<Path> dirsInInput = getSubdirectories(inputDirectory);
-        for( Path dir : dirsInInput ) {
-            Path originalTxt = new Path( dir, "original.txt" );
+        List<String> inputFiles = getFilesAndDirectoriesInDirectory(inputDirectory);
+        for( String inputFileLoc : inputFiles ) {
+            Path inputFile = new Path(inputFileLoc);
 
-            if( getFileSizeInBytes( originalTxt  ) < 1 ) {
-                throw new EmptyInputException( "Input in document directory "
-                        + fs.makeQualified( inputDirectory ) + " has no "
-                        + "recognized input.  Please create input files in the "
-                        + "Hadoop file system before starting this program.");
+            if( !isDir( inputFile ) ) {
+                if( getFileSizeInBytes( inputFile ) < 1 ) {
+                    throw new EmptyInputException( "Input in document directory "
+                            + fs.makeQualified( inputDirectory ) + " has no "
+                            + "recognized input.  Please create input files in the "
+                            + "Hadoop file system before starting this program.");
+                }
             }
         }
     }
@@ -184,7 +186,11 @@ public class FileSystemHandler {
      */
     public static String getFileNameWithoutExtension( Path p ) {
         String name = getFileNameFromPath( p );
-        return name.substring( 0, name.lastIndexOf('.') );
+        int lastDot = name.lastIndexOf('.');
+        if( lastDot < 0 ) {
+            return name;
+        }
+        return name.substring( 0, lastDot );
 
     }
 

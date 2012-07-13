@@ -1,7 +1,0 @@
-
-09:15:56 AM  Status: Setting up job.
-
-09:15:57 AM  Error: Parameter usage: 
-		<document directory> <mode>
-	or:
-		-d <document directory> -m <mode> [-maps <number of maps>] [-reduces <number of reduces>] [-test]

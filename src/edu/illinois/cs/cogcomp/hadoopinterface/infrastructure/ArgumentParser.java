@@ -118,14 +118,24 @@ public class ArgumentParser {
     }
 
     public void logResultsOfParsing() {
-        String alertOfTesting = "";
-        if( isTesting() ) {
-            alertOfTesting = "\n\tJob started in test mode.";
-        }
-        HadoopInterface.logger.logStatus( "Parsed command-line arguments. "
-                + "Using input directory " + directory + " and annotation mode "
-                + mode.toString() + ", with " + getNumReduces() + " reduce ops."
-                + alertOfTesting );
+        StringBuilder usage = new StringBuilder();
+        usage.append("You launched the HadoopInterface with the following options:");
+        usage.append("\n");
+        usage.append("\tInput directory: ");
+        usage.append(directory);
+        usage.append("\n");
+        usage.append("\tAnnotation mode: ");
+        usage.append(mode.toString());
+        usage.append("\n");
+        usage.append("\tNumber of reduces: ");
+        usage.append(numReduces);
+        usage.append("\n");
+
+        usage.append("\tRun in testing mode? ");
+        usage.append(testing ? "Yes." : "No.");
+        usage.append("\n");
+
+        HadoopInterface.logger.logStatus( usage.toString() );
     }
 
     /**

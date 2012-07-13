@@ -28,7 +28,8 @@ INPUT_PATH=$2                   # The 2nd parameter from the command line
 
 echo -e "\n\n\nYou said your copy of Curator is located here: $CURATOR_DIRECTORY"
 echo "You requested we run the annotation tool $ANNOTATION_TOOL_TO_RUN on your input"
-echo -e "You requested we annotate the input text files located here: $INPUT_PATH\n"
+echo "You requested we annotate the input text files located here: $INPUT_PATH"
+echo -e "\t(That input directory should be an *absolute* path.)"
 
 # Launch the Master Curator
 echo -e "\n\n\nLaunching the master curator:"
