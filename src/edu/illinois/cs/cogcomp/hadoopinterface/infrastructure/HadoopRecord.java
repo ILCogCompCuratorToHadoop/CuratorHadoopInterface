@@ -1,5 +1,6 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
+import edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface;
 import edu.illinois.cs.cogcomp.thrift.base.Clustering;
 import edu.illinois.cs.cogcomp.thrift.base.Forest;
 import edu.illinois.cs.cogcomp.thrift.base.Labeling;
@@ -14,6 +15,7 @@ import org.apache.thrift.TException;
 
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.io.EOFException;
 import java.io.IOException;
 
 /**
@@ -28,11 +30,9 @@ import java.io.IOException;
 public class HadoopRecord extends Record implements WritableComparable< Record > {
 
     private Configuration config;
-    private String documentHash;
     private FileSystem fs;
     private MessageLogger logger;
     private Path doc;
-    private boolean isInitialized;
     private SerializationHandler serializer;
 
     /**
@@ -42,6 +42,8 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
      * so that you wind up with a normal, filled object.)
      */
     public HadoopRecord() {
+        super();
+
         serializer = new SerializationHandler();
     }
 
@@ -55,6 +57,8 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
      * @param config Hadoop Configuration for this job, containing HDFS file path
      */
     public HadoopRecord( String documentHash, FileSystem fs, Configuration config ) {
+        super();
+
         initializeAllVars( documentHash, fs, config );
     }
 
@@ -73,80 +77,61 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
     private void initializeAllVars( String documentHash, FileSystem fs,
                                     Configuration config ) {
         this.fs = fs;
-        this.documentHash = documentHash;
+        FileSystemHandler fsHandler = new FileSystemHandler( fs );
+
         this.config = config;
-        String inputDir = config.get("inputDirectory");
-        doc = new Path( inputDir + Path.SEPARATOR + documentHash + ".txt" );
+        doc = new Path( config.get("inputDirectory"), documentHash + ".txt" );
 
         logger = new MessageLogger( true );
+
+        serializer = new SerializationHandler();
+
+        byte[] byteForm = new byte[0];
+        try {
+            byteForm = fsHandler.readBytesFromHDFS( doc );
+        } catch ( IOException e ) {
+            logger.logError("IOException reading serial form of document "
+                                    + documentHash + " from HDFS." );
+        }
+
+        configureFromSerialized( byteForm );
+
         logger.log( "Initialized record for document with hash " + documentHash );
     }
 
-
     /**
-     * @return The directory in HDFS containing all this document's text files
-     *         (the original.txt along with the annotations). This will simply
-     *         be [job input directory]/[this document's hash]/.
+     * Sets up this object using the annotations (views) from the serialized form
+     * of the Record that this object should mirror. After this executes, this
+     * Record should have all cluster, label, and parse views that the original
+     * had.
+     * @param byteForm The serialized form of the record that this one will mirror
      */
-    public Path getDocumentPath() {
-        return doc;
+    private void configureFromSerialized( byte[] byteForm ) {
+        try {
+            Record master = serializer.deserialize( byteForm );
+            setClusterViews( master.getClusterViews() );
+            setLabelViews( master.getLabelViews() );
+            setParseViews( master.getParseViews() );
+            setViews( master.getViews() );
+
+            setIdentifier( master.getIdentifier() );
+            setWhitespaced( master.isWhitespaced() );
+        } catch ( TException e ) {
+            if( logger == null ) {
+                logger = HadoopInterface.logger;
+            }
+            logger.logError("Thrift error in deserializing Record for a document"
+                                     + " from HDFS." );
+
+        }
     }
 
     /**
-     * @return String: The hash identifying the document that this record describes
+     * @return The hash identifying the document that this
+     *         record describes
      */
     public String getDocumentHash() {
-        return documentHash;
-    }
-
-    @Override
-    public int compareTo( Record record ) {
-        logger.log( "Comparing record for " + getDocumentHash()
-                                    + "to record for " + record.getIdentifier() );
-        return getDocumentHash().compareTo( record.getIdentifier() );
-    }
-
-    @Override
-    public void write( DataOutput out ) throws IOException {
-        try {
-            out.write( serializer.serialize(this) );
-        } catch ( TException e ) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void readFields( DataInput in ) throws IOException {
-        byte[] serializedForm = new byte[10240];
-
-        int i = 0;
-        int c = in.readByte();
-
-        while ( c != -1 ) {
-            serializedForm[i++] = (byte) c;
-            c = in.readByte();
-
-            if( i == serializedForm.length ) {
-                byte[] newBuffer = new byte[serializedForm.length * 2];
-                System.arraycopy(serializedForm, 0, newBuffer, 0, serializedForm.length);
-                serializedForm = newBuffer;
-            }
-        }
-
-        try {
-            serializer.deserialize( serializedForm );
-        } catch ( TException e ) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    /**
-     * Same functionality as getDocumentHash(), since the HadoopRecord cannot access
-     * document annotations (only Thrift can).
-     */
-    public String toString() {
-        return getDocumentHash();
+        return getIdentifier();
     }
 
     /**
@@ -194,5 +179,63 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
      */
     public boolean meetsDependencyReqs( AnnotationMode annotationToPerform ) {
         return RecordTools.meetsDependencyReqs( this, annotationToPerform );
+    }
+
+    @Override
+    public int compareTo( Record record ) {
+        logger.log( "Comparing record for " + getDocumentHash()
+                                    + "to record for " + record.getIdentifier() );
+        return getDocumentHash().compareTo( record.getIdentifier() );
+    }
+
+    @Override
+    public void write( DataOutput out ) throws IOException {
+        if( !isSetWhitespaced() ) {
+            setWhitespaced(false);
+        }
+
+        try {
+            if( serializer == null ) {
+                serializer = new SerializationHandler();
+            }
+            out.write( serializer.serialize(this) );
+        } catch ( TException e ) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void readFields( DataInput in ) throws IOException {
+        byte[] serializedForm = new byte[10240];
+
+        int i = 0;
+        int b = in.readByte();
+
+        while ( b != -1 ) {
+            serializedForm[i++] = (byte) b;
+
+            try {
+                b = in.readByte();
+            } catch( EOFException e ) {
+                b = -1;
+            }
+
+            if( i == serializedForm.length ) {
+                byte[] newBuffer = new byte[serializedForm.length * 2];
+                System.arraycopy(serializedForm, 0, newBuffer, 0, serializedForm.length);
+                serializedForm = newBuffer;
+            }
+        }
+
+        configureFromSerialized( serializedForm );
+    }
+
+    @Override
+    /**
+     * Same functionality as getDocumentHash(), since the HadoopRecord cannot access
+     * document annotations (only Thrift can).
+     */
+    public String toString() {
+        return getDocumentHash();
     }
 } // THE END!

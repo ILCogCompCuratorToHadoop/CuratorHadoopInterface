@@ -44,17 +44,18 @@ public class DirectoryInputFormat extends InputFormat< Text, HadoopRecord> {
 
         HadoopInterface.logger.log("Input dir is " + conf.get("inputDirectory"));
 
-        List<Path> subDirsOfInputDirs = fsHandler.getSubdirectories(
-                new Path( conf.get("inputDirectory") ) );
+        Path inputDir = new Path( conf.get( "inputDirectory" ) );
+        List<Path> filesInInputDir =
+                fsHandler.getFilesAndDirectoriesInDirectory( inputDir );
 
-        HadoopInterface.logger.log( "Found " + subDirsOfInputDirs.size()
+        HadoopInterface.logger.log( "Found " + filesInInputDir.size()
                 + " documents in the input directory. "
                 + " These are as follows: "
-                + HadoopInterface.logger.getPrettifiedList(subDirsOfInputDirs) );
+                + HadoopInterface.logger.getPrettifiedList(filesInInputDir) );
 
 
         // For each document directory in the directory . . .
-        for( Path filePath : subDirsOfInputDirs ) {
+        for( Path filePath : filesInInputDir ) {
             // Add a directory split for this document directory
             jobSplits.add( new DirectorySplit( filePath, fs, conf ) );
         }

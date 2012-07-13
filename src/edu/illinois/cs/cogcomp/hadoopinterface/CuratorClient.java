@@ -303,7 +303,9 @@ public class CuratorClient {
         for( Record r : newInputRecords ) {
             byte[] serializedForm =  serializer.serialize( r );
             File txtFileLoc = getLocForSerializedForm( r, outputDir );
-            LocalFileSystemHandler.writeFile( txtFileLoc, serializedForm );
+
+            // Overwrites the file if it already exists
+            LocalFileSystemHandler.writeFile( txtFileLoc, serializedForm, true );
         }
     }
 

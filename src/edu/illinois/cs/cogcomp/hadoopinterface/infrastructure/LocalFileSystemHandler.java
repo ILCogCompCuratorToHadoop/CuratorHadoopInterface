@@ -57,18 +57,20 @@ public class LocalFileSystemHandler {
      * @param path The location to which the file should be written. Probably
      *             something like "/user/My_User/my_output_dir/a_text_file.txt".
      * @param text The text, as a byte array, to be written.
+     * @param overwrite If set to true, will overwrite the file if it already
+     *                  exists.
      * @throws java.io.IOException If the file indicated by the path already
      *                             exists.
      */
-    public static void writeFile( File path, byte[] text )
+    public static void writeFile( File path, byte[] text, boolean overwrite )
             throws IOException {
-        if ( path.exists() ) {
+        if ( path.exists() && !overwrite ) {
             throw new IOException( "File at path "
                                    + path
                                    + " already exists; cannot overwrite it." );
         }
 
-        FileOutputStream writer = new FileOutputStream( path );
+        FileOutputStream writer = new FileOutputStream( path, !overwrite );
         writer.write( text );
 
         writer.close();

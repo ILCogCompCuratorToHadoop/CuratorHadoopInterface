@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Usage: ./batch_job_master_script ANNOTATION_TOOL_TO_RUN path/to/your_input_directory
-# Example: ./batch_job_master_script.sh TOKENIZER job123
+# Example: ./batch_job_master_script.sh TOKENIZER /shared/gargamel/undergrad/tyoun/curator-0.6.9/dist/client/job123
 
 echo ""
 echo "In order to use this script, you must open it in a text"
@@ -19,6 +19,7 @@ echo ""
 CURATOR_DIRECTORY=/shared/gargamel/undergrad/tyoun/curator-0.6.9/
 HADOOP_DIRECTORY=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3/
 INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized/
+OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3/job_output/
 ANNOTATION_TOOL_TO_RUN=$1       # The 1st parameter from the command line
 INPUT_PATH=$2                   # The 2nd parameter from the command line
 
@@ -45,7 +46,7 @@ cd client
 # Copy the serialized records to the Hadoop Distributed File System (HDFS)
 echo -e "\n\n\nCopying the serialized records to HDFS:"
 cd $HADOOP_DIRECTORY
-./bin/hadoop dfs -copyFromLocal serialized serialized
+./bin/hadoop dfs -copyFromLocal $INTERMEDIATE_OUTPUT/* serialized
 
 # Launch MapReduce job on Hadoop cluster
 echo -e "\n\n\nLaunching the mapreduce job on the Hadoop cluster:"
@@ -53,7 +54,7 @@ echo -e "\n\n\nLaunching the mapreduce job on the Hadoop cluster:"
 
 # When the MapReduce job finishes, copy the data back to local disk
 echo -e "\n\n\nCopying the data back from the Hadoop cluster:"
-./bin/hadoop fs -copyToLocal serialized extended_serialized
+./bin/hadoop fs -copyToLocal serialized/* $OUTPUT
 
 # Have Master Curator read in the updated Records and update the database accordingly
 

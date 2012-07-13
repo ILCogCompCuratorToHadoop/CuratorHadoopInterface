@@ -83,17 +83,13 @@ public class FileSystemHandler {
                     + "information on how to structure the input directory.");
         }
 
-        List<String> inputFiles = getFilesAndDirectoriesInDirectory(inputDirectory);
-        for( String inputFileLoc : inputFiles ) {
-            Path inputFile = new Path(inputFileLoc);
-
-            if( !isDir( inputFile ) ) {
-                if( getFileSizeInBytes( inputFile ) < 1 ) {
-                    throw new EmptyInputException( "Input in document directory "
-                            + fs.makeQualified( inputDirectory ) + " has no "
-                            + "recognized input.  Please create input files in the "
-                            + "Hadoop file system before starting this program.");
-                }
+        List<Path> inputFiles = getFilesOnlyInDirectory(inputDirectory);
+        for( Path inputFile : inputFiles ) {
+            if( getFileSizeInBytes( inputFile ) < 1 ) {
+                throw new EmptyInputException( "Input in document directory "
+                        + fs.makeQualified( inputDirectory ) + " has no "
+                        + "recognized input.  Please create input files in the "
+                        + "Hadoop file system before starting this program.");
             }
         }
     }
@@ -479,7 +475,7 @@ public class FileSystemHandler {
     }
 
     /**
-     * Returns an array of strings naming the files and directories in the
+     * Returns a list of paths naming the files and directories in the
      * directory denoted by this abstract path name. Resolves paths using the
      * file system object given to this object during its construction, or
      * created based on the Curator job configuration it was given.
@@ -492,13 +488,40 @@ public class FileSystemHandler {
      * @return A list of all files and sub-directories found in the directory
      * @throws IOException
      */
-    public List<String> getFilesAndDirectoriesInDirectory( Path dir )
+    public List<Path> getFilesAndDirectoriesInDirectory( Path dir )
             throws IOException {
-        ArrayList<String> listOfPaths = new ArrayList<String>();
+        ArrayList<Path> listOfPaths = new ArrayList<Path>();
 
         FileStatus fileStatuses[] = fs.listStatus( dir );
         for( FileStatus status : fileStatuses ) {
-            listOfPaths.add( status.getPath().toString() );
+            listOfPaths.add( status.getPath() );
+        }
+        return listOfPaths;
+    }
+
+    /**
+     * Returns a list of path naming the files (*without* the directories) in the
+     * directory denoted by this path name. Resolves paths using the
+     * file system object given to this object during its construction, or
+     * created based on the Curator job configuration it was given.
+     *
+     * There is no guarantee that the name strings in the resulting array will
+     * appear in any specific order; they are not, in particular, guaranteed to
+     * appear in alphabetical order.
+     *
+     * @param dir The path whose files you want a list of
+     * @return A list of all files found in the directory, without any
+     *         sub-directories
+     * @throws IOException
+     */
+    public List<Path> getFilesOnlyInDirectory( Path dir ) throws IOException {
+        ArrayList<Path> listOfPaths = new ArrayList<Path>();
+
+        FileStatus fileStatuses[] = fs.listStatus( dir );
+        for( FileStatus status : fileStatuses ) {
+            if( !status.isDir() ) {
+                listOfPaths.add( status.getPath() );
+            }
         }
         return listOfPaths;
     }
