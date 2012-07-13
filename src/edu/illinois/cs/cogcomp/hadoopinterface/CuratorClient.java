@@ -397,8 +397,7 @@ public class CuratorClient {
             }
         }
 
-        System.out.println( "You gave us " + inputDir.toString()
-                            + " as the input directory." );
+        printArgsInterpretation( host, port, inputDir, outputDir, testing );
 
 
         // Create records from the input text files
@@ -432,6 +431,31 @@ public class CuratorClient {
         } catch (Exception e) {
             e.printStackTrace();
         }*/
+    }
+
+    private static void printArgsInterpretation(
+            String host, int port, File inputDir, File outputDir,
+            boolean testing ) {
+        StringBuilder usage = new StringBuilder();
+        usage.append("You launched the CuratorClient with the following options:");
+        usage.append("\n");
+        usage.append("\tCurator host: ");
+        usage.append(host);
+        usage.append("\n");
+        usage.append("\tCurator port: ");
+        usage.append(port);
+        usage.append("\n");
+        usage.append("\tInput directory: ");
+        usage.append(inputDir.toString());
+        usage.append("\n");
+        usage.append("\tOutput directory: ");
+        usage.append(outputDir.toString());
+        usage.append("\n");
+        usage.append("\tRun in testing mode? ");
+        usage.append(testing ? "Yes." : "No.");
+        usage.append("\n");
+
+        System.out.println( usage.toString() );
     }
 
     private static void confirmArgsAreGood( String[] args ) {

@@ -4,7 +4,6 @@ import edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions.BadCommandLineUsageException;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions.IllegalModeException;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.util.ToolRunner;
 
 /**
  * This class is used to parse the command-line arguments used by the Hadoop
@@ -31,17 +30,25 @@ public class ArgumentParser {
         testing = false;
 
         if( args.length < 2 ) {
-            String errorMsg = "Parameter usage: \n\t\t"
-                    + "<document directory> <mode>\n\tor:\n\t\t"
-                    + "-d <document directory> -m <mode> "
-                    + "[-maps <number of maps>] [-reduces <number of reduces>] "
-                    + "[-test]";
-            HadoopInterface.logger.logError( errorMsg );
-            System.err.println( errorMsg );
-            ToolRunner.printGenericCommandUsage(System.err);
+            StringBuilder err = new StringBuilder();
+            err.append( "Parameter usage: \n\t\t" );
+            err.append( "<document directory> <mode>\n\tor:\n\t\t" );
+            err.append( "-d <document directory> -m <mode> " );
+            err.append( "[-maps <number of maps>] [-reduces <number of " );
+            err.append( "reduces>] [-test]\n" );
+            err.append( "You tried to pass these parameters:\n\t" );
+
+            for( String arg : args ) {
+                err.append( arg );
+                err.append( ' ' );
+            }
+
+            HadoopInterface.logger.logError( err.toString() );
+            System.err.println( err );
+            //ToolRunner.printGenericCommandUsage(System.err);
 
             throw new BadCommandLineUsageException( "Wrong number of parameters "
-                    + "from command line. " + errorMsg );
+                    + "from command line. " + err );
         }
 
         // "Classic" usage: just directory and mode
