@@ -30,7 +30,13 @@ public class CuratorClientArgParser {
                 outputDir = new File( commandLineArgs[++crntArg] );
             }
             else if( commandLineArgs[crntArg].equals("-mode") ) {
-                mode = CuratorClient.CuratorClientMode.fromString( commandLineArgs[++crntArg] );
+                try {
+                    mode = CuratorClient.CuratorClientMode.fromString( commandLineArgs[++crntArg] );
+                } catch ( IllegalArgumentException e ) {
+                    System.out.println( "Please specify either 'PRE' or 'POST' "
+                                        + "(pre-Hadoop and post-Hadoop, "
+                                        + "respectively) as the mode.");
+                }
             }
             else if( commandLineArgs[crntArg].equals("-test") ) {
                 testing = true;

@@ -1,6 +1,8 @@
 package edu.illinois.cs.cogcomp.hadoopinterface;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.*;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions
+        .EmptyInputException;
 import edu.illinois.cs.cogcomp.thrift.base.*;
 import edu.illinois.cs.cogcomp.thrift.curator.Curator;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
@@ -371,7 +373,14 @@ public class CuratorClient {
      * @param record A Curator Record object
      */
     public void addToInputList(Record record) {
-        newInputRecords.add( record );
+        if( record.getRawText().equals("") ) {
+            System.out.println( "Tried to add a record with no original text." );
+            System.out.println( "Claims to have ID " + record.getIdentifier() );
+            System.out.println( "We are skipping that record.\n" );
+        }
+        else {
+            newInputRecords.add( record );
+        }
     }
 
     /**
@@ -402,6 +411,49 @@ public class CuratorClient {
      */
     protected TTransport getTransport() {
         return transport;
+    }
+
+    /**
+     * In post-Hadoop mode, this is used to send the Curator the Records from
+     * the input list (i.e., the records we got from Hadoop, then reconstructed
+     * using the #addRecordsFromJobDirectory() method).
+     */
+    private void informDatabaseOfUpdatedRecords()
+            throws ServiceUnavailableException, TException,
+            AnnotationFailedException, ServiceSecurityException {
+        for( Record r : newInputRecords ) {
+            transport.open();
+            Record old = client.getRecord( r.getRawText() );
+            transport.close();
+
+            int oldNumViews = RecordTools.getNumViews( old );
+            int newNumViews = RecordTools.getNumViews( r );
+
+            StringBuilder msg = new StringBuilder();
+            if( oldNumViews != newNumViews ) {
+                msg.append( "\n\nThe Curator database knew of " );
+                msg.append( oldNumViews );
+                msg.append( "annotations for the document that begins '" );
+                msg.append( RecordTools.getBeginningOfOriginalText( r ) );
+                msg.append( "', whose hash is " );
+                msg.append( r.toString() ) ;
+                msg.append( ".\n\nHowever, we know of " );
+                msg.append( newNumViews );
+                msg.append( " views. Updating the database accordingly." );
+                System.out.println( msg.toString() );
+
+                client.storeRecord( r );
+            }
+            else {
+                msg.append( "\n\nWe have no new data on the document that begins '" );
+                msg.append( RecordTools.getBeginningOfOriginalText( r ) );
+                msg.append( "', whose hash is " );
+                msg.append( r.getIdentifier() ) ;
+                msg.append( "\nNo database update is necessary, " +
+                                         "but this is troubling." );
+                System.out.println( msg.toString() );
+            }
+        }
     }
 
     /**
@@ -450,46 +502,12 @@ public class CuratorClient {
         else { // Post-Hadoop. Time to add the records to the database.
             theClient.addRecordsFromJobDirectory( args.getOutputDir(), false );
 
-            theClient.informDatabaseOfUpdatedRecords();
-
-        }
-    }
-
-    /**
-     * In post-Hadoop mode, this is used to send the Curator the Records from
-     * the input list (i.e., the records we got from Hadoop, then reconstructed
-     * using the #addRecordsFromJobDirectory() method).
-     */
-    private void informDatabaseOfUpdatedRecords()
-            throws ServiceUnavailableException, TException,
-            AnnotationFailedException, ServiceSecurityException {
-        for( Record r : newInputRecords ) {
-            Record old = client.getRecord( r.getRawText() );
-            int oldNumViews = RecordTools.getNumViews( old );
-            int newNumViews = RecordTools.getNumViews( r );
-
-            StringBuilder oldVsNew = new StringBuilder();
-            if( oldNumViews != newNumViews ) {
-                oldVsNew.append( "The Curator database knew of " );
-                oldVsNew.append( oldNumViews );
-                oldVsNew.append( "annotations for the document that begins '" );
-                oldVsNew.append( RecordTools.getBeginningOfOriginalText( r ) );
-                oldVsNew.append( "', whose hash is " );
-                oldVsNew.append( r.toString() ) ;
-                oldVsNew.append( ".\n\nHowever, we know of " );
-                oldVsNew.append( newNumViews );
-                oldVsNew.append( " views. Updating the database accordingly." );
-                System.out.println( oldVsNew.toString() );
-
-                client.storeRecord( r );
+            if( theClient.getNumInputRecords() > 0 ) {
+                theClient.informDatabaseOfUpdatedRecords();
             }
             else {
-                oldVsNew.append("We have no new data on the document that begins '");
-                oldVsNew.append( RecordTools.getBeginningOfOriginalText( r ) );
-                oldVsNew.append( "', whose hash is " );
-                oldVsNew.append( r.toString() ) ;
-                oldVsNew.append( "No database update is necessary, but this is troubling." );
-                System.out.println( oldVsNew.toString() );
+                throw new EmptyInputException( "Found no serialized Records in "
+                                               + "the directory. Exiting...");
             }
         }
     }
