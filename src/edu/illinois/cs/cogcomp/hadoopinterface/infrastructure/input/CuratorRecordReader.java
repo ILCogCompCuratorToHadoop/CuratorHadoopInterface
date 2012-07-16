@@ -1,9 +1,11 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.input;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
@@ -20,11 +22,16 @@ import java.io.IOException;
  */
 public class CuratorRecordReader extends RecordReader {
     @Override
-    public void initialize(InputSplit split, TaskAttemptContext context)
+    public void initialize( InputSplit split, TaskAttemptContext context )
             throws IOException, InterruptedException {
         HadoopInterface.logger.log( "Initializing record reader" );
         config = context.getConfiguration();
-        nextKey = new Text( split.toString() );
+
+        Path inputPath = new Path( split.toString() );
+        String docHash =
+                FileSystemHandler.getFileNameWithoutExtension( inputPath );
+
+        nextKey = new Text( docHash );
         progress = 0.0f;
     }
 

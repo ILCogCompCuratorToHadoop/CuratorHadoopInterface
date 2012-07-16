@@ -52,9 +52,13 @@ cd $HADOOP_DIRECTORY
 # Launch MapReduce job on Hadoop cluster
 echo -e "\n\n\nLaunching the mapreduce job on the Hadoop cluster:"
 ./bin/hadoop jar curator.jar serialized $ANNOTATION_TOOL_TO_RUN
+echo -e "\n\n\nJob finished!\n\n"
+
 
 # When the MapReduce job finishes, copy the data back to local disk
 echo -e "\n\n\nCopying the data back from the Hadoop cluster:"
+pwd
+echo "./bin/hadoop fs -copyToLocal serialized/* $OUTPUT"
 ./bin/hadoop fs -copyToLocal serialized/* $OUTPUT
 
 # Have Master Curator read in the updated Records and update the database accordingly

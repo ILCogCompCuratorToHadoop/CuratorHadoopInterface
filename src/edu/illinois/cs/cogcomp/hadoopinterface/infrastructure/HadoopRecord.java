@@ -27,10 +27,7 @@ import java.io.IOException;
  */
 public class HadoopRecord extends Record implements WritableComparable< Record > {
 
-    private Configuration config;
-    private FileSystem fs;
     private MessageLogger logger;
-    private Path doc;
     private HadoopSerializationHandler serializer;
 
     /**
@@ -81,14 +78,13 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
     private void initializeAllVars( String documentHash, FileSystem fs,
                                     Configuration config )
             throws IOException, TException {
-        this.fs = fs;
-        FileSystemHandler fsHandler = new FileSystemHandler( fs );
-
-        this.config = config;
-        doc = new Path( config.get("inputDirectory"), documentHash + ".txt" );
+        Path doc = new Path( config.get( "inputDirectory" ),
+                             documentHash + ".txt" );
 
         logger = new MessageLogger( true );
 
+        logger.logStatus( "Reconstructing this HadoopRecord from file "
+                          + doc.toString() );
         serializer = new HadoopSerializationHandler();
         Record reconstructed = serializer.deserialize( doc, fs );
 
@@ -197,7 +193,7 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
         try {
             readVersion = serializer.deserializeFromDataInput( in );
         } catch ( TException e ) {
-            logger.logError("Error deserializing record!");
+            logger.logError( "Error deserializing record!" );
         }
 
         configureThisFromOther( readVersion );

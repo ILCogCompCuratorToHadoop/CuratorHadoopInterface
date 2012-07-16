@@ -96,7 +96,6 @@ public class DirectorySplit extends InputSplit implements Writable {
         dataOutput.write(stringRep.getBytes());
         // Have the configuration serialize its data
         config.write( dataOutput );
-
     }
 
     @Override
@@ -109,6 +108,11 @@ public class DirectorySplit extends InputSplit implements Writable {
     }
 
     /**
+     * Returns the string representation of this split, which is really just
+     * which document it is responsible for.
+     *
+     * CuratorRecordReader relies on this for getting the location of the
+     * document in HDFS.
      * @return The input path for this document
      */
     public String toString() {
