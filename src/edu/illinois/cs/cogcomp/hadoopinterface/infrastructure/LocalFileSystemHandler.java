@@ -35,11 +35,9 @@ public class LocalFileSystemHandler {
      * @return A byte array version of the input file
      */
     public static byte[] readFileToBytes( File f ) throws IOException {
-        byte[] buffer = null;
-
         BufferedReader bufferedReader = new BufferedReader( new FileReader( f ) );
 
-        buffer = new byte[(int) f.length()];
+        byte[] buffer = new byte[(int) f.length()];
 
         int i = 0;
         int c = bufferedReader.read();
@@ -51,6 +49,27 @@ public class LocalFileSystemHandler {
 
         return buffer;
     }
+
+    /**
+     * Writes a string to the indicated file.
+     * @param path The file to be written to
+     * @param data The string to write to the file
+     * @param overwrite If true, we will overwrite the file if it exists.
+     */
+    public static void writeStringToFile( File path,
+                                          String data,
+                                          boolean overwrite )
+            throws IOException {
+        if ( path.exists() && !overwrite ) {
+            throw new IOException( "File at path "+ path
+                                   + " already exists; cannot overwrite it." );
+        }
+
+        BufferedWriter out = new BufferedWriter( new FileWriter( path ) );
+        out.write( data );
+        out.close();
+    }
+
     /**
      * Writes a file to the indicated path.
      *

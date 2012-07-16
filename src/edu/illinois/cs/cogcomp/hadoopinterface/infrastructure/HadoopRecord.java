@@ -1,7 +1,5 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
-import edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions.*;
 import edu.illinois.cs.cogcomp.thrift.base.Clustering;
 import edu.illinois.cs.cogcomp.thrift.base.Forest;
 import edu.illinois.cs.cogcomp.thrift.base.Labeling;
@@ -16,7 +14,6 @@ import org.apache.thrift.TException;
 
 import java.io.DataInput;
 import java.io.DataOutput;
-import java.io.EOFException;
 import java.io.IOException;
 
 /**
@@ -34,7 +31,7 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
     private FileSystem fs;
     private MessageLogger logger;
     private Path doc;
-    private SerializationHandler serializer;
+    private HadoopSerializationHandler serializer;
 
     /**
      * Zero-argument constructor for use by the Hadoop backend. It calls this
@@ -45,7 +42,7 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
     public HadoopRecord() {
         super();
 
-        serializer = new SerializationHandler();
+        serializer = new HadoopSerializationHandler();
     }
 
     /**
@@ -57,10 +54,16 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
      *           Hadoop Distributed File System (HDFS)
      * @param config Hadoop Configuration for this job, containing HDFS file path
      */
-    public HadoopRecord( String documentHash, FileSystem fs, Configuration config ) {
+    public HadoopRecord( String documentHash, FileSystem fs,
+                         Configuration config )
+            throws IOException {
         super();
 
-        initializeAllVars( documentHash, fs, config );
+        try {
+            initializeAllVars( documentHash, fs, config );
+        } catch ( TException e ) {
+            logger.logError("Error initializing Hadoop Record");
+        }
     }
 
     /**
@@ -76,7 +79,8 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
      * @param config Hadoop Configuration for this job containing HDFS file path
      */
     private void initializeAllVars( String documentHash, FileSystem fs,
-                                    Configuration config ) {
+                                    Configuration config )
+            throws IOException, TException {
         this.fs = fs;
         FileSystemHandler fsHandler = new FileSystemHandler( fs );
 
@@ -85,47 +89,29 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
 
         logger = new MessageLogger( true );
 
-        serializer = new SerializationHandler();
+        serializer = new HadoopSerializationHandler();
+        Record reconstructed = serializer.deserialize( doc, fs );
 
-        byte[] byteForm = new byte[0];
-        try {
-            byteForm = fsHandler.readBytesFromHDFS( doc );
-            configureFromSerialized( byteForm );
-        } catch ( IOException e ) {
-            logger.logError( "IOException reading serial form of document "
-                                     + documentHash + " from HDFS." );
-            logger.logError( e.getMessage() );
-        }
+        configureThisFromOther( reconstructed );
 
         logger.log( "Initialized record for document with hash " + documentHash );
     }
 
     /**
-     * Sets up this object using the annotations (views) from the serialized form
-     * of the Record that this object should mirror. After this executes, this
-     * Record should have all cluster, label, and parse views that the original
-     * had.
-     * @param byteForm The serialized form of the record that this one will mirror
+     * Sets this record's original text, views, and all other properties to
+     * those of the other record
+     * @param other The Record whose properties we will copy
      */
-    private void configureFromSerialized( byte[] byteForm )
-            throws EmptyInputException {
-        try {
-            Record master = serializer.deserialize( byteForm );
-            setClusterViews( master.getClusterViews() );
-            setLabelViews( master.getLabelViews() );
-            setParseViews( master.getParseViews() );
-            setViews( master.getViews() );
+    private void configureThisFromOther( Record other ) {
+        setRawText( other.getRawText() );
 
-            setIdentifier( master.getIdentifier() );
-            setWhitespaced( master.isWhitespaced() );
-        } catch ( TException e ) {
-            if( logger == null ) {
-                logger = HadoopInterface.logger;
-            }
-            logger.logError("Thrift error in deserializing Record for a document"
-                                     + " from HDFS." );
+        setClusterViews( other.getClusterViews() );
+        setLabelViews( other.getLabelViews() );
+        setParseViews( other.getParseViews() );
+        setViews( other.getViews() );
 
-        }
+        setIdentifier( other.getIdentifier() );
+        setWhitespaced( other.isWhitespaced() );
     }
 
     /**
@@ -197,39 +183,24 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
         }
 
         try {
-            if( serializer == null ) {
-                serializer = new SerializationHandler();
-            }
-            out.write( serializer.serialize(this) );
+            serializer.serializeToDataOutput( this, out );
         } catch ( TException e ) {
-            e.printStackTrace();
+            logger.logError( "Thrift exception serializing Record "
+                             + getIdentifier() );
         }
     }
 
     @Override
     public void readFields( DataInput in ) throws IOException {
-        byte[] serializedForm = new byte[10240];
+        Record readVersion = new Record();
 
-        int i = 0;
-        int b = in.readByte();
-
-        while ( b != -1 ) {
-            serializedForm[i++] = (byte) b;
-
-            try {
-                b = in.readByte();
-            } catch( EOFException e ) {
-                b = -1;
-            }
-
-            if( i == serializedForm.length ) {
-                byte[] newBuffer = new byte[serializedForm.length * 2];
-                System.arraycopy(serializedForm, 0, newBuffer, 0, serializedForm.length);
-                serializedForm = newBuffer;
-            }
+        try {
+            readVersion = serializer.deserializeFromDataInput( in );
+        } catch ( TException e ) {
+            logger.logError("Error deserializing record!");
         }
 
-        configureFromSerialized( serializedForm );
+        configureThisFromOther( readVersion );
     }
 
     @Override

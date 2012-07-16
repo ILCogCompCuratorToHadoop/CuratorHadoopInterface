@@ -38,7 +38,7 @@ public class CuratorClientTester {
             // If it is a real serialized record . . .
             if( !serializedRec.isHidden() ) {
                 System.out.println("Deserializing a record");
-                serializer.deserializeFromFile( serializedRec );
+                serializer.deserialize( serializedRec );
             }
         }
 
@@ -60,7 +60,7 @@ public class CuratorClientTester {
         CuratorClient client = new CuratorClient("localhost", 9010);
         client.createRecordsFromRawInputFiles( in );
 
-        int actualSize = client.getNumberOfInputRecords();
+        int actualSize = client.getNumInputRecords();
         if( actualSize != numFiles ) {
             throw new IOException("Failed to create the right number of records"
                 + "from the raw text directory. There should have been "

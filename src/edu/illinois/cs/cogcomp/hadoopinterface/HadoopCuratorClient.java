@@ -1,8 +1,7 @@
 package edu.illinois.cs.cogcomp.hadoopinterface;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.SerializationHandler;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.HadoopSerializationHandler;
 import edu.illinois.cs.cogcomp.thrift.base.AnnotationFailedException;
 import edu.illinois.cs.cogcomp.thrift.base.ServiceUnavailableException;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
@@ -45,7 +44,9 @@ public class HadoopCuratorClient extends CuratorClient {
         super("local", PORT);
 
         this.localFS = localFS;
-        serializationHandler = new SerializationHandler();
+        transport = super.getTransport();
+
+        serializer = new HadoopSerializationHandler();
     }
 
     /**
@@ -56,8 +57,7 @@ public class HadoopCuratorClient extends CuratorClient {
      * @param toolToRun The type of annotation that we should get for the record
      */
 	public void annotateSingleDoc( Record record,
-                                   AnnotationMode toolToRun )
-            throws IOException, TException {
+                                   AnnotationMode toolToRun ) {
         try {
             // Ask the Curator to perform the annotation
             transport.open();
@@ -93,32 +93,25 @@ public class HadoopCuratorClient extends CuratorClient {
      */
     public void writeOutputFromLastAnnotate( Path outputDir )
             throws TException, IOException {
-        serializeCuratorRecord( lastAnnotatedRecord, outputDir, localFS );
+        Path fileLoc = getLocForSerializedForm( lastAnnotatedRecord, outputDir );
+        serializer.serialize( lastAnnotatedRecord, fileLoc, localFS );
     }
 
     /**
-     * Takes a Curator-friendly Record (as might be returned by the annotation
-     * tools) and writes it to the Hadoop Distributed File System. (If you wish,
-     * it is easy to later create a HadoopRecord based on the output directory.)
-     * @param curatorRecord The Curator-friendly, Thrift-based Record to write
-     *                      to HDFS.
-     * @param outputDir The location in HDFS to which the Record should be
-     *                  written.
-     * @param fs The filesystem against which the path will be resolved
+     * Returns the location of the serialized form of the indicated record, which
+     * depends on the location that it should be written to. At present, this will
+     * always be a text file, named with the record's hash, within the containing
+     * directory. However, this is subject to change. As an example, the current
+     * structure simply contains a number of [document_hash].txt files within the
+     * output directory.
+     *
+     * @param r The record in question
+     * @param containingDir The directory containing this serialized record
+     * @return The location at which the serialized form of the record should
+     *         be found
      */
-    private void serializeCuratorRecord( Record curatorRecord,
-                                         Path outputDir,
-                                         FileSystem fs )
-            throws TException, IOException {
-        byte[] recordAsBytes = serializationHandler.serialize( curatorRecord );
-        Path docLocation = new Path( outputDir,
-                                     curatorRecord.getIdentifier() + ".txt" );
-        FileSystemHandler fsHandler = new FileSystemHandler( fs );
-        try {
-            fsHandler.writeBytesToHDFS( recordAsBytes, docLocation );
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private Path getLocForSerializedForm( Record r, Path containingDir ) {
+        return new Path( containingDir, r.getIdentifier() + ".txt" );
     }
 
     private Record lastAnnotatedRecord;
@@ -126,5 +119,5 @@ public class HadoopCuratorClient extends CuratorClient {
     private FileSystem localFS;
     private TTransport transport;
     public static final int PORT = 9010;
-    private SerializationHandler serializationHandler;
+    private HadoopSerializationHandler serializer;
 }

@@ -11,9 +11,13 @@ import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 
-import java.io.*;
-import java.util.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Stack;
 
 
 /**
@@ -36,14 +40,15 @@ public class CuratorClient {
 
     // Two Thrift objects for interfacing with the Curator
     private Curator.Client client;
-    private TTransport transport;
+    private final TTransport transport;
 
     // The list of all the input records that we will write to disk (to later
     // be transferred to Hadoop by another program)
     private ArrayList<Record> newInputRecords;
 
     // Provides serialize() and deserialize() methods for Record objects
-    private SerializationHandler serializer;
+    private final SerializationHandler serializer;
+    private static boolean testing;
 
     /**
      * Constructs a CuratorClient object with the default Curator host and port
@@ -68,7 +73,7 @@ public class CuratorClient {
         TProtocol protocol = new TBinaryProtocol(transport);
         client = new Curator.Client(protocol);
 
-        serializer = new SerializationHandler( transport );
+        serializer = new SerializationHandler();
     }
 
     /**
@@ -103,7 +108,6 @@ public class CuratorClient {
 
         return toBeAnnotated;
     }
-
 
     /**
      * Takes a path to documents in a mirror of the HDFS directory structure
@@ -151,9 +155,7 @@ public class CuratorClient {
                 File serializedRecFile = new File( docDir, "original" );
 
                 try {
-                    byte[] serializedRec = LocalFileSystemHandler
-                            .readFileToBytes( serializedRecFile );
-                    currentRecord = serializer.deserialize( serializedRec );
+                    currentRecord = serializer.deserialize( serializedRecFile );
                 } catch ( IOException e ) {
                     e.printStackTrace();
                 }
@@ -297,11 +299,17 @@ public class CuratorClient {
         }
 
         for( Record r : newInputRecords ) {
-            byte[] serializedForm =  serializer.serialize( r );
             File txtFileLoc = getLocForSerializedForm( r, outputDir );
 
-            // Overwrites the file if it already exists
-            LocalFileSystemHandler.writeFile( txtFileLoc, serializedForm, true );
+            // Write the serialized form to the file
+            serializer.serialize( r, txtFileLoc );
+
+            // Ensure we can read back the same thing we just wrote
+            if( testing ) {
+                Record copy = serializer.deserialize( txtFileLoc );
+                System.out.println( "Copy matches written? "
+                                    + (copy.equals(r) ? "Yes" : "No") );
+            }
         }
     }
 
@@ -342,7 +350,7 @@ public class CuratorClient {
      * Gets the number of Records to be serialized.
      * @return The number of input Records ready to be processed
      */
-    public int getNumberOfInputRecords() {
+    public int getNumInputRecords() {
         return newInputRecords.size();
     }
 
@@ -361,6 +369,14 @@ public class CuratorClient {
     }
 
     /**
+     * Returns the Thrift transport used to connect to the Curator
+     * @return the transport
+     */
+    protected TTransport getTransport() {
+        return transport;
+    }
+
+    /**
      * The main method for the external, "master" Curator client.
      * @param args String arguments from the command line. Should contain, in
      *             order, the host name for the (already-running) Curator, the
@@ -371,41 +387,20 @@ public class CuratorClient {
     public static void main(String[] args) throws ServiceUnavailableException,
             TException, AnnotationFailedException, IOException {
         // Parse input
-        confirmArgsAreGood( args );
+        CuratorClientArgParser theArgs = new CuratorClientArgParser( args );
+        theArgs.printArgsInterpretation();
 
-        String host = args[0];
-        int port  = Integer.parseInt( args[1] );
-        File inputDir = new File( args[2] );
-        CuratorClient theClient = new CuratorClient( host, port );
-        boolean testing = false;
-
-        File outputDir = new File( inputDir, "output" );
-
-        if( args.length >= 4 ) {
-            if( args[3].equals("-test") ) {
-                testing = true;
-            }
-            else { // Must be an output directory
-                outputDir = new File( args[3] );
-
-                if( args.length == 5 ) { // final arg must be -test
-                    testing = true;
-
-                }
-            }
-        }
-
-        printArgsInterpretation( host, port, inputDir, outputDir, testing );
-
+        // Set up local vars
+        CuratorClient theClient = new CuratorClient( theArgs.getHost(),
+                                                     theArgs.getPort() );
+        testing = theArgs.isTesting();
 
         // Create records from the input text files
         System.out.println( "Ready to create records from the plain text in " +
                             "the input directory." );
+        theClient.createRecordsFromRawInputFiles( theArgs.getInputDir() );
 
-        theClient.createRecordsFromRawInputFiles(inputDir);
-
-        System.out.println( "Turned "
-                            + Integer.toString( theClient.getNumberOfInputRecords() )
+        System.out.println( "Turned " + theClient.getNumInputRecords()
                             + " text files in the directory into records.");
 
         if( testing ) {
@@ -413,99 +408,14 @@ public class CuratorClient {
             theClient.printInfoOnKnownAnnotators();
 
             // Run a tool (for testing purposes)
-            theClient.testPOSAndTokenizer();
+            theClient.testPOSAndTokenizer( theArgs.getOutputDir() );
         }
 
         // Serialize output
         System.out.println( "Serializing those records to: "
-                                    + outputDir.toString() );
+                                    + theArgs.getOutputDir().toString() );
 
-        theClient.writeSerializedRecords( outputDir );
-
-        if( theClient.serializationWorked( outputDir ) ) {
-            System.out.println( "Serialization worked!" );
-        }
-    }
-
-    private boolean serializationWorked( File outputDir )
-            throws IOException, TException {
-        // Read all the documents back
-        LinkedList<byte[]> byteVersions = new LinkedList<byte[]>();
-        for( File serialized : outputDir.listFiles() ) {
-            if( !serialized.isDirectory() ) {
-                byteVersions.add(
-                        LocalFileSystemHandler.readFileToBytes( serialized ) );
-            }
-        }
-
-        // Reconstruct each document
-        for( byte[] byteForm : byteVersions ) {
-            Record reconstructed = new Record();
-            Record master = serializer.deserialize( byteForm );
-
-            reconstructed.setClusterViews( master.getClusterViews() );
-            reconstructed.setLabelViews( master.getLabelViews() );
-            reconstructed.setParseViews( master.getParseViews() );
-            reconstructed.setViews( master.getViews() );
-
-            reconstructed.setIdentifier( master.getIdentifier() );
-            reconstructed.setWhitespaced( master.isWhitespaced() );
-
-            // Confirm the document matches the original
-            for( Record existing : newInputRecords ) {
-                if( existing.getIdentifier()
-                            .equals( reconstructed.getIdentifier() ) ) {
-                    if( !reconstructed.equals(existing) ) {
-                        throw new TException("Deserialized form does not match original!");
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
-    private static void printArgsInterpretation(
-            String host, int port, File inputDir, File outputDir,
-            boolean testing ) {
-        StringBuilder usage = new StringBuilder();
-        usage.append("You launched the CuratorClient with the following options:");
-        usage.append("\n");
-        usage.append("\tCurator host: ");
-        usage.append(host);
-        usage.append("\n");
-        usage.append("\tCurator port: ");
-        usage.append(port);
-        usage.append("\n");
-        usage.append("\tInput directory: ");
-        usage.append(inputDir.toString());
-        usage.append("\n");
-        usage.append("\tOutput directory: ");
-        usage.append(outputDir.toString());
-        usage.append("\n");
-        usage.append("\tRun in testing mode? ");
-        usage.append(testing ? "Yes." : "No.");
-        usage.append("\n");
-
-        System.out.println( usage.toString() );
-    }
-
-    private static void confirmArgsAreGood( String[] args ) {
-        if ( args.length < 3 )
-        {
-            System.err.println( "Usage: CuratorClient curatorHost curatorPort "
-                                + "inputDir [outputDir] [-test]" );
-
-            StringBuilder argUsage = new StringBuilder();
-            for( String arg : args ) {
-                argUsage.append( arg );
-                argUsage.append( " " );
-            }
-
-            System.err.println( "You tried to use this: CuratorClient "
-                                + argUsage.toString() );
-
-            System.exit( -1 );
-        }
+        theClient.writeSerializedRecords( theArgs.getOutputDir() );
     }
 
     /**
@@ -513,7 +423,7 @@ public class CuratorClient {
      * the Tokenizer and the POS tagger. Writes debugging information to the
      * standard output.
      */
-    private void testPOSAndTokenizer()
+    private void testPOSAndTokenizer( File outputDir )
             throws ServiceUnavailableException, AnnotationFailedException,
             TException, IOException {
         System.out.println( "Running the tokenizer on those new files. "
@@ -547,9 +457,9 @@ public class CuratorClient {
 
             System.out.println("Testing serialization.");
 
-            Record reconstructed = new Record();
-            reconstructed = serializer
-                    .deserialize( serializer.serialize( r ) );
+            File writtenVersion = getLocForSerializedForm(r, outputDir );
+            serializer.serialize( r, writtenVersion );
+            Record reconstructed = serializer.deserialize( writtenVersion );
             if( !r.equals(reconstructed) ) {
                 System.out.println("\tSerialization didn't work.");
                 System.out.println("\tHere's the original:");
@@ -882,4 +792,7 @@ public class CuratorClient {
 
         System.out.println("\n");
     }
+
+
+
 }

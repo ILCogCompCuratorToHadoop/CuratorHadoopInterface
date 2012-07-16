@@ -16,12 +16,13 @@ echo ""
 #       Change these variables to the appropriate *absolute paths*      #
 #########################################################################
 
-CURATOR_DIRECTORY=/shared/gargamel/undergrad/tyoun/curator-0.6.9/
-HADOOP_DIRECTORY=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3/
-INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized/
-OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3/job_output/
+CURATOR_DIRECTORY=/shared/gargamel/undergrad/tyoun/curator-0.6.9
+HADOOP_DIRECTORY=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
+INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized
+OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3/job_output
 ANNOTATION_TOOL_TO_RUN=$1       # The 1st parameter from the command line
 INPUT_PATH=$2                   # The 2nd parameter from the command line
+TESTING=$3
 
 #########################################################################
 #                       No need to edit below here                      #
@@ -33,7 +34,7 @@ echo "You requested we annotate the input text files located here: $INPUT_PATH"
 echo -e "\t(That input directory should be an *absolute* path.)"
 
 # Launch the Master Curator
-echo -e "\n\n\nLaunching the master curator:"
+echo -e "\n\n\nLaunching the master curator."
 cd $CURATOR_DIRECTORY/dist
 ./bin/curator-local.sh --annotators configs/annotators-local.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null
 
@@ -41,7 +42,7 @@ cd $CURATOR_DIRECTORY/dist
 # records from the text in the input directory
 echo -e "\n\n\nLaunching the master curator client:"
 cd client
-./runclient.sh localhost 9010 $INPUT_PATH $INTERMEDIATE_OUTPUT 
+./runclient.sh localhost 9010 $INPUT_PATH $INTERMEDIATE_OUTPUT $TESTING 
 
 # Copy the serialized records to the Hadoop Distributed File System (HDFS)
 echo -e "\n\n\nCopying the serialized records to HDFS:"

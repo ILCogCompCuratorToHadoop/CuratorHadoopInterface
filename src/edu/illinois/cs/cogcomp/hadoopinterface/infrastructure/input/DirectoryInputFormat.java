@@ -46,7 +46,7 @@ public class DirectoryInputFormat extends InputFormat< Text, HadoopRecord> {
 
         Path inputDir = new Path( conf.get( "inputDirectory" ) );
         List<Path> filesInInputDir =
-                fsHandler.getFilesAndDirectoriesInDirectory( inputDir );
+                fsHandler.getFilesOnlyInDirectory( inputDir );
 
         HadoopInterface.logger.log( "Found " + filesInInputDir.size()
                 + " documents in the input directory. "
