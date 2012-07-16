@@ -15,7 +15,6 @@ public class CuratorClientArgParser {
     public CuratorClientArgParser( String[] commandLineArgs ) {
         confirmArgsAreGood( commandLineArgs );
 
-        String specifiedOutputDir = "";
         testing = false;
         for( int crntArg = 0; crntArg < commandLineArgs.length; crntArg++ ) {
             if( commandLineArgs[crntArg].equals("-host") ) {
@@ -28,7 +27,7 @@ public class CuratorClientArgParser {
                 inputDir = new File( commandLineArgs[++crntArg] );
             }
             else if( commandLineArgs[crntArg].equals("-out") ) {
-                specifiedOutputDir = commandLineArgs[++crntArg];
+                outputDir = new File( commandLineArgs[++crntArg] );
             }
             else if( commandLineArgs[crntArg].equals("-mode") ) {
                 mode = CuratorClient.CuratorClientMode.fromString( commandLineArgs[++crntArg] );
@@ -38,10 +37,7 @@ public class CuratorClientArgParser {
             }
         }
 
-        if( !specifiedOutputDir.equals( "" ) ) {
-            outputDir = new File( inputDir, specifiedOutputDir );
-        }
-        else {
+        if( outputDir == null ) {
             outputDir = new File( inputDir, "output" );
         }
     }
@@ -135,7 +131,6 @@ public class CuratorClientArgParser {
     }
 
     private String host;
-
     private int port;
     private File inputDir;
     private boolean testing;

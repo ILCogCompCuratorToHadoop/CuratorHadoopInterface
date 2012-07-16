@@ -62,7 +62,7 @@ echo "./bin/hadoop fs -copyToLocal serialized $OUTPUT"
 
 # Have Master Curator read in the updated Records and update the database accordingly
 cd $CURATOR_DIRECTORY/dist/client
-./runclient.sh -host localhost -port 9010 -in $OUTPUT -mode POST $TESTING 
+./runclient.sh -host localhost -port 9010 -in $OUTPUT/serialized -mode POST $TESTING 
 
 
 
