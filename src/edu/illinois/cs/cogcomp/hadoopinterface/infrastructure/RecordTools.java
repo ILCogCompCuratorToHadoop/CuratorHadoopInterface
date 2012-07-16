@@ -8,6 +8,7 @@ import edu.illinois.cs.cogcomp.thrift.base.View;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 
 import java.util.HashMap;
+import java.util.Scanner;
 import java.util.Set;
 
 /**
@@ -158,5 +159,30 @@ public class RecordTools {
         }
 
         return true;
+    }
+
+    /**
+     * Returns a bit of the original text (useful for identifying a record to
+     * a human, where a hash is meaningless and hard to use)
+     * @param r The record in question
+     * @return The first 15 words or so of the record's original (raw) text
+     */
+    public static String getBeginningOfOriginalText( Record r ) {
+        StringBuilder text = new StringBuilder();
+        String fullText = r.getRawText();
+
+        Scanner scanner = new Scanner(fullText);
+        for( int i = 0; i < 15; i++ ) {
+            if( scanner.hasNext() ) {
+                text.append( scanner.next() );
+                text.append(' ');
+            }
+        }
+
+        if( scanner.hasNext() ) {
+            text.append(". . . " );
+        }
+
+        return text.toString();
     }
 }

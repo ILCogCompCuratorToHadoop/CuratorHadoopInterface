@@ -19,7 +19,7 @@ echo ""
 CURATOR_DIRECTORY=/shared/gargamel/undergrad/tyoun/curator-0.6.9
 HADOOP_DIRECTORY=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized
-OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3/job_output
+OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 ANNOTATION_TOOL_TO_RUN=$1       # The 1st parameter from the command line
 INPUT_PATH=$2                   # The 2nd parameter from the command line
 TESTING=$3
@@ -42,7 +42,7 @@ cd $CURATOR_DIRECTORY/dist
 # records from the text in the input directory
 echo -e "\n\n\nLaunching the master curator client:"
 cd client
-./runclient.sh localhost 9010 $INPUT_PATH $INTERMEDIATE_OUTPUT $TESTING 
+./runclient.sh -host localhost -port 9010 -in $INPUT_PATH -out $INTERMEDIATE_OUTPUT -mode PRE $TESTING 
 
 # Copy the serialized records to the Hadoop Distributed File System (HDFS)
 echo -e "\n\n\nCopying the serialized records to HDFS:"
@@ -56,12 +56,14 @@ echo -e "\n\n\nJob finished!\n\n"
 
 
 # When the MapReduce job finishes, copy the data back to local disk
-echo -e "\n\n\nCopying the data back from the Hadoop cluster:"
-pwd
-echo "./bin/hadoop fs -copyToLocal serialized/* $OUTPUT"
-./bin/hadoop fs -copyToLocal serialized/* $OUTPUT
+# TODO: Make this a distributed Hadoop job
+echo "./bin/hadoop fs -copyToLocal serialized $OUTPUT"
+./bin/hadoop fs -copyToLocal serialized $OUTPUT
 
 # Have Master Curator read in the updated Records and update the database accordingly
+cd $CURATOR_DIRECTORY/dist/client
+./runclient.sh -host localhost -port 9010 -in $OUTPUT -mode POST $TESTING 
+
 
 
 # New Hadoop job:

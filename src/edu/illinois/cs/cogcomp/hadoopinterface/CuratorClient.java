@@ -15,9 +15,12 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Stack;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 /**
@@ -49,6 +52,36 @@ public class CuratorClient {
     // Provides serialize() and deserialize() methods for Record objects
     private final SerializationHandler serializer;
     private static boolean testing;
+
+    public enum CuratorClientMode {
+        PRE_HADOOP, POST_HADOOP;
+
+        public static CuratorClientMode fromString( String s ) {
+            try {
+                return CuratorClientMode.valueOf( s );
+            } catch ( IllegalArgumentException e ) {
+                // This map will contain a bunch of strings which we will turn into
+                // case insensitive regular expressions. If we match one of them,
+                // we will return the AnnotationMode that the string is mapped to.
+                Map<String, CuratorClientMode> regexes =
+                        new HashMap<String, CuratorClientMode>();
+                regexes.put( "pre", PRE_HADOOP );
+                regexes.put( "post", POST_HADOOP);
+
+                for( String key : regexes.keySet() ) {
+                    Pattern pattern = Pattern.compile( Pattern.quote( key ),
+                                                       Pattern.CASE_INSENSITIVE );
+                    Matcher matcher = pattern.matcher(s);
+                    if( matcher.find() ) {
+                        return regexes.get(key);
+                    }
+                }
+
+                throw new IllegalArgumentException( "Unknown CuratorClient mode '"
+                                                    + s );
+            }
+        }
+    }
 
     /**
      * Constructs a CuratorClient object with the default Curator host and port
@@ -121,12 +154,11 @@ public class CuratorClient {
      * @param jobDir Path pointing to, e.g. `/user/home/job123/` directory
      * @param checkdb If true, checks for an existing Record for this document in
      *                the Curator database
-     * @TODO: Decide on directory structure this should use!
      */
-    public void addRecordsFromJobDirectory(File jobDir, boolean checkdb)
+    public void addRecordsFromJobDirectory( File jobDir, boolean checkdb )
             throws TException, FileNotFoundException, ServiceUnavailableException,
             AnnotationFailedException {
-        // check that the path is valid
+        // Check that the path is valid
         if (!jobDir.isDirectory()) {
             throw new IllegalArgumentException( "The job path " + jobDir.toString()
                                                 + " is not a directory.");
@@ -138,28 +170,24 @@ public class CuratorClient {
         }
 
         // LOOP: for each file in the job directory...
-        for (File docDir : jobDir.listFiles()) {
-            // get the hash ID string from the subdirectory name
-            String id = docDir.getName();
-
+        for (File doc : jobDir.listFiles()) {
             Record currentRecord = null;
 
             // Check the database for the record, if necessary
             if (checkdb) {
-                File originalTxtFile = new File(docDir, "original.txt");
+                File originalTxtFile = new File(doc, "original.txt");
                 currentRecord = getRecFromDatabase( originalTxtFile );
             }
+
             // If we got a record from the database, we won't try to construct
             // it from the directory
             if( currentRecord == null ) {
-                File serializedRecFile = new File( docDir, "original" );
-
                 try {
-                    currentRecord = serializer.deserialize( serializedRecFile );
+                    currentRecord = serializer.deserialize( doc );
                 } catch ( IOException e ) {
                     e.printStackTrace();
                 }
-            } // END if we don't have a record yet
+            }
 
             addToInputList( currentRecord );
         } // END for each document directory
@@ -378,44 +406,92 @@ public class CuratorClient {
 
     /**
      * The main method for the external, "master" Curator client.
-     * @param args String arguments from the command line. Should contain, in
-     *             order, the host name for the (already-running) Curator, the
-     *             port number for connecting to the Curator, and the job
-     *             input directory.
-     * @TODO: Give the option of using the HDFS-style directories
+     * @param commandLineArgs  String arguments from the command line. Should
+     *                         contain the host name for the (already-running)
+     *                         Curator, the port number for connecting to the
+     *                         Curator, the job input directory, and the mode at
+     *                         minimum.
      */
-    public static void main(String[] args) throws ServiceUnavailableException,
-            TException, AnnotationFailedException, IOException {
+    public static void main( String[] commandLineArgs )
+            throws ServiceUnavailableException, TException,
+            AnnotationFailedException, IOException, ServiceSecurityException {
         // Parse input
-        CuratorClientArgParser theArgs = new CuratorClientArgParser( args );
-        theArgs.printArgsInterpretation();
+        CuratorClientArgParser args = new CuratorClientArgParser(commandLineArgs);
+        args.printArgsInterpretation();
 
         // Set up local vars
-        CuratorClient theClient = new CuratorClient( theArgs.getHost(),
-                                                     theArgs.getPort() );
-        testing = theArgs.isTesting();
+        CuratorClient theClient = new CuratorClient( args.getHost(),
+                                                     args.getPort() );
+        testing = args.isTesting();
 
-        // Create records from the input text files
-        System.out.println( "Ready to create records from the plain text in " +
-                            "the input directory." );
-        theClient.createRecordsFromRawInputFiles( theArgs.getInputDir() );
+        if( args.getMode() == CuratorClientMode.PRE_HADOOP ) {
+            // Create records from the input text files
+            System.out.println( "Ready to create records from the plain text in " +
+                                "the input directory." );
+            theClient.createRecordsFromRawInputFiles( args.getInputDir() );
 
-        System.out.println( "Turned " + theClient.getNumInputRecords()
-                            + " text files in the directory into records.");
+            System.out.println( "Turned " + theClient.getNumInputRecords()
+                                + " text files in the directory into records.");
 
-        if( testing ) {
-            // Check available annotations
-            theClient.printInfoOnKnownAnnotators();
+            if( testing ) {
+                // Check available annotations
+                theClient.printInfoOnKnownAnnotators();
 
-            // Run a tool (for testing purposes)
-            theClient.testPOSAndTokenizer( theArgs.getOutputDir() );
+                // Run a tool (for testing purposes)
+                theClient.testPOSAndTokenizer( args.getOutputDir() );
+            }
+
+            // Serialize output
+            System.out.println( "Serializing those records to: "
+                                        + args.getOutputDir().toString() );
+
+            theClient.writeSerializedRecords( args.getOutputDir() );
         }
+        else { // Post-Hadoop. Time to add the records to the database.
+            theClient.addRecordsFromJobDirectory( args.getOutputDir(), false );
 
-        // Serialize output
-        System.out.println( "Serializing those records to: "
-                                    + theArgs.getOutputDir().toString() );
+            theClient.informDatabaseOfUpdatedRecords();
 
-        theClient.writeSerializedRecords( theArgs.getOutputDir() );
+        }
+    }
+
+    /**
+     * In post-Hadoop mode, this is used to send the Curator the Records from
+     * the input list (i.e., the records we got from Hadoop, then reconstructed
+     * using the #addRecordsFromJobDirectory() method).
+     */
+    private void informDatabaseOfUpdatedRecords()
+            throws ServiceUnavailableException, TException,
+            AnnotationFailedException, ServiceSecurityException {
+        for( Record r : newInputRecords ) {
+            Record old = client.getRecord( r.getRawText() );
+            int oldNumViews = RecordTools.getNumViews( old );
+            int newNumViews = RecordTools.getNumViews( r );
+
+            StringBuilder oldVsNew = new StringBuilder();
+            if( oldNumViews != newNumViews ) {
+                oldVsNew.append( "The Curator database knew of " );
+                oldVsNew.append( oldNumViews );
+                oldVsNew.append( "annotations for the document that begins '" );
+                oldVsNew.append( RecordTools.getBeginningOfOriginalText( r ) );
+                oldVsNew.append( "', whose hash is " );
+                oldVsNew.append( r.toString() ) ;
+                oldVsNew.append( ".\n\nHowever, we know of " );
+                oldVsNew.append( newNumViews );
+                oldVsNew.append( " views. Updating the database accordingly." );
+                System.out.println( oldVsNew.toString() );
+
+                client.storeRecord( r );
+            }
+            else {
+                oldVsNew.append("We have no new data on the document that begins '");
+                oldVsNew.append( RecordTools.getBeginningOfOriginalText( r ) );
+                oldVsNew.append( "', whose hash is " );
+                oldVsNew.append( r.toString() ) ;
+                oldVsNew.append( "No database update is necessary, but this is troubling." );
+                System.out.println( oldVsNew.toString() );
+            }
+        }
     }
 
     /**

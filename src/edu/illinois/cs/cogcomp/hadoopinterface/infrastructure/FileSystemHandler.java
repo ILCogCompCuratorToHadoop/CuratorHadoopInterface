@@ -182,12 +182,23 @@ public class FileSystemHandler {
      */
     public static String getFileNameWithoutExtension( Path p ) {
         String name = getFileNameFromPath( p );
-        int lastDot = name.lastIndexOf('.');
-        if( lastDot < 0 ) {
-            return name;
-        }
-        return name.substring( 0, lastDot );
+        return stripExtension( name );
+    }
 
+    /**
+     * Removes the final '.' (dot) and everything after it from a string.
+     * If you pass in a filename only (not a full path), this will be identical
+     * to #getFileNameWithoutExtension().
+     * @param fileName The file name whose extension (e.g., '.txt') you wish to
+     *                 remove
+     * @return The file name, sans extension
+     */
+    public static String stripExtension( String fileName ) {
+        int lastDot = fileName.lastIndexOf('.');
+        if( lastDot < 0 ) {
+            return fileName;
+        }
+        return fileName.substring( 0, lastDot );
     }
 
     /**

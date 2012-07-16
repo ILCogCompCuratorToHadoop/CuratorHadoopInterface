@@ -1,5 +1,7 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
+import edu.illinois.cs.cogcomp.hadoopinterface.CuratorClient;
+
 import java.io.File;
 
 /**
@@ -13,32 +15,45 @@ public class CuratorClientArgParser {
     public CuratorClientArgParser( String[] commandLineArgs ) {
         confirmArgsAreGood( commandLineArgs );
 
-        host = commandLineArgs[0];
-        port  = Integer.parseInt( commandLineArgs[1] );
-        inputDir = new File( commandLineArgs[2] );
+        String specifiedOutputDir = "";
         testing = false;
-
-        outputDir = new File( inputDir, "output" );
-
-        if( commandLineArgs.length >= 4 ) {
-            if( commandLineArgs[3].equals("-test") ) {
+        for( int crntArg = 0; crntArg < commandLineArgs.length; crntArg++ ) {
+            if( commandLineArgs[crntArg].equals("-host") ) {
+                host = commandLineArgs[++crntArg];
+            }
+            else if( commandLineArgs[crntArg].equals("-port") ) {
+                port  = Integer.parseInt( commandLineArgs[++crntArg] );
+            }
+            else if( commandLineArgs[crntArg].equals("-in") ) {
+                inputDir = new File( commandLineArgs[++crntArg] );
+            }
+            else if( commandLineArgs[crntArg].equals("-out") ) {
+                specifiedOutputDir = commandLineArgs[++crntArg];
+            }
+            else if( commandLineArgs[crntArg].equals("-mode") ) {
+                mode = CuratorClient.CuratorClientMode.fromString( commandLineArgs[++crntArg] );
+            }
+            else if( commandLineArgs[crntArg].equals("-test") ) {
                 testing = true;
             }
-            else { // Must be an output directory
-                outputDir = new File( commandLineArgs[3] );
+        }
 
-                if( commandLineArgs.length == 5 ) { // final arg must be -test
-                    testing = true;
-                }
-            }
+        if( !specifiedOutputDir.equals( "" ) ) {
+            outputDir = new File( inputDir, specifiedOutputDir );
+        }
+        else {
+            outputDir = new File( inputDir, "output" );
         }
     }
 
     private static void confirmArgsAreGood( String[] args ) {
         if ( args.length < 3 )
         {
-            System.err.println( "Usage: CuratorClient curatorHost curatorPort "
-                                        + "inputDir [outputDir] [-test]" );
+            System.err.println( "Usage: CuratorClient -host <curatorHost> "
+                                        + " -port <curatorPort> -in "
+                                        + "<inputDir> [-out <outputDir>] "
+                                        + "[-mode <PRE or POST Hadoop>]"
+                                        + "[-test]" );
 
             StringBuilder argUsage = new StringBuilder();
             for( String arg : args ) {
@@ -115,9 +130,15 @@ public class CuratorClientArgParser {
         return outputDir;
     }
 
+    public CuratorClient.CuratorClientMode getMode() {
+        return mode;
+    }
+
     private String host;
+
     private int port;
     private File inputDir;
     private boolean testing;
     private File outputDir;
+    private CuratorClient.CuratorClientMode mode;
 }

@@ -5,7 +5,6 @@ import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
@@ -27,9 +26,8 @@ public class CuratorRecordReader extends RecordReader {
         HadoopInterface.logger.log( "Initializing record reader" );
         config = context.getConfiguration();
 
-        Path inputPath = new Path( split.toString() );
         String docHash =
-                FileSystemHandler.getFileNameWithoutExtension( inputPath );
+                FileSystemHandler.stripExtension( split.toString() );
 
         nextKey = new Text( docHash );
         progress = 0.0f;
