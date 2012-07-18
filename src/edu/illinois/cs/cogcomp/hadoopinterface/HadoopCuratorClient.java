@@ -37,13 +37,13 @@ import java.util.Arrays;
 public class HadoopCuratorClient extends CuratorClient {
     /**
      * Constructs a Curator Client.
-     * @param localFS A FileSystem object to handle interactions with the local
+     * @param hdfs A FileSystem object to handle interactions with the local
      *                file system
      */
-    public HadoopCuratorClient( FileSystem localFS ) {
+    public HadoopCuratorClient( FileSystem hdfs ) {
         super("local", PORT);
 
-        this.localFS = localFS;
+        this.hdfs = hdfs;
         transport = super.getTransport();
 
         serializer = new HadoopSerializationHandler();
@@ -94,7 +94,7 @@ public class HadoopCuratorClient extends CuratorClient {
     public void writeOutputFromLastAnnotate( Path outputDir )
             throws TException, IOException {
         Path fileLoc = getLocForSerializedForm( lastAnnotatedRecord, outputDir );
-        serializer.serialize( lastAnnotatedRecord, fileLoc, localFS );
+        serializer.serialize( lastAnnotatedRecord, fileLoc, hdfs );
     }
 
     /**
@@ -114,9 +114,18 @@ public class HadoopCuratorClient extends CuratorClient {
         return new Path( containingDir, r.getIdentifier() + ".txt" );
     }
 
+    /**
+     * Gets a reference to the last annotated Record. You probably don't need
+     * to use this ever.
+     * @return The last record that was annotated by #annotateSingleDoc()
+     */
+    public Record getLastAnnotatedRecord() {
+        return lastAnnotatedRecord;
+    }
+
     private Record lastAnnotatedRecord;
 
-    private FileSystem localFS;
+    private FileSystem hdfs;
     private TTransport transport;
     public static final int PORT = 9010;
     private HadoopSerializationHandler serializer;

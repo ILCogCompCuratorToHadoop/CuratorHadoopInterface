@@ -19,14 +19,18 @@ echo ""
 CURATOR_DIRECTORY=/shared/gargamel/undergrad/tyoun/curator-0.6.9
 HADOOP_DIRECTORY=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized
+# In the output directory, we will place a dir called "serialized" which
+# will store the job's output records
 OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 ANNOTATION_TOOL_TO_RUN=$1       # The 1st parameter from the command line
 INPUT_PATH=$2                   # The 2nd parameter from the command line
-TESTING=$3
+TESTING=$3                      # 3rd parameter from CL should be "-test"
+                                #   (no quotes) to run in test mode.
 
 #########################################################################
 #                       No need to edit below here                      #
 
+set -e # Exit the script if any command fails
 
 echo -e "\n\n\nYou said your copy of Curator is located here: $CURATOR_DIRECTORY"
 echo "You requested we run the annotation tool $ANNOTATION_TOOL_TO_RUN on your input"
@@ -47,22 +51,36 @@ cd client
 # Copy the serialized records to the Hadoop Distributed File System (HDFS)
 echo -e "\n\n\nCopying the serialized records to HDFS:"
 cd $HADOOP_DIRECTORY
+set +e # Do *not* exit the script if any command fails
+./bin/hadoop dfs -rmr serialized
+./bin/hadoop dfs -mkdir serialized
+set -e # Exit the script if any command fails
 ./bin/hadoop dfs -copyFromLocal $INTERMEDIATE_OUTPUT/* serialized
+echo -e "Copied successfully."
+
 
 # Launch MapReduce job on Hadoop cluster
 echo -e "\n\n\nLaunching the mapreduce job on the Hadoop cluster:"
-./bin/hadoop jar curator.jar serialized $ANNOTATION_TOOL_TO_RUN
+./bin/hadoop jar curator.jar -d serialized -m $ANNOTATION_TOOL_TO_RUN -out serialized_output
 echo -e "\n\n\nJob finished!\n\n"
 
 
+set +e # Do *not* exit the script if a command fails (so we can give
+       # useful suggestions to the user)
+
 # When the MapReduce job finishes, copy the data back to local disk
 # TODO: Make this a distributed Hadoop job
-echo "./bin/hadoop fs -copyToLocal serialized $OUTPUT"
-./bin/hadoop fs -copyToLocal serialized $OUTPUT
+echo "Copying the results of the MapReduce job back to the local machine"
+COMMAND="./bin/hadoop fs -copyToLocal serialized_output $OUTPUT"
+$COMMAND
+# If the copy to local failed . . . 
+if [ "$?"-ne 0]; then echo "Copying to local failed. Try fixing the error, then executing: $COMMAND"; exit 1; fi 
+
+set -e
 
 # Have Master Curator read in the updated Records and update the database accordingly
 cd $CURATOR_DIRECTORY/dist/client
-./runclient.sh -host localhost -port 9010 -in $OUTPUT/serialized -mode POST $TESTING 
+./runclient.sh -host localhost -port 9010 -in $OUTPUT/serialized_output -mode POST $TESTING 
 
 
 

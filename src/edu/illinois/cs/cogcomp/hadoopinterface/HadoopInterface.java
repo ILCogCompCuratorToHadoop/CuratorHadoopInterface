@@ -12,7 +12,6 @@
 package edu.illinois.cs.cogcomp.hadoopinterface;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.CuratorJob;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.MessageLogger;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.tests.DummyInputCreator;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.tests.FileSystemHandlerTest;
@@ -49,11 +48,11 @@ public class HadoopInterface {
     public static void main( String[] argv )
             throws IOException, ClassNotFoundException, InterruptedException {
         logger.beginWritingToDisk();
+        logger.logLocation();
         logger.logStatus( "Setting up job.\n\n" );
 
         // Set up the job configuration that we will send to Hadoop
         final CuratorJob job = new CuratorJob( argv );
-        FileSystemHandler handler = new FileSystemHandler( job );
 
         if( job.isTesting() ) {
             DummyInputCreator.generateDocumentDirectories(job.getInputDirectory(),
@@ -62,9 +61,11 @@ public class HadoopInterface {
 
         try {
             logger.logStatus( "Setting up IO directories" );
-            handler.setUpIODirectories();
+            logger.logStatus( "We will write our output to "
+                                      + job.getOutputDirectory() );
+            job.setUpIODirectories();
             logger.logStatus( "Checking file system" );
-            handler.checkFileSystem();
+            job.checkFileSystem();
 
             // Start a map/reduce job -- runJob(jobConf) takes the job
             // configuration we just set up and distributes it to Hadoop nodes
@@ -77,7 +78,7 @@ public class HadoopInterface {
             logger.log( "Job finished in " + duration + " seconds" );
         } finally {
             logger.continueWritingToDisk();
-            handler.cleanUpTempFiles();
+            job.cleanUpTempFiles();
         }
 
         if( job.isTesting() ) {

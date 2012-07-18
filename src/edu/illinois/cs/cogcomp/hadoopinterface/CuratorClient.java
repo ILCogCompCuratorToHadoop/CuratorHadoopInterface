@@ -172,26 +172,30 @@ public class CuratorClient {
         }
 
         // LOOP: for each file in the job directory...
-        for (File doc : jobDir.listFiles()) {
-            Record currentRecord = null;
+        for (File doc : jobDir.listFiles() ) {
+            if( !doc.isDirectory() ) {
+                Record currentRecord = null;
 
-            // Check the database for the record, if necessary
-            if (checkdb) {
-                File originalTxtFile = new File(doc, "original.txt");
-                currentRecord = getRecFromDatabase( originalTxtFile );
-            }
-
-            // If we got a record from the database, we won't try to construct
-            // it from the directory
-            if( currentRecord == null ) {
-                try {
-                    currentRecord = serializer.deserialize( doc );
-                } catch ( IOException e ) {
-                    e.printStackTrace();
+                // Check the database for the record, if necessary
+                if (checkdb) {
+                    File originalTxtFile = new File(doc, "original.txt");
+                    currentRecord = getRecFromDatabase( originalTxtFile );
                 }
-            }
 
-            addToInputList( currentRecord );
+                // If we got a record from the database, we won't try to construct
+                // it from the directory
+                if( currentRecord == null ) {
+                    try {
+                        currentRecord = serializer.deserialize( doc );
+                    } catch ( IOException e ) {
+                        System.out.println("Exception attempting to serialize "
+                                + "record from job directory.");
+                        e.printStackTrace();
+                    }
+                }
+
+                addToInputList( currentRecord );
+            }
         } // END for each document directory
     } // END function
 
@@ -430,13 +434,13 @@ public class CuratorClient {
             int newNumViews = RecordTools.getNumViews( r );
 
             StringBuilder msg = new StringBuilder();
-            if( oldNumViews != newNumViews ) {
+            if( oldNumViews < newNumViews ) {
                 msg.append( "\n\nThe Curator database knew of " );
                 msg.append( oldNumViews );
-                msg.append( "annotations for the document that begins '" );
+                msg.append( " annotations for the document that begins '" );
                 msg.append( RecordTools.getBeginningOfOriginalText( r ) );
                 msg.append( "', whose hash is " );
-                msg.append( r.toString() ) ;
+                msg.append( r.getIdentifier() ) ;
                 msg.append( ".\n\nHowever, we know of " );
                 msg.append( newNumViews );
                 msg.append( " views. Updating the database accordingly." );
@@ -449,8 +453,10 @@ public class CuratorClient {
                 msg.append( RecordTools.getBeginningOfOriginalText( r ) );
                 msg.append( "', whose hash is " );
                 msg.append( r.getIdentifier() ) ;
-                msg.append( "\nNo database update is necessary, " +
-                                         "but this is troubling." );
+                msg.append( ". We have " );
+                msg.append( newNumViews );
+                msg.append( " views for it.\nNo database update is necessary, " );
+                msg.append( "but this is troubling." );
                 System.out.println( msg.toString() );
             }
         }
@@ -500,7 +506,7 @@ public class CuratorClient {
             theClient.writeSerializedRecords( args.getOutputDir() );
         }
         else { // Post-Hadoop. Time to add the records to the database.
-            theClient.addRecordsFromJobDirectory( args.getOutputDir(), false );
+            theClient.addRecordsFromJobDirectory( args.getInputDir(), false );
 
             if( theClient.getNumInputRecords() > 0 ) {
                 theClient.informDatabaseOfUpdatedRecords();

@@ -33,9 +33,9 @@ public class ArgumentParser {
             StringBuilder err = new StringBuilder();
             err.append( "Parameter usage: \n\t\t" );
             err.append( "<document directory> <mode>\n\tor:\n\t\t" );
-            err.append( "-d <document directory> -m <mode> " );
-            err.append( "[-maps <number of maps>] [-reduces <number of " );
-            err.append( "reduces>] [-test]\n" );
+            err.append( "-d <document directory> -m <mode> [-out <output " );
+            err.append( " directory>] [-maps <number of maps>] [-reduces " );
+            err.append( "<number of reduces>] [-test]\n" );
             err.append( "You tried to pass these parameters:\n\t" );
 
             for( String arg : args ) {
@@ -77,6 +77,9 @@ public class ArgumentParser {
                 // Allow either -d ("directory") or -i ("input")
                 if( args[i].equals("-d") || args[i].equals("-i") ) {
                     directory = args[ ++i ];
+                }
+                else if( args[i].equals("-out") || args[i].equals("-o") ) {
+                    outputDirectory = args[ ++i ];
                 }
                 else if( args[i].equals("-m") ) {
                     mode = AnnotationMode.fromString( args[++i] );
@@ -139,10 +142,25 @@ public class ArgumentParser {
     }
 
     /**
-     * @return The directory string from the command line parameters
+     * @return The directory string from the command line parameters. Should
+     *         indicate where to find the <em>input</em> serialized records,
+     *         which we will send to the Reducer and eventually the
+     *         HadoopCuratorClient.
      */
     public String getDirectory() {
         return directory;
+    }
+
+    /**
+     * @return The location to which we should write the MapReduce job's output.
+     *         <strong>Note</strong>: If not specified by the user, this will be
+     *         the empty string.
+     */
+    public String getOutputDirectory() {
+        if( outputDirectory == null ) {
+            return "";
+        }
+        return outputDirectory;
     }
 
     /**
@@ -192,6 +210,7 @@ public class ArgumentParser {
 
     private AnnotationMode mode;
     private String directory;
+    private String outputDirectory;
     private Integer numMaps;
     private Integer numReduces;
     private boolean testing = false;
