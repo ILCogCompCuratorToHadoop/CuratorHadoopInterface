@@ -26,7 +26,7 @@ public class MessageLogger
      * not written to the standard output and the log is not written to disk.
      */
     public MessageLogger()  {
-        initializeCommonVars( false );
+        this( false );
     }
 
     /**
@@ -36,14 +36,10 @@ public class MessageLogger
      *                        standard output
      */
     public MessageLogger( boolean alsoLogToStdOut ) {
-        initializeCommonVars( alsoLogToStdOut );
-    }
-
-    private void initializeCommonVars( boolean printToStdOut ) {
-        this.printToStdOut = printToStdOut;
+        this.printToStdOut = alsoLogToStdOut;
         Path logDir = new Path( "logs" );
         logLocation = new Path( logDir, "0_curator_interface_log_" +
-                getCurrentTimeNoSpaces() + ".txt" );
+                                        getTimeAndDateNoSpaces() + ".txt" );
         backlog = "";
         delayWritingToDisk = true;
     }
@@ -78,6 +74,14 @@ public class MessageLogger
      */
     public void logStatus( String s ) {
         write( "\n" + getCurrentTime() + "  Status: " + s );
+    }
+
+    /**
+     * Make a log entry indicating where the log will be saved (the log location)
+     */
+    public void logLocation() {
+        write( "Log will be saved to local machine at location "
+                       + logLocation.toString() );
     }
 
     /**
@@ -167,6 +171,10 @@ public class MessageLogger
         return ( new SimpleDateFormat("hh.mm.ss.a") ).format( new Date() );
     }
 
+    private String getTimeAndDateNoSpaces() {
+        return ( new SimpleDateFormat("yyyy.MM.dd.hh.mm.ss.a") ).format( new Date() );
+    }
+
     /**
      * Gets a rough estimate of the size of the backlog.
      * @return A decimal representing the estimated size, in megabytes, of the
@@ -176,10 +184,10 @@ public class MessageLogger
         long estUsageInBytes =  8 * (int) (((( backlog.length() ) * 2) + 45) / 8);
         return ((double)estUsageInBytes / 1024.0 / 1024.0);
     }
-
     private boolean printToStdOut;
     private boolean delayWritingToDisk;
     private Path logLocation;
     private String backlog;
+
     private boolean backlogIsTruncated;
 }

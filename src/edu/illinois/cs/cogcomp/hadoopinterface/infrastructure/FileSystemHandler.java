@@ -1,13 +1,10 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
+import com.sun.istack.internal.Nullable;
 import edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions.BadInputDirectoryException;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions.EmptyInputException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -23,85 +20,11 @@ import java.util.List;
  */
 public class FileSystemHandler {
     /**
-     * Constructs a file system handler.
-     * @param job The job configuration for this Hadoop job
-     */
-    public FileSystemHandler( CuratorJob job ) {
-        this.job = job;
-        fs = job.getFileSystem();
-    }
-
-    /**
      * Constructs a file system handler
      * @param fs The file system against which we should resolve paths
      */
     public FileSystemHandler( FileSystem fs ) {
         this.fs = fs;
-    }
-
-    /**
-     * Sets up the input and output directories for this job in the Hadoop
-     * Distributed File System (HDFS). This method resolves paths using the file
-     * system object given to this object during its construction or created
-     * based on the Curator job configuration it was given.
-     * @throws IOException Possible IOException from file operations
-     */
-    public void setUpIODirectories() throws IOException {
-        // Set up input/output directories. We will output the new annotation
-        // to the same place in HDFS that we get the input from.
-        HadoopInterface.logger.logStatus( "Adding input path." );
-        FileInputFormat.addInputPath( job, job.getInputDirectory());
-
-        HadoopInterface.logger.logStatus( "Setting output path." );
-        FileOutputFormat.setOutputPath( job, job.getOutputDirectory());
-    }
-
-    /**
-     * Confirms that the required directories exist (or don't exist, as the case
-     * may be) and that we have valid inputs, and throws an IO Exception if we
-     * do not. This method resolves paths using the file system object given to
-     * this object during its construction.
-     * @throws IOException Possible IOException from file operations
-     */
-    public void checkFileSystem( ) throws IOException {
-        Path inputDirectory = job.getInputDirectory();
-
-        if( HDFSFileExists(HadoopInterface.TMP_DIR) ) {
-            throw new IOException( "Temp directory "
-                    + fs.makeQualified(HadoopInterface.TMP_DIR)
-                    + " already exists.  Please remove it first.");
-        }
-        if( !HDFSFileExists(inputDirectory) ) {
-            throw new BadInputDirectoryException( "Input directory "
-                    + fs.makeQualified( inputDirectory ) + " does not exist. "
-                    + "Please create it in the Hadoop file system first." );
-        }
-        if( !isDir(inputDirectory) ) {
-            throw new BadInputDirectoryException( "The file "
-                    + fs.makeQualified( inputDirectory ) + " is not a directory. "
-                    + "Please check the documentation for this package for "
-                    + "information on how to structure the input directory.");
-        }
-
-        List<Path> inputFiles = getFilesOnlyInDirectory(inputDirectory);
-        for( Path inputFile : inputFiles ) {
-            if( getFileSizeInBytes( inputFile ) < 1 ) {
-                throw new EmptyInputException( "Input in document directory "
-                        + fs.makeQualified( inputDirectory ) + " has no "
-                        + "recognized input.  Please create input files in the "
-                        + "Hadoop file system before starting this program.");
-            }
-        }
-    }
-
-    /**
-     * Removes the temp directory used by HadoopInterface
-     * @throws IOException
-     */
-    public void cleanUpTempFiles() throws IOException {
-        if( HDFSFileExists( HadoopInterface.TMP_DIR ) ) {
-            delete( HadoopInterface.TMP_DIR );
-        }
     }
 
     /**
@@ -194,11 +117,25 @@ public class FileSystemHandler {
      * @return The file name, sans extension
      */
     public static String stripExtension( String fileName ) {
-        int lastDot = fileName.lastIndexOf('.');
+        int lastDot = fileName.lastIndexOf( '.' );
         if( lastDot < 0 ) {
             return fileName;
         }
         return fileName.substring( 0, lastDot );
+    }
+
+    /**
+     * Returns the extension on the file name (may be the empty string)
+     * @param fileName A file or folder name, like "foo.txt"
+     * @return The extension on the file name, <em>including</em> the dot.
+     *         For instance, ".txt", ".html", or "".
+     */
+    public static String getExtension( String fileName ) {
+        int lastDot = fileName.lastIndexOf('.');
+        if( lastDot < 0 ) {
+            return "";
+        }
+        return fileName.substring( lastDot, fileName.length() );
     }
 
     /**
@@ -310,14 +247,14 @@ public class FileSystemHandler {
                                  Path locationForFile ) throws IOException {
         writeFileToHDFS( inputText, locationForFile, false );
     }
-	
+
     /**
      * Writes a string to a text file to a given location on the Hadoop
      * Distributed File System (HDFS). Note that this is not thread-safe; Hadoop
      * recommends you not try to have multiple nodes writing to the same file,
      * ever.
      *
-     * Takes String. Specifies append/overwrite mode. 
+     * Takes String. Specifies append/overwrite mode.
      *
      * @param inputText The string to be written to the text file
      * @param locationForFile A path (complete with file name and extension) to
@@ -452,6 +389,52 @@ public class FileSystemHandler {
         localHandler.writeFileToHDFS( inputText,
                                       locationForFile,
                                       appendInsteadOfOverwriting );
+    }
+
+    /**
+     * Moves a file or directory to the destination. If the existing directory
+     * is <code>/foo/bar/bas</code>, and the destination is
+     * <code>/usr/var</code>, you will end up with <code>/usr/var/bas</code>.
+     * @param existingFileOrDir The file or directory to move. If this does not
+     *                          exist, we simply exit the function.
+     * @param destinationDir The destination into which we will move the existing
+     *                       file or directory. If this directory already has a
+     *                       file named the same thing as the existing, we will
+     *                       append a number to the end of the existing file.
+     * @return The location at which existingFileOrDir exists now, after the move.
+     *         This will be null if the file you asked to move does not actually
+     *         exist.
+     */
+    @Nullable
+    public Path moveFileOrDir( Path existingFileOrDir, Path destinationDir )
+            throws IOException {
+        if( HDFSFileExists( existingFileOrDir ) ) {
+            String existingName = existingFileOrDir.getName();
+            Path dest = new Path( destinationDir, existingName );
+
+            int suffix = 0;
+
+            while( HDFSFileExists( dest ) ) {
+                String fileName;
+                if( isDir( existingFileOrDir ) ) {
+                    fileName = existingName + Integer.toString(suffix);
+                }
+                else { // it's a file
+                    fileName = stripExtension( existingName )
+                            + Integer.toString(suffix)
+                            + getExtension( existingName );
+
+                }
+                dest = new Path( destinationDir, fileName );
+
+                ++suffix;
+            }
+
+            fs.rename( existingFileOrDir, dest );
+            return dest;
+        }
+
+        return null;
     }
 
     /**

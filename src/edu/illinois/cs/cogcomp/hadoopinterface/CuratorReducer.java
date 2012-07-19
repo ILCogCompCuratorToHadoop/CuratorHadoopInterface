@@ -3,6 +3,8 @@ package edu.illinois.cs.cogcomp.hadoopinterface;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions
+        .CuratorNotFoundException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -10,6 +12,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.thrift.TException;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -25,28 +28,40 @@ import java.io.IOException;
  * @author Lisa Y. Bao
  */
 public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopRecord> {
-
-
     /**
      * Constructs a CuratorReducer
      */
-    public CuratorReducer() {
-        Path distDir = new Path( "~" + Path.SEPARATOR + "curator"
-                                 + Path.SEPARATOR + "dist" );
+    public CuratorReducer() throws CuratorNotFoundException, IOException {
+        Path curatorDir = new Path( "~" , "curator" );
+        Path distDir = new Path( curatorDir, "dist" );
+        distDir.makeQualified( FileSystem.get( new Configuration() ) );
         dir = new PathStruct( distDir );
+
+        if( !FileSystemHandler.localFileExists( distDir ) ) {
+            File fileVersionCurator = new File( "~", "curator" );
+            File fileVersion = new File( fileVersionCurator, "dist" );
+            String fileVersionExists = "File version " + (fileVersion.exists() ? "exists." : "does not exist.");
+
+            throw new CuratorNotFoundException("Curator directory does not exist "
+                    + "at " + distDir.toString() + " on this Hadoop node. "
+                    + fileVersionExists +"\nCannot continue...");
+
+        }
     }
 
     /**
      * Asks the Curator to get an annotation (the type of which is specified in the
      * context's configuration) for the document record in inValue.
      * @param inKey The document's hash
-     * @param inValue The record for the document, which includes both the
-     *                original text file and the known annotations.
+     * @param inValues The record(s) for the document(s), which include both the
+     *                 original text file and the known annotations.
      * @param context The job context
      */
+    @Override
     public void reduce( Text inKey,
-                        HadoopRecord inValue,
-                        Context context ) throws IOException, InterruptedException, TException {
+                        Iterable<HadoopRecord> inValues,
+                        Context context )
+            throws IOException, InterruptedException {
         FileSystem fs = FileSystem.get( context.getConfiguration() );
         this.fsHandler = new FileSystemHandler( fs );
 
@@ -77,20 +92,38 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         }
 
         // Create a new Curator client object
-        HadoopCuratorClient client = new HadoopCuratorClient(
-                FileSystem.getLocal( new Configuration() ) );
+        HadoopCuratorClient client = new HadoopCuratorClient( fs );
 
-        client.annotateSingleDoc( inValue, toolToRun );
+        for( HadoopRecord inValue : inValues ) {
+            String startingText = inValue.getRawText();
+            client.annotateSingleDoc( inValue, toolToRun );
+            String postAnnotateText = client.getLastAnnotatedRecord().getRawText();
+            if( startingText.equals( postAnnotateText ) ) {
+                throw new IOException("Raw text for a record has changed. " +
+                                              "This is a big problem.");
+            }
 
-        // Serialize the updated record to the output directory
-        Path outputDir = new Path( context.getConfiguration().get("outputDirectory") );
-        client.writeOutputFromLastAnnotate(outputDir);
+            // Serialize the updated record to the output directory
+            Path outputDir = new Path( context.getConfiguration().get("outputDirectory") );
+
+            try {
+                client.writeOutputFromLastAnnotate( outputDir );
+            } catch ( TException e ) {
+                HadoopInterface.logger.logError(
+                        "Thrift error in HadoopCuratorClient writing output " +
+                                "from annotation: " + e.getMessage() );
+                e.printStackTrace();
+            }
+
+            HadoopInterface.logger.logStatus("Finished serializing record "
+                    + inValue.getDocumentHash() + " to " + outputDir.toString() );
+
+            // pass Curator output back to Hadoop as Record
+            context.write(inKey, inValue);
+        }
 
         // TODO Run a separate MR job (e.g. KillCuratorReducer.java),
         // after all jobs are through, to kill all tools and local Curators
-
-        // pass Curator output back to Hadoop as Record
-        context.write(inKey, inValue);
     }
 
     /**

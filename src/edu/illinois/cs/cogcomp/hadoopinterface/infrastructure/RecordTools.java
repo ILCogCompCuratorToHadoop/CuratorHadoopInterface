@@ -165,14 +165,14 @@ public class RecordTools {
      * Returns a bit of the original text (useful for identifying a record to
      * a human, where a hash is meaningless and hard to use)
      * @param r The record in question
-     * @return The first 15 words or so of the record's original (raw) text
+     * @return The first 10 words or so of the record's original (raw) text
      */
     public static String getBeginningOfOriginalText( Record r ) {
         StringBuilder text = new StringBuilder();
         String fullText = r.getRawText();
 
         Scanner scanner = new Scanner(fullText);
-        for( int i = 0; i < 15; i++ ) {
+        for( int i = 0; i < 10; i++ ) {
             if( scanner.hasNext() ) {
                 text.append( scanner.next() );
                 text.append(' ');
