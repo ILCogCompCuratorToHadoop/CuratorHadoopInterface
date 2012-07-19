@@ -100,3 +100,9 @@ src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/TestFileSystemHandler
 src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/AbstractFSHandler.java
 
 src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/SampleFileSystemHandler.java
+
+src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/AbstractFSHandler.java
+
+src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/SampleFileSystemHandler.java
+
+src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/TestFileSystemHandler.java
