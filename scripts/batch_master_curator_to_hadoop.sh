@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Usage: ./batch_job_master_script ANNOTATION_TOOL_TO_RUN path/to/your_input_directory
-# Example: ./batch_job_master_script.sh TOKENIZER /shared/gargamel/undergrad/tyoun/curator-0.6.9/dist/client/job123
+# Usage: ./script_name ANNOTATION_TOOL_TO_RUN path/to/your_input_directory
+# Example: ./batch_master_curator_to_hadoop TOKENIZER /shared/gargamel/undergrad/tyoun/curator-0.6.9/dist/client/job123
 
 echo ""
 echo "In order to use this script, you must open it in a text"
@@ -12,6 +12,7 @@ echo "Note also that when you run this script, the Hadoop name node"
 echo "(i.e., the thing that controls the Hadoop cluster) must "
 echo "already be running."
 echo ""
+
 
 #       Change these variables to the appropriate *absolute paths*      #
 #########################################################################
@@ -48,26 +49,5 @@ cd client
 echo -e "\n\n\nCopying the serialized records to HDFS:"
 cd $HADOOP_DIRECTORY
 ./bin/hadoop dfs -copyFromLocal $INTERMEDIATE_OUTPUT/* serialized
-
-# Launch MapReduce job on Hadoop cluster
-echo -e "\n\n\nLaunching the mapreduce job on the Hadoop cluster:"
-./bin/hadoop jar curator.jar serialized $ANNOTATION_TOOL_TO_RUN
-echo -e "\n\n\nJob finished!\n\n"
-
-
-# When the MapReduce job finishes, copy the data back to local disk
-# TODO: Make this a distributed Hadoop job
-echo "./bin/hadoop fs -copyToLocal serialized $OUTPUT"
-./bin/hadoop fs -copyToLocal serialized $OUTPUT
-
-# Have Master Curator read in the updated Records and update the database accordingly
-cd $CURATOR_DIRECTORY/dist/client
-./runclient.sh -host localhost -port 9010 -in $OUTPUT/serialized -mode POST $TESTING 
-
-
-
-# New Hadoop job:
-#       Have the Hadoop nodes kill the running annotator, Curator, and 
-#       Curator Client processes
 
 exit 0
