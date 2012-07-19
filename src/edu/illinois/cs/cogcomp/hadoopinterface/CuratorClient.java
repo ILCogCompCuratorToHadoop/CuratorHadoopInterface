@@ -551,6 +551,14 @@ public class CuratorClient {
                         transport.open();
                     }
                     client.storeRecord( r );
+                } catch( ServiceSecurityException e ) {
+                    System.out.println( "Security exception. It looks like you" +
+                            "don't have write access to your Curator database" +
+                            "(indicated by a 'Curator does not support " +
+                            "storeRecord' error). Check your dist/configs/" +
+                            "curator.properties file for write access.\n" +
+                            e.getReason() );
+                    throw e;
                 } finally {
                     if( transport.isOpen() ) {
                         transport.close();

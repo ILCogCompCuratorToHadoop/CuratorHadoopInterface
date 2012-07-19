@@ -37,7 +37,7 @@ DEFAULT_COLOR='\e[0m'    # Reset to normal
 
 BASEDIR=$(dirname $0) # location of this script file
 KILL_CURATOR_COMMAND="jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill"
-START_CURATOR_COMMAND="cd $CURATOR_DIRECTORY/dist ; ./bin/curator-local.sh --annotators configs/annotators-empty.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null"
+START_CURATOR_COMMAND="cd $CURATOR_DIRECTORY/dist ; ./bin/curator.sh --annotators configs/annotators-empty.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null"
 
 set -e # Exit the script if any command fails
 
@@ -65,6 +65,9 @@ echo -e "$MSG_COLOR\n\n\nLaunching the master curator client:$DEFAULT_COLOR"
 cd client
 ./runclient.sh -host localhost -port 9010 -in $INPUT_PATH -out $INTERMEDIATE_OUTPUT -mode PRE $TESTING 
 
+echo -e "$MSG_COLOR\n\nShutting down locally running Curator. $DEFAULT_COLOR"
+$KILL_CURATOR_COMMAND
+
 # Copy the serialized records to the Hadoop Distributed File System (HDFS)
 echo -e "$MSG_COLOR\n\n\nCopying the serialized records to HDFS: $DEFAULT_COLOR"
 cd $HADOOP_DIRECTORY
@@ -74,9 +77,6 @@ set +e # Do *not* exit the script if any command fails
 set -e # Exit the script if any command fails
 ./bin/hadoop dfs -copyFromLocal $INTERMEDIATE_OUTPUT/* serialized
 echo -e "$MSG_COLOR Copied successfully. $DEFAULT_COLOR"
-
-echo -e "$MSG_COLOR\n\nShutting down locally running Curator. $DEFAULT_COLOR"
-$KILL_CURATOR_COMMAND
 
 # Launch MapReduce job on Hadoop cluster
 echo -e "$MSG_COLOR\n\n\nLaunching the mapreduce job on the Hadoop cluster: $DEFAULT_COLOR"
