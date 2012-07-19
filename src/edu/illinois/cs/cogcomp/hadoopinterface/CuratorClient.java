@@ -1,8 +1,7 @@
 package edu.illinois.cs.cogcomp.hadoopinterface;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.*;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions
-        .EmptyInputException;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions.EmptyInputException;
 import edu.illinois.cs.cogcomp.thrift.base.*;
 import edu.illinois.cs.cogcomp.thrift.curator.Curator;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
@@ -16,11 +15,8 @@ import org.apache.thrift.transport.TTransport;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -112,6 +108,74 @@ public class CuratorClient {
     }
 
     /**
+     * @return A list of AnnotationModes which can be provided by annotators
+     *         (essentially, the list of annotators to which the Curator can
+     *         connect). This list may be empty.
+     * @throws TException If we were unable to connect to the Curator
+     */
+    public List<AnnotationMode> listAvailableAnnotators() throws TException {
+        Map<String, String > curatorAnnotations;
+        try {
+            transport.open();
+            curatorAnnotations = client.describeAnnotations();
+        } finally {
+            transport.close();
+        }
+
+        List<AnnotationMode> available = new LinkedList<AnnotationMode>();
+        for( String key : curatorAnnotations.keySet() ) {
+            available.add( AnnotationMode.fromString( key ) );
+        }
+
+        return available;
+    }
+
+    /**
+     * Attempts to connect to the Curator. If it does so successfully,
+     * it will return true.
+     * @return True if we were able to connect to the Curator, false otherwise
+     */
+    public boolean curatorIsRunning() {
+        try {
+            listAvailableAnnotators();
+        } catch ( TException e ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Attempts a dummy annotation using the specified annotator. If it
+     * successfully connects to the Curator, and gets the annotation, it will
+     * return true.
+     * @param toolToCheck The annotator in question
+     * @return True if we were able to get the specified annotation, false
+     *         otherwise. In particular, this means that if the Curator is not
+     *         running and configured to communicate with the tool, we will
+     *         return false despite the face that the annotation tool itself
+     *         might actually be running, albeit inaccessibly.
+     */
+    public boolean toolIsRunning( AnnotationMode toolToCheck ) {
+        Record test = RecordTools.generateNew("Lorem ipsum");
+        try {
+            annotate( test, toolToCheck );
+        } catch ( TException e ) {
+            return false;
+        } catch ( AnnotationFailedException e ) {
+            return false;
+        } catch ( ServiceUnavailableException e ) {
+            return false;
+        } catch ( ServiceSecurityException e ) {
+            return true; // This doesn't actually tell us it's working, it tells
+                         // us we can't modify records in the database. We'll
+                         // plunge boldly ahead.
+        }
+
+        return true;
+    }
+
+    /**
      * Run the indicated annotator on the record to be annotated. Returns the
      * updated version of that record. Note, however, that there is no guarantee
      * that the toBeAnnotated record will not be modified---treat it as a
@@ -128,15 +192,43 @@ public class CuratorClient {
      */
     public Record annotate( Record toBeAnnotated, AnnotationMode annotator )
             throws ServiceUnavailableException, TException,
-            AnnotationFailedException {
-        transport.open();
-        client.performAnnotation( toBeAnnotated,
-                                  annotator.toCuratorString(), true );
-        transport.close();
+            AnnotationFailedException, ServiceSecurityException {
+        try {
+            if( !transport.isOpen() ) {
+                transport.open();
+            }
+
+            if( annotator.equals( AnnotationMode.TOKEN ) ) { // no dependencies
+                toBeAnnotated = client.provide( annotator.toCuratorString(),
+                                                toBeAnnotated.getRawText(),
+                                                true );
+            }
+            else {
+
+                // performAnnotation() doesn't work. The following (asking the Curator
+                // to store the record, then using provide()) is a workaround.
+                // TODO: Fix the performAnnotation() function!!
+                client.performAnnotation( toBeAnnotated,
+                                          annotator.toCuratorString(), true );
+            }
+
+
+            /*client.storeRecord( toBeAnnotated );
+
+            // Provide will request the record for the raw text. This is so
+            // roundabout it makes my head hurt.
+            toBeAnnotated = client.provide( annotator.toCuratorString(),
+                                            toBeAnnotated.getRawText(), true );*/
+        } finally {
+            if( !transport.isOpen() ) {
+                transport.close();
+            }
+        }
 
         if( !RecordTools.hasAnnotation( toBeAnnotated, annotator ) ) {
             throw new AnnotationFailedException(
-                    "Failed to annotate document whose hash is "
+                    "The Curator job ran without error, but for some reason, we "
+                    + "failed to annotate document whose hash is "
                     + toBeAnnotated.getIdentifier()
                     + " with annotation type " + annotator.toString() + "." );
         }
@@ -426,9 +518,17 @@ public class CuratorClient {
             throws ServiceUnavailableException, TException,
             AnnotationFailedException, ServiceSecurityException {
         for( Record r : newInputRecords ) {
-            transport.open();
-            Record old = client.getRecord( r.getRawText() );
-            transport.close();
+            Record old;
+            try {
+                if( !transport.isOpen() ) {
+                    transport.open();
+                }
+                old = client.getRecord( r.getRawText() );
+            } finally {
+                if( transport.isOpen() ) {
+                    transport.close();
+                }
+            }
 
             int oldNumViews = RecordTools.getNumViews( old );
             int newNumViews = RecordTools.getNumViews( r );
@@ -446,7 +546,16 @@ public class CuratorClient {
                 msg.append( " views. Updating the database accordingly." );
                 System.out.println( msg.toString() );
 
-                client.storeRecord( r );
+                try {
+                    if( !transport.isOpen() ) {
+                        transport.open();
+                    }
+                    client.storeRecord( r );
+                } finally {
+                    if( transport.isOpen() ) {
+                        transport.close();
+                    }
+                }
             }
             else {
                 msg.append( "\n\nWe have no new data on the document that begins '" );
@@ -481,6 +590,9 @@ public class CuratorClient {
         CuratorClient theClient = new CuratorClient( args.getHost(),
                                                      args.getPort() );
         testing = args.isTesting();
+        String msg = "Curator is running on localhost, port 9010? " +
+                (theClient.curatorIsRunning() ? "Yes." : "No.");
+        System.out.println(msg);
 
         if( args.getMode() == CuratorClientMode.PRE_HADOOP ) {
             // Create records from the input text files

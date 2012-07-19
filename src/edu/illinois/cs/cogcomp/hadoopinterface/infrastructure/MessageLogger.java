@@ -91,7 +91,7 @@ public class MessageLogger
      * @return A string version of the list, with newlines and tabs inserted
      *         as appropriate.
      */
-    public String getPrettifiedList( List l ) {
+    public static String getPrettifiedList( List l ) {
         String pretty = "\n\t";
         for( Object item : l ) {
             pretty = pretty + item.toString() + "\n\t";

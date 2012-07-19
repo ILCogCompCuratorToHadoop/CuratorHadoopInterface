@@ -90,3 +90,19 @@ logs/.0_curator_interface_log_11.42.26.AM.txt.crc
 logs/0_curator_interface_log_11.42.26.AM.txt
 
 scripts/.#batch_job_master_script.sh
+
+src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/AbstractFSHandler.java
+
+src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/AbstractFSHandler.java
+
+src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/TestFileSystemHandler.java
+
+src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/AbstractFSHandler.java
+
+src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/SampleFileSystemHandler.java
+
+src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/AbstractFSHandler.java
+
+src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/SampleFileSystemHandler.java
+
+src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/TestFileSystemHandler.java

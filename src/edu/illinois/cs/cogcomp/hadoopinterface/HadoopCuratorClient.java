@@ -3,6 +3,7 @@ package edu.illinois.cs.cogcomp.hadoopinterface;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.HadoopSerializationHandler;
 import edu.illinois.cs.cogcomp.thrift.base.AnnotationFailedException;
+import edu.illinois.cs.cogcomp.thrift.base.ServiceSecurityException;
 import edu.illinois.cs.cogcomp.thrift.base.ServiceUnavailableException;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import org.apache.hadoop.fs.FileSystem;
@@ -11,7 +12,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransport;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 /**
  * Similar in functionality to the CuratorClient.java (packaged with the Curator,
@@ -41,7 +41,7 @@ public class HadoopCuratorClient extends CuratorClient {
      *                file system
      */
     public HadoopCuratorClient( FileSystem hdfs ) {
-        super("local", PORT);
+        super("localhost", PORT);
 
         this.hdfs = hdfs;
         transport = super.getTransport();
@@ -57,21 +57,13 @@ public class HadoopCuratorClient extends CuratorClient {
      * @param toolToRun The type of annotation that we should get for the record
      */
 	public void annotateSingleDoc( Record record,
-                                   AnnotationMode toolToRun ) {
+                                   AnnotationMode toolToRun )
+            throws ServiceUnavailableException, TException,
+            AnnotationFailedException, ServiceSecurityException {
         try {
             // Ask the Curator to perform the annotation
             transport.open();
             annotate( record, toolToRun );
-        } catch (ServiceUnavailableException e) {
-            HadoopInterface.logger.logError( toolToRun.toString()
-                    + " annotations are not available.\n" + e.getReason());
-        } catch (TException e) {
-            HadoopInterface.logger.logError( "Transport exception when getting "
-                    + toolToRun.toString() + " annotation.\n"
-                    + Arrays.toString( e.getStackTrace() ) );
-        } catch (AnnotationFailedException e) {
-            HadoopInterface.logger.logError( "Failed attempting annotation "
-                    + toolToRun.toString() + ".\n" + e.getReason());
         } finally {
             if( transport.isOpen() ) {
                 transport.close();
@@ -124,9 +116,9 @@ public class HadoopCuratorClient extends CuratorClient {
     }
 
     private Record lastAnnotatedRecord;
-
     private FileSystem hdfs;
     private TTransport transport;
     public static final int PORT = 9010;
+
     private HadoopSerializationHandler serializer;
 }

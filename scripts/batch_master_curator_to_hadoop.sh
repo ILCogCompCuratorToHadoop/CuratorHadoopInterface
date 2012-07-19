@@ -28,35 +28,46 @@ INPUT_PATH=$2                   # The 2nd parameter from the command line
 TESTING=$3                      # 3rd parameter from CL should be "-test"
                                 #   (no quotes) to run in test mode.
 
+MSG_COLOR='\e[0;36m'     # Cyan. Might also try dark gray (1;30), green
+                         # (0;32), or light green (1;32).
+DEFAULT_COLOR='\e[0m'    # Reset to normal
+
 #########################################################################
 #                       No need to edit below here                      #
 
+
+BASEDIR=$(dirname $0) # location of this script file
+
 set -e # Exit the script if any command fails
 
-echo -e "\n\n\nYou said your copy of Curator is located here: $CURATOR_DIRECTORY"
+echo -e "$MSG_COLOR\n\n\nYou said your copy of Curator is located here: $CURATOR_DIRECTORY"
 echo "You requested we run the annotation tool $ANNOTATION_TOOL_TO_RUN on your input"
 echo "You requested we annotate the input text files located here: $INPUT_PATH"
-echo -e "\t(That input directory should be an *absolute* path.)"
+echo -e "\t(That input directory should be an *absolute* path.) $DEFAULT_COLOR"
 
 # Launch the Master Curator
-echo -e "\n\n\nLaunching the master curator."
+echo -e "$MSG_COLOR\n\n\nLaunching the master curator. $DEFAULT_COLOR"
 cd $CURATOR_DIRECTORY/dist
 ./bin/curator-local.sh --annotators configs/annotators-local.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null
 
 # Launch the Master Curator Client, asking it to serialize the
 # records from the text in the input directory
-echo -e "\n\n\nLaunching the master curator client:"
+echo -e "$MSG_COLOR\n\n\nLaunching the master curator client:$DEFAULT_COLOR"
 cd client
 ./runclient.sh -host localhost -port 9010 -in $INPUT_PATH -out $INTERMEDIATE_OUTPUT -mode PRE $TESTING 
 
 # Copy the serialized records to the Hadoop Distributed File System (HDFS)
-echo -e "\n\n\nCopying the serialized records to HDFS:"
+echo -e "$MSG_COLOR\n\n\nCopying the serialized records to HDFS: $DEFAULT_COLOR"
 cd $HADOOP_DIRECTORY
 set +e # Do *not* exit the script if any command fails
 ./bin/hadoop dfs -rmr serialized
 ./bin/hadoop dfs -mkdir serialized
 set -e # Exit the script if any command fails
 ./bin/hadoop dfs -copyFromLocal $INTERMEDIATE_OUTPUT/* serialized
-echo -e "Copied successfully."
+echo -e "$MSG_COLOR Copied successfully. $DEFAULT_COLOR"
+
+# TODO what does this do?
+echo -e "$MSG_COLOR\n\nShutting down locally running Curator. $DEFAULT_COLOR"
+jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill
 
 exit 0
