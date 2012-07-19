@@ -1,10 +1,12 @@
 package edu.illinois.cs.cogcomp.hadoopinterface;
 
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.HadoopRecord;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.*;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions
         .CuratorNotFoundException;
+import edu.illinois.cs.cogcomp.thrift.base.AnnotationFailedException;
+import edu.illinois.cs.cogcomp.thrift.base.ServiceSecurityException;
+import edu.illinois.cs.cogcomp.thrift.base.ServiceUnavailableException;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -12,8 +14,10 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.thrift.TException;
 
-import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * A Reducer that serves as a wrapper for the document annotation tool. It
@@ -28,25 +32,26 @@ import java.io.IOException;
  * @author Lisa Y. Bao
  */
 public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopRecord> {
+
+
     /**
      * Constructs a CuratorReducer
      */
     public CuratorReducer() throws CuratorNotFoundException, IOException {
-        Path curatorDir = new Path( "~" , "curator" );
+        Path curatorDir = new Path( System.getProperty( "user.home" ), "curator" );
         Path distDir = new Path( curatorDir, "dist" );
         distDir.makeQualified( FileSystem.get( new Configuration() ) );
         dir = new PathStruct( distDir );
 
         if( !FileSystemHandler.localFileExists( distDir ) ) {
-            File fileVersionCurator = new File( "~", "curator" );
-            File fileVersion = new File( fileVersionCurator, "dist" );
-            String fileVersionExists = "File version " + (fileVersion.exists() ? "exists." : "does not exist.");
-
             throw new CuratorNotFoundException("Curator directory does not exist "
                     + "at " + distDir.toString() + " on this Hadoop node. "
-                    + fileVersionExists +"\nCannot continue...");
+                    +"\nCannot continue...");
 
         }
+
+        spawnedCuratorProcesses = new LinkedList<Process>();
+        spawnedAnnotatorProcesses = new LinkedList<Process>();
     }
 
     /**
@@ -56,6 +61,12 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      * @param inValues The record(s) for the document(s), which include both the
      *                 original text file and the known annotations.
      * @param context The job context
+     * @throws IOException Since reduce() is contractually obligated to throw
+     *                     only IOExceptions and InterruptedExceptions, we're
+     *                     forced to abuse the semantics here. IOExceptions can be
+     *                     thrown if we cannot launch the Curator or an annotator,
+     *                     if we fail to annotate the document correctly, and
+     *                     so on.
      */
     @Override
     public void reduce( Text inKey,
@@ -68,39 +79,76 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         AnnotationMode toolToRun = AnnotationMode
                 .fromString( context.getConfiguration().get("annotationMode") );
 
-        // Check if annotation tool is running locally (i.e., by checking log
-        // file located at CURATOR_DIR/logs/).
-        if( !toolIsRunning( toolToRun ) ) {
-            // If not, start it and sleep repeatedly until it's ready to go
-            startTool( toolToRun );
-            Thread.sleep(1000); // Give it 1 second at minimum to start up
-
-            while( !toolIsRunning( toolToRun ) ) {
-                Thread.sleep(5000);
-            }
-        }
-
-        // Check if Curator is running locally (again, via log file)
-        if( !curatorIsRunning() ) {
-            // If not, start it and sleep repeatedly until it's ready to go
-            startCurator( toolToRun );
-            Thread.sleep(1000); // Give it 1 second at minimum to start up
-
-            while( !curatorIsRunning() ) {
-                Thread.sleep(5000);
-            }
-        }
-
         // Create a new Curator client object
-        HadoopCuratorClient client = new HadoopCuratorClient( fs );
+        client = new HadoopCuratorClient( fs );
 
+        launchCuratorIfNecessary( toolToRun );
+
+        if( !toolCanBeRun( toolToRun ) ) {
+            throw new IOException( toolToRun.toString() + " cannot be used to " +
+                    "annotate the document." );
+        }
+
+        // We've moved to launching all tools in local mode (that is, as a
+        // component of the Curator), so we no longer need to launch the
+        // annotators
+        //launchAnnotatorIfNecessary( toolToRun );
+
+        // Annotate each document (There should only ever be one, but the contract
+        // with reduce() says you have to accept an iterable of your values.)
         for( HadoopRecord inValue : inValues ) {
             String startingText = inValue.getRawText();
-            client.annotateSingleDoc( inValue, toolToRun );
+
+            if( RecordTools.hasAnnotation( inValue, toolToRun ) ) {
+                HadoopInterface.logger.logWarning(
+                        "Document already has the requested annotation." );
+                throw new IOException(); // TODO: Remove when not testing!!
+            }
+
+            try {
+                client.annotateSingleDoc( inValue, toolToRun );
+            } catch (ServiceUnavailableException e) {
+                String msg = toolToRun.toString()
+                        + " annotations are not available.\n" + e.getReason();
+                HadoopInterface.logger.logError( msg );
+
+                throw new IOException( msg );
+            } catch (TException e) {
+                String msg = "Transport exception when getting "
+                        + toolToRun.toString() + " annotation.\n"
+                        + e.getMessage() + "\n"
+                        + MessageLogger.getPrettifiedList(
+                        Arrays.asList( e.getStackTrace() ) );
+                HadoopInterface.logger.logError( msg );
+
+                throw new IOException(msg);
+            } catch (AnnotationFailedException e) {
+                String msg = "Failed attempting annotation "
+                        + toolToRun.toString() + ".\n" + e.getReason();
+                HadoopInterface.logger.logError( msg );
+
+                throw new IOException(msg);
+            } catch ( ServiceSecurityException e ) {
+                String msg = "Failed attempting database access for annotation "
+                        + toolToRun.toString() + ".\n" + e.getReason();
+                HadoopInterface.logger.logError( msg );
+
+                throw new IOException(msg);
+            }
+
             String postAnnotateText = client.getLastAnnotatedRecord().getRawText();
             if( startingText.equals( postAnnotateText ) ) {
-                throw new IOException("Raw text for a record has changed. " +
-                                              "This is a big problem.");
+                int diff = StringUtils.getLevenshteinDistance( startingText,
+                                                               postAnnotateText );
+                // Unless the diff is greater than a few characters, we can
+                // probably attribute it to differences in line endings and
+                // that sort of thing.
+                if( diff > 10 ) {
+                    throw new IOException("Raw text for a record has changed. "
+                            + "This is a big problem.\n\nIt used to be: "
+                            + startingText + "\n\n...but it's now: "
+                            + postAnnotateText );
+                }
             }
 
             // Serialize the updated record to the output directory
@@ -124,80 +172,136 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
         // TODO Run a separate MR job (e.g. KillCuratorReducer.java),
         // after all jobs are through, to kill all tools and local Curators
+        // Command to do this: "jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill"
+        //      See here: http://stackoverflow.com/questions/2131874/shell-script-to-stop-a-java-program
     }
 
     /**
-     * Checks the log files in your Curator directory (`~/curator/dist/logs`)
-     * to see if the indicated tool has finished launching.
-     * @param toolToCheck The annotation tool in question (more accurately,
-     *                    the type of annotation provided by the tool)
-     * @return TRUE if the log file indicates the tool is running. FALSE if
-     *         the log file *should* indicate the tool is running successfully,
-     *         but it does not.
-     *
-     *         Note that if the annotation tool, through an aggravating design
-     *         decision, does *not* indicate explicitly when it's ready to go,
-     *         we make a best guess based on when the log file was last modified.
-     *
-     * @TODO: Make this less brittle (don't rely on tools to indicate readiness in log)
+     * Checks to see that the indicated tool can be run (i.e., that the
+     * annotation mode is provided by an annotator that the Curator can connect
+     * to).
+     * @param tool The annotation tool in question
+     * @return True if the Curator lists that annotation tool as being among its
+     *         avialable annotators, false otherwise
      */
-    public boolean toolIsRunning( AnnotationMode toolToCheck )
-            throws EnumConstantNotPresentException {
-        // Tokenizer is a special case: no log file
-        if( toolToCheck == AnnotationMode.TOKEN ) {
-            return true;
-        }
-
-        // Get the tool's log location
-        Path logLocation = getLogLocation( toolToCheck );
-
-        // If the tool to check gives us an explicit "hello world" or something
-        // in its log file
-        // TODO: Figure out which ones do this, and how to check it. . .
-
-            // Check the log file
-
-        // Else, check the log file's time of last modification. If it's within
-        // the last half hour, assume all is well.
+    private boolean toolCanBeRun( AnnotationMode tool ) {
         try {
-            if( fsHandler.fileWasModifiedInLastXMins( logLocation, 30 ) ) {
-                return true;
-            }
-        } catch( IOException e ) {
-            // Can't access the file system. Just assume it works (else we could
-            // have an infinite loop where we just keep trying to check the log).
-            return true;
+            return client.listAvailableAnnotators().contains( tool );
+        } catch ( TException e ) {
+            HadoopInterface.logger.logError( "Thrift error while checking if " +
+                    "a tool can be run." );
+            return false;
         }
-
-        return false;
     }
 
     /**
-     * Checks the log files in your Curator directory (`~/curator/dist/logs`)
-     * to see if the indicated tool has finished launching.
-     * @return TRUE if the log file indicates the Curator is running.
-     *
-     * @TODO Is there a more reliable way to check the Curator's run status?
+     * Checks to see if the Curator is running on the local node. If it is not,
+     * it will launch it and wait to return until it confirms the Curator
+     * has successfully started.
+     * @param toolToRun The annotation tool that the Curator should be configured
+     *                  to communicate with
+     * @throws IOException If, after many attempts, we are unable to launch the
+     *                     Curator.
+     * @throws InterruptedException If sleeping the thread fails
+     * @postcondition Curator is running and accessible through the client
      */
-    public boolean curatorIsRunning() {
-        // Basically, since we assume that the Curator isn't launched until all
-        // tools are good to go, we can assume the Curator is running as long as
-        // its log file has been modified in the last half hour.
-        Path logLocation = getCuratorLogLocation();
+    public void launchCuratorIfNecessary( AnnotationMode toolToRun )
+            throws IOException, InterruptedException {
+        int attemptsToStart = 0;
+        // Note: the curatorIsRunning() function *appears* to work when I start
+        // the Curator Server by hand, but not when using the scripts. . .???
+        while( !client.curatorIsRunning() ) {
+            // If not, start it and sleep repeatedly until it's ready to go
+            startCurator( toolToRun );
 
-        try {
-            if( fsHandler.fileWasModifiedInLastXMins( logLocation, 30 ) ) {
-                return true;
+            // Give it time to start up; since we're running the tools in local
+            // mode, this will depend on the tool.
+            Thread.sleep( getEstimatedTimeToStart( toolToRun ) );
+
+            // If we've attempted to start it 20 times, we give up
+            ++attemptsToStart;
+            if( attemptsToStart >= MAX_ATTEMPTS ) {
+                for( Process p : spawnedCuratorProcesses ) {
+                    p.destroy();
+                }
+                throw new IOException( "Unable to launch Curator. "
+                        + "Made " + attemptsToStart + " attempts." );
             }
-        } catch( IOException e ) {
-            // Can't access the file system. Just assume it works (else we could
-            // have an infinite loop where we just keep trying to check the log).
-            return true;
         }
 
-        return false;
+        if( attemptsToStart == 0 ) {
+            HadoopInterface.logger.log( "Curator was already running on node." );
+        }
+        else {
+            HadoopInterface.logger.log( "Successfully launched Curator on node." );
+        }
     }
 
+    /**
+     * Checks to see if the indicated annotation tool is running already. If it
+     * is not, it will launch it and wait to return until it confirms the tool
+     * has successfully started.
+     * @param toolToRun The annotation tool to launch
+     * @throws IOException If, after many attempts, we are unable to launch the
+     *                     annotation tool.
+     * @throws InterruptedException If sleeping the thread fails
+     * @postcondition The requested annotator is running and accessible through
+     *                the client
+     */
+    public void launchAnnotatorIfNecessary( AnnotationMode toolToRun )
+            throws IOException, InterruptedException {
+        int attemptsToStart = 0;
+        while( !client.toolIsRunning( toolToRun ) ) {
+            // If not, start it and sleep repeatedly until it's ready to go
+            startTool( toolToRun );
+            Thread.sleep( getEstimatedTimeToStart( toolToRun ) );
+
+            if( ++attemptsToStart >= MAX_ATTEMPTS ) {
+                for( Process p : spawnedAnnotatorProcesses ) {
+                    p.destroy();
+                }
+                throw new IOException( "Unable to launch annotator "
+                                       + toolToRun.toString() + "." );
+            }
+        }
+    }
+
+    /**
+     * Gets the estimated number of milliseconds that it takes for an annotation
+     * tool to launch. This is how long you should wait before attempting to start
+     * that tool again.
+     * @param toolToRun The annotation tool in question
+     * @return The number of milliseconds you should wait before expecting the
+     *         tool to be running
+     */
+    private long getEstimatedTimeToStart( AnnotationMode toolToRun ) {
+        long timeForSmallModels = 3000; // 3 secs
+        long timeForLargeModels = 30000; // 30 secs
+        switch ( toolToRun ) {
+            case CHUNK:
+                return timeForSmallModels;
+            case COREF:
+                return timeForSmallModels;
+            case NER:
+                return timeForLargeModels;
+            case NOM_SRL:
+                return timeForLargeModels;
+            case PARSE:
+                return timeForSmallModels;
+            case POS:
+                return timeForSmallModels;
+            case SENTENCE:
+                return timeForSmallModels;
+            case TOKEN:
+                return timeForSmallModels;
+            case VERB_SRL:
+                return timeForLargeModels;
+            case WIKI:
+                return timeForLargeModels;
+            default:
+                return timeForLargeModels; // better safe than sorry
+        }
+    }
 
     /**
      * Runs the shell script required to launch the indicated annotation tool.
@@ -208,7 +312,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      *                     the type of annotation provided by the tool to be
      *                     launched)
      */
-    public void startTool( AnnotationMode toolToLaunch )
+    private void startTool( AnnotationMode toolToLaunch )
             throws IOException {
         // Tokenizer is a special case (started with Curator . . .?)
         // TODO: Confirm that Tokenizer starts with Curator
@@ -274,7 +378,8 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             command.append(" >& ");
             command.append( getLogLocation( toolToLaunch ).toString() );
             command.append(" &");
-            Runtime.getRuntime().exec( command.toString() );
+            spawnedAnnotatorProcesses.add( Runtime.getRuntime()
+                                                  .exec( command.toString() ) );
         }
         else { // NER is a special case. Weird syntax.
             command.append( scriptLocation.toString() );
@@ -301,9 +406,11 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             secondCommand.append(
                     new Path( dir.log(), "ner-ext-ontonotes.log").toString() );
             secondCommand.append( " &" );
-            Runtime.getRuntime().exec( secondCommand.toString() );
+            spawnedAnnotatorProcesses.add( Runtime
+                    .getRuntime().exec( secondCommand.toString() ) );
         }
     }
+
 
     /**
      * Runs the shell script required to launch the indicated annotation tool.
@@ -313,7 +420,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      * @param runningTool The annotation tool that is already running on this
      *                    Hadoop node
      */
-    public void startCurator( AnnotationMode runningTool ) throws IOException {
+    private void startCurator( AnnotationMode runningTool ) throws IOException {
         Path scriptLoc = new Path( dir.bin(), "curator.sh" );
         Path annotatorsConfigLoc = getAnnotatorConfigLoc( runningTool );
         // Ensure the config file exists; create it if not
@@ -327,10 +434,12 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         launchScript.append( getCuratorLogLocation().toString() );
         launchScript.append(" &");
 
-        Runtime.getRuntime().exec( launchScript.toString() );
-
+        HadoopInterface.logger.logStatus( "Launching Curator on node with "
+                + "command \n\t" + launchScript.toString() );
+        spawnedCuratorProcesses.add( Runtime.getRuntime()
+                                            .exec( launchScript.toString() ) );
     }
-    
+
     /**
      * Returns the log location on the local node for the specified annotation
      * tool.
@@ -480,10 +589,10 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             binDir = new Path( distDir, "bin" );
             configDir = new Path( distDir, "configs" );
         }
+
         public Path dist() {
             return distDir;
         }
-
         public Path log() {
             return logDir;
         }
@@ -499,10 +608,15 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         private final Path distDir;
 
         private final Path logDir;
+
         private final Path binDir;
         private final Path configDir;
     }
 
     private final PathStruct dir;
     private FileSystemHandler fsHandler;
+    private HadoopCuratorClient client;
+    private List<Process> spawnedCuratorProcesses;
+    private List<Process> spawnedAnnotatorProcesses;
+    private static final int MAX_ATTEMPTS = 10;
 }

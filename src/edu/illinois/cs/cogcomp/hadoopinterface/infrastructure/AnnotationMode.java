@@ -103,7 +103,7 @@ public enum AnnotationMode {
             case NOM_SRL:
                 return "nom";
             case PARSE:
-                return "stanfordParse";
+                return "stanfordParse";  // TODO: Is this the one to use?
             case POS:
                 return "pos";
             case SENTENCE:
