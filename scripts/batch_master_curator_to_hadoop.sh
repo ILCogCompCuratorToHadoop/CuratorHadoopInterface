@@ -59,37 +59,4 @@ set -e # Exit the script if any command fails
 ./bin/hadoop dfs -copyFromLocal $INTERMEDIATE_OUTPUT/* serialized
 echo -e "Copied successfully."
 
-
-<<<<<<< HEAD:scripts/batch_master_curator_to_hadoop.sh
-=======
-# Launch MapReduce job on Hadoop cluster
-echo -e "\n\n\nLaunching the mapreduce job on the Hadoop cluster:"
-./bin/hadoop jar curator.jar -d serialized -m $ANNOTATION_TOOL_TO_RUN -out serialized_output
-echo -e "\n\n\nJob finished!\n\n"
-
-
-set +e # Do *not* exit the script if a command fails (so we can give
-       # useful suggestions to the user)
-
-# When the MapReduce job finishes, copy the data back to local disk
-# TODO: Make this a distributed Hadoop job
-echo "Copying the results of the MapReduce job back to the local machine"
-COMMAND="./bin/hadoop fs -copyToLocal serialized_output $OUTPUT"
-$COMMAND
-# If the copy to local failed . . . 
-if [ "$?"-ne 0]; then echo "Copying to local failed. Try fixing the error, then executing: $COMMAND"; exit 1; fi 
-
-set -e
-
-# Have Master Curator read in the updated Records and update the database accordingly
-cd $CURATOR_DIRECTORY/dist/client
-./runclient.sh -host localhost -port 9010 -in $OUTPUT/serialized_output -mode POST $TESTING 
-
-
-
-# New Hadoop job:
-#       Have the Hadoop nodes kill the running annotator, Curator, and 
-#       Curator Client processes
-
->>>>>>> 6a15a14c11f4f70fe2f625590298eaa15fada6ff:scripts/batch_job_master_script.sh
 exit 0
