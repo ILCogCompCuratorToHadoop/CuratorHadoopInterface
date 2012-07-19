@@ -27,5 +27,5 @@ DEFAULT_COLOR='\e[0m'    # Reset to normal
 
 echo -e "$MSG_COLOR\n\n\nLaunching the mapreduce job on the Hadoop cluster:$DEFAULT_COLOR"
 cd $HADOOP_DIRECTORY
-./bin/hadoop jar curator.jar edu/illinois/cs/cogcomp/HadoopInterface -d serialized -m $ANNOTATION_TOOL_TO_RUN -out serialized_output
+/bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d serialized -m  $ANNOTATION_TOOL_TO_RUN -out serialized_output
 echo -e "$MSG_COLOR\n\n\nJob finished!\n\n$DEFAULT_COLOR"

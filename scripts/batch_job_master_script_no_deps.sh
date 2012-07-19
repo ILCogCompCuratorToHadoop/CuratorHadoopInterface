@@ -36,8 +36,6 @@ DEFAULT_COLOR='\e[0m'    # Reset to normal
 
 
 BASEDIR=$(dirname $0) # location of this script file
-KILL_CURATOR_COMMAND="jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill"
-START_CURATOR_COMMAND="cd $CURATOR_DIRECTORY/dist ; ./bin/curator.sh --annotators configs/annotators-empty.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null"
 
 set -e # Exit the script if any command fails
 
@@ -54,9 +52,19 @@ if [ -f annotators-empty.xml ] # Does the file exist?
 then
     echo "Annotator list exists for the Curator."
 else
-    echo "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<curator-annotators> </curator-annotators>" > annotators-empty.xml
+    touch annotators-empty.xml
+    echo "<?xml version=\"1.0\" encoding=\"utf-8\" ?>" >> annotators-empty.xml
+    echo "<curator-annotators><annotator>" >> annotators-empty.xml
+    echo "<type>multilabeler</type>" >> annotators-empty.xml
+    echo "<field>sentences</field>" >> annotators-empty.xml
+    echo "<field>tokens</field>" >> annotators-empty.xml
+    echo "<local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisTokenizerHandler</local>" >> annotators-empty.xml
+    echo "</annotator></curator-annotators>" >> annotators-empty.xml
 fi
-$START_CURATOR_COMMAND
+cd $CURATOR_DIRECTORY/dist
+./bin/curator.sh --annotators configs/annotators-empty.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null
+sleep 3s
+
 
 
 # Launch the Master Curator Client, asking it to serialize the
@@ -66,7 +74,7 @@ cd client
 ./runclient.sh -host localhost -port 9010 -in $INPUT_PATH -out $INTERMEDIATE_OUTPUT -mode PRE $TESTING 
 
 echo -e "$MSG_COLOR\n\nShutting down locally running Curator. $DEFAULT_COLOR"
-$KILL_CURATOR_COMMAND
+jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill
 
 # Copy the serialized records to the Hadoop Distributed File System (HDFS)
 echo -e "$MSG_COLOR\n\n\nCopying the serialized records to HDFS: $DEFAULT_COLOR"
@@ -80,7 +88,7 @@ echo -e "$MSG_COLOR Copied successfully. $DEFAULT_COLOR"
 
 # Launch MapReduce job on Hadoop cluster
 echo -e "$MSG_COLOR\n\n\nLaunching the mapreduce job on the Hadoop cluster: $DEFAULT_COLOR"
-./bin/hadoop jar curator.jar -d serialized -m $ANNOTATION_TOOL_TO_RUN -out serialized_output
+./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d serialized -m $ANNOTATION_TOOL_TO_RUN -out serialized_output
 echo -e "$MSG_COLOR\n\n\nJob finished!\n\n$DEFAULT_COLOR"
 
 
@@ -102,11 +110,14 @@ echo -e "$MSG_COLOR Copying to local succeeded. $DEFAULT_COLOR"
 set -e
 
 # Have Master Curator read in the updated Records and update the database accordingly
-echo -e "$MSG_COLOR\n\n\nRe-launching the master curator. $DEFAULT_COLOR"
-$START_CURATOR_COMMAND
+echo -e "$MSG_COLOR\n\n\nRe-launching the master Curator. $DEFAULT_COLOR"
+cd $CURATOR_DIRECTORY/dist
+./bin/curator.sh --annotators configs/annotators-empty.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null
+sleep 3s
 cd client
 ./runclient.sh -host localhost -port 9010 -in $OUTPUT/serialized_output -mode POST $TESTING 
-$KILL_CURATOR_COMMAND
+echo -e "$MSG_COLOR\n\nShutting down the master Curator. $DEFAULT_COLOR"
+jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill
 
 
 
