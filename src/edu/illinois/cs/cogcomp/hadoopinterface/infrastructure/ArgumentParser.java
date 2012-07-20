@@ -96,6 +96,9 @@ public class ArgumentParser {
                 else if( args[i].equals("-cleanup") ) {
                     cleaning = true;
                 }
+                else if( args[i].equals("-intermediate") ) {
+                    intermediate = true;
+                }
             }
 
             if( mode == null ) {
@@ -215,12 +218,22 @@ public class ArgumentParser {
         return mode;
     }
 
+    /**
+     * @TODO: Implement this functionality!!
+     * @return
+     */
+    public boolean isIntermediate() {
+        return intermediate;
+    }
+
     private AnnotationMode mode;
 
     private String directory;
+
     private String outputDirectory;
     private Integer numMaps;
     private Integer numReduces;
     private boolean testing = false;
     private boolean cleaning = false;
+    private boolean intermediate = false;
 }

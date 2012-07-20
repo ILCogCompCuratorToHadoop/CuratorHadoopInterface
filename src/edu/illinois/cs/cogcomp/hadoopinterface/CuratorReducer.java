@@ -263,9 +263,9 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      *             unnecessary.
      */
     public void launchAnnotatorIfNecessary( AnnotationMode toolToRun )
-            throws IOException, InterruptedException {
+            throws IOException, InterruptedException, TException {
         int attemptsToStart = 0;
-        while( !client.toolIsRunning( toolToRun ) ) {
+        while( !client.listAvailableAnnotators().contains( toolToRun ) ) {
             // If not, start it and sleep repeatedly until it's ready to go
             startTool( toolToRun );
             Thread.sleep( getEstimatedTimeToStart( toolToRun ) );
@@ -377,7 +377,9 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
             if( !runningTool.equals( AnnotationMode.TOKEN )
                     && !runningTool.equals( AnnotationMode.SENTENCE ) ) {
+
                 file.append( "<annotator>\n" );
+
                 // TODO: Configs for missing annotators
                 switch (runningTool) {
                     case CHUNK:

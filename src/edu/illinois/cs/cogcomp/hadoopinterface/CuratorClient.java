@@ -150,36 +150,6 @@ public class CuratorClient {
     }
 
     /**
-     * Attempts a dummy annotation using the specified annotator. If it
-     * successfully connects to the Curator, and gets the annotation, it will
-     * return true.
-     * @param toolToCheck The annotator in question
-     * @return True if we were able to get the specified annotation, false
-     *         otherwise. In particular, this means that if the Curator is not
-     *         running and configured to communicate with the tool, we will
-     *         return false despite the face that the annotation tool itself
-     *         might actually be running, albeit inaccessibly.
-     */
-    public boolean toolIsRunning( AnnotationMode toolToCheck ) {
-        Record test = RecordTools.generateNew("Lorem ipsum");
-        try {
-            annotate( test, toolToCheck );
-        } catch ( TException e ) {
-            return false;
-        } catch ( AnnotationFailedException e ) {
-            return false;
-        } catch ( ServiceUnavailableException e ) {
-            return false;
-        } catch ( ServiceSecurityException e ) {
-            return true; // This doesn't actually tell us it's working, it tells
-                         // us we can't modify records in the database. We'll
-                         // plunge boldly ahead.
-        }
-
-        return true;
-    }
-
-    /**
      * Run the indicated annotator on the record to be annotated. Returns the
      * updated version of that record. Note, however, that there is no guarantee
      * that the toBeAnnotated record will not be modified---treat it as a
@@ -197,19 +167,19 @@ public class CuratorClient {
     public Record annotate( Record toBeAnnotated, AnnotationMode annotator )
             throws ServiceUnavailableException, TException,
             AnnotationFailedException, ServiceSecurityException {
+        if( !RecordTools.meetsDependencyReqs( toBeAnnotated, annotator ) ) {
+            throw new AnnotationFailedException( "Cannot annotate document " +
+                    "with the provided annotations (it is missing " +
+                    "dependencies)." );
+        }
+        else {
+            HadoopInterface.logger.logStatus( "Record provides annotations: "
+                    + RecordTools.getAnnotationsString( toBeAnnotated ) );
+        }
+
         try {
             if( !transport.isOpen() ) {
                 transport.open();
-            }
-
-            if( !RecordTools.meetsDependencyReqs( toBeAnnotated, annotator ) ) {
-                throw new AnnotationFailedException( "Cannot annotate document " +
-                        "with the provided annotations (it is missing " +
-                        "dependencies)." );
-            }
-            else {
-                HadoopInterface.logger.logStatus( "Record provides annotations: "
-                        + RecordTools.getAnnotationsString( toBeAnnotated ) );
             }
 
             // performAnnotation() doesn't work. The following (asking the
@@ -218,6 +188,8 @@ public class CuratorClient {
             // TODO: Fix the performAnnotation() function!!
             HadoopInterface.logger.logStatus( "Storing record..." );
             client.storeRecord( toBeAnnotated );
+
+
             HadoopInterface.logger.logStatus( "Calling provide..." );
             // NOTE: forceUpdate must be false or else we will also try to
             // update the dependencies, leading to a fiery death.
@@ -240,8 +212,8 @@ public class CuratorClient {
                     + "Is the Curator providing " + annotator.toString() + "? "
                     + ( listAvailableAnnotators().contains( annotator )
                         ? "Yes." : "No." )
-                    + "Second opinion--is it? "
-                    + ( toolIsRunning( annotator ) ? "Yes." : "No." ) );
+                    + "\nRecord's annotations: "
+                    + RecordTools.getAnnotationsString( toBeAnnotated ) );
         }
 
         // These two should always be done together
@@ -516,7 +488,7 @@ public class CuratorClient {
      * Lists the available annotators to the standard output.
      * @throws TException
      */
-    private void printInfoOnKnownAnnotators() throws TException {
+    public void printInfoOnKnownAnnotators() throws TException {
         try {
             if( !transport.isOpen() ) {
                 transport.open();
@@ -732,6 +704,24 @@ public class CuratorClient {
             replaceTheRecords.add(r);
         }
         newInputRecords = replaceTheRecords;
+    }
+
+    public void runChunker() throws TException, ServiceUnavailableException,
+            AnnotationFailedException, ServiceSecurityException {
+        transport.open();
+
+        String chunk = AnnotationMode.CHUNK.toCuratorString();
+        for( Record r : newInputRecords ) {
+            client.storeRecord( r );
+            r = client.provide(chunk, r.getRawText(), false);
+
+            // Confirm it worked
+            if( !RecordTools.hasAnnotation( r, AnnotationMode.CHUNK ) ) {
+                System.out.println( "Couldn't find " + chunk + " annotation!" );
+            }
+        }
+
+        transport.close();
     }
 
     private void callABunchOfAnnotationsFromDemo(TTransport transport)
