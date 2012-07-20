@@ -122,5 +122,8 @@ else
     echo -e "$MSG_COLOR\nCopied successfully. $DEFAULT_COLOR"
 fi
 
+# Call the JobHandler class to launch (multiple) MR jobs including dependencies
+# TODO check syntax, particularly if INPUT_PATH is the correct path in HDFS
+./bin/hadoop jar JobHandler.jar $ANNOTATION_MODE_TO_RUN $INPUT_PATH
 
 exit 0

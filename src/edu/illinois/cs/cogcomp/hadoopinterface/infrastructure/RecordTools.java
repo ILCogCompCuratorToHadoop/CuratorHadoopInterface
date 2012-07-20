@@ -13,7 +13,7 @@ import java.util.Scanner;
 import java.util.Set;
 
 /**
- * A utility class for working with Records. Most of these should really, really
+ * A utility class for working with Records. Most of these should really
  * be a part of the Record's interface, but changing that is a pain.
  * @author Tyler Young
  */

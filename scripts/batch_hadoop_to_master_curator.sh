@@ -73,7 +73,7 @@ jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | 
 
 # Have the Hadoop nodes kill the running annotator, Curator, and Curator Client processes
 # In order to do this, launch the HadoopInterface with parameter '-cleanup'
-./bin/hadoop jar CuratorHadoopInterface.jar -d $INPUT_PATH -m $ANNOTATION_TOOL_TO_RUN -cleanup
+./bin/hadoop jar HadoopInterface.jar -d $INPUT_PATH -m $ANNOTATION_TOOL_TO_RUN -cleanup
 
 
 exit 0

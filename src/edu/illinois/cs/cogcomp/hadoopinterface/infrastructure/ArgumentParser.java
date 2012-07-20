@@ -71,7 +71,7 @@ public class ArgumentParser {
             }
         }
 
-        // More robust usage, specifying which parms are which using CL flags
+        // More robust usage, specifying which params are which using CL flags
         else {
             for( int i = 0; i < args.length; ++i ) {
                 // Allow either -d ("directory") or -i ("input")

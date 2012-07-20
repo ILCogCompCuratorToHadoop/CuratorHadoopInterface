@@ -3,7 +3,7 @@
 * Curator to a Hadoop cluster.
 *
 * @example Call this tool from the command line like this:
-*          ./hadoop jar CuratorHadoopInterface.jar <document_directory_in_hdfs> <mode>
+*          ./hadoop jar HadoopInterface.jar <document_directory_in_hdfs> <mode>
 *
 * @author Tyler A. Young
 * @author Lisa Bao

@@ -162,16 +162,16 @@ public enum AnnotationMode {
     }
 
     /**
-     * Gets the set of annotations required in order to perform an annotation.
-     * @return The set of dependencies for the given annotation type. For example,
-     *         if the annotation is TOKEN (tokenization), this will return the
-     *         empty set (there are no dependencies for tokenization). If,
-     *         however, the annotation is CHUNK (chunking), it will return
-     *         a set containing POS and TOKEN, since chunking depends on both
-     *         part of speech and tokenization.
+     * Gets the list of annotations required in order to perform an annotation.
+     * @return The list of dependencies for the given annotation type. For instance,
+     *         if this annotation is TOKEN (tokenization), this will return the
+     *         empty list (there are no dependencies for tokenization). If,
+     *         however, this annotation is CHUNK (chunking), it will return
+     *         a set containing TOKEN and POS (in this order), since chunking 
+     *         depends on both tokenization and part of speech.
      */
-    public Set<AnnotationMode> getDependencies(AnnotationMode typeOfAnnotation) {
-        HashSet<AnnotationMode> deps = new HashSet<AnnotationMode>();
+    public ArrayList<AnnotationMode> getDependencies(AnnotationMode typeOfAnnotation) {
+        ArrayList<AnnotationMode> deps = new ArrayList<AnnotationMode>();
 
         // Note: a set of nested `if` statements would be more efficient (less
         // duplicated code), but a switch makes it super easy to confirm that we
@@ -212,7 +212,7 @@ public enum AnnotationMode {
                 deps.add(POS);
                 deps.add(CHUNK);
                 deps.add(PARSE);
-                break;
+                break ;
             case WIKI:
                 deps.add(TOKEN);
                 deps.add(POS);
@@ -225,15 +225,15 @@ public enum AnnotationMode {
     }
 
     /**
-     * Gets the set of annotations required in order to perform this annotation.
-     * @return The set of dependencies for this annotation type. For instance,
+     * Gets the list of annotations required in order to perform this annotation.
+     * @return The list of dependencies for this annotation type. For instance,
      *         if this annotation is TOKEN (tokenization), this will return the
-     *         empty set (there are no dependencies for tokenization). If,
+     *         empty list (there are no dependencies for tokenization). If,
      *         however, this annotation is CHUNK (chunking), it will return
-     *         a set containing POS and TOKEN, since chunking depends on both
-     *         part of speech and tokenization.
+     *         a set containing TOKEN and POS (in this order), since chunking 
+     *         depends on both tokenization and part of speech.
      */
-    public Set<AnnotationMode> getDependencies() {
+    public ArrayList<AnnotationMode> getDependencies() {
         return getDependencies( this );
     }
 }

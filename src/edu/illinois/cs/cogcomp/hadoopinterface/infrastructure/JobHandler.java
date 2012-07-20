@@ -4,12 +4,19 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * A class to handle annotation dependencies outside of the Curator.
+ * Sits between the Curator-to-Hadoop batch script and
+ * the Hadoop-to-Curator batch script.
+ * @author Lisa Bao
+ */
+
 public class JobHandler {
 
     /**
      * @param argv String arguments from command line.
-     *             The first argument must be an annotation type
-     *             and the second argument must be an ABSOLUTE input directory path.
+     *             The first argument must be the targeted annotation type.
+     *             The second argument must be an ABSOLUTE input directory path.
      */
 	public static void main(String[] argv) throws IOException {
         AnnotationMode requestedAnnotation = AnnotationMode.fromString( argv[0] );
@@ -20,8 +27,21 @@ public class JobHandler {
         Runtime.getRuntime().exec("./batch_master_curator_to_hadoop " + requestedAnnotation.toString() + " " + inputDirectory);
 
         // Retrieve list of dependencies for requested annotation
-        Set<AnnotationMode> dependencies = requestedAnnotation.getDependencies();
-        Set<AnnotationMode> alreadyRun = new HashSet<AnnotationMode>();
+        ArrayList<AnnotationMode> dependencies = requestedAnnotation.getDependencies();
+        ArrayList<AnnotationMode> alreadyRun = new ArrayList<AnnotationMode>();
+
+        // TODO Currently this doesn't work because we need to process dependencies for each file individually
+        // but the dependencies and alreadyRun arraylists are local to all files.
+        // Quick solution: require consistency on user's part and simply sample the first file to determine needed dependencies.
+
+        // TODO for each file in folder inputDirectory on HDFS:
+            // TODO construct a HadoopRecord called temp
+            ArrayList<String> existingAnnotations = temp.getAnnotationsAsStringList();
+            // convert String list to AnnotationMode list
+            for (String a : existingAnnotations) {
+                alreadyRun.add(AnnotationMode.fromString(a));
+            }
+
         // Loop through all intermediate dependencies; really similar to the
         // dependency-checking logic in CuratorHandler's #provide() method
         // TODO: Tyler started this, but didn't finish  --- we really need to examine

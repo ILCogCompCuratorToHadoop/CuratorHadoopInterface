@@ -38,7 +38,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
 
     /**
      * Constructs a CuratorJobConf object
-     * @param args The command-line arguments passed ot the tool
+     * @param args The command-line arguments passed to the tool
      */
     public CuratorJob( String[] args )
             throws ClassNotFoundException, InterruptedException, IOException {
