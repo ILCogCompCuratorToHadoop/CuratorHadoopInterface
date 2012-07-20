@@ -204,7 +204,7 @@ public class CuratorClient {
 
             // performAnnotation() doesn't work. The following (asking the
             // Curator to store the record, then using provide()) is a
-            // workaround.
+            // cludgy workaround.
             // TODO: Fix the performAnnotation() function!!
             client.storeRecord( toBeAnnotated );
             toBeAnnotated = client.provide( annotator.toCuratorString(),
@@ -218,9 +218,6 @@ public class CuratorClient {
             }
             else {
                 client.storeRecord( toBeAnnotated );
-
-                client.performAnnotation( toBeAnnotated,
-                                          annotator.toCuratorString(), true );
             }*/
         } finally {
             if( transport.isOpen() ) {
@@ -235,8 +232,8 @@ public class CuratorClient {
                     + toBeAnnotated.getIdentifier()
                     + " with annotation type " + annotator.toString() + ".\n"
                     + "Is the Curator providing " + annotator.toString() + "? "
-                    + ( listAvailableAnnotators().contains(
-                            annotator.toCuratorString() ) ? "Yes." : "No." ) );
+                    + ( listAvailableAnnotators().contains( annotator )
+                        ? "Yes." : "No." ) );
         }
 
         return toBeAnnotated;

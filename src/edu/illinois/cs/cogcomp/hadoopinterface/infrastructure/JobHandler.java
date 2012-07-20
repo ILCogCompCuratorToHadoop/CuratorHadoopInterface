@@ -1,8 +1,7 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
-
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Set;
 
 public class JobHandler {
@@ -18,16 +17,19 @@ public class JobHandler {
 
         // Call batch_master_curator_to_hadoop
         // launches Master Curator, copies files to HDFS
-        Runtime.getRuntime().exec("./batch_master_curator_to_hadoop " + requestedAnnotation + " " + inputDirectory);
+        Runtime.getRuntime().exec("./batch_master_curator_to_hadoop " + requestedAnnotation.toString() + " " + inputDirectory);
 
         // Retrieve list of dependencies for requested annotation
         Set<AnnotationMode> dependencies = requestedAnnotation.getDependencies();
-        // Loop through all intermediate dependencies
+        Set<AnnotationMode> alreadyRun = new HashSet<AnnotationMode>();
+        // Loop through all intermediate dependencies; really similar to the
+        // dependency-checking logic in CuratorHandler's #provide() method
+        // TODO: Tyler started this, but didn't finish  --- we really need to examine
         for (AnnotationMode a : dependencies) {
-            // Launch MapReduce job on Hadoop cluster
-            Runtime.getRuntime().exec("echo -e \"\n\n\nLaunching intermediate MapReduce job on the Hadoop cluster:\"");
-            Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d serialized -m " + a.toString() + " -out serialized_output");
-            Runtime.getRuntime().exec("echo -e \"\n\n\nAn intermediate job has been finished...\n\n\"");
+            if( !alreadyRun.contains( a ) ) {
+                launchJob( a );
+            }
+            alreadyRun.add( a );
         }
         // Launch final MapReduce job
         Runtime.getRuntime().exec("echo -e \"Launching final MapReduce job:\"");
@@ -39,5 +41,12 @@ public class JobHandler {
         Runtime.getRuntime().exec("./batch_hadoop_to_master_curator " + requestedAnnotation + " " + inputDirectory);
 
     } // END OF MAIN
+
+    private static void launchJob( AnnotationMode a ) throws IOException {
+        // Launch MapReduce job on Hadoop cluster
+        Runtime.getRuntime().exec("echo -e \"\n\n\nLaunching intermediate MapReduce job on the Hadoop cluster:\"");
+        Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d serialized -m " + a.toString() + " -out serialized_output");
+        Runtime.getRuntime().exec("echo -e \"\n\n\nAn intermediate job has been finished...\n\n\"");
+    }
 
 }
