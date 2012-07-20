@@ -172,7 +172,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                 e.printStackTrace();
             }
 
-            HadoopInterface.logger.logStatus("Finished serializing record "
+            HadoopInterface.logger.logStatus( "Finished serializing record "
                     + inValue.getDocumentHash() + " to " + outputDir.toString() );
 
             // pass Curator output back to Hadoop as Record
@@ -321,11 +321,13 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      * @param toolToLaunch The annotation tool to launch (more accurately,
      *                     the type of annotation provided by the tool to be
      *                     launched)
+     * @deprecated In local mode, you do not need to launch the tool as a
+     *             separate command.
      */
     private void startTool( AnnotationMode toolToLaunch )
             throws IOException {
         // Tokenizer is a special case (started with Curator . . .?)
-        // TODO: Confirm that Tokenizer starts with Curator
+        // Confirm that Tokenizer starts with Curator
         if( toolToLaunch == AnnotationMode.TOKEN ) {
             return;
         }
@@ -457,6 +459,9 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      * @param tool The tool whose log location we should get
      * @return A Path (on the local filesystem) where you can find the log for
      *         the indicated annotation tool.
+     * @deprecated This is pretty unreliable. You should probably be launching the
+     *             the Curator in local mode, in which case you can use the
+     *             CuratorClient's methods to check whether tools are running.
      */
     private Path getLogLocation( AnnotationMode tool ) {
         switch( tool ) {
@@ -473,7 +478,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             case POS:
                 return new Path( dir.log(), "pos.log" );
             case TOKEN:
-                // TODO: Seriously? The Tokenizer doesn't keep a log file?
+                // Seriously, the Tokenizer doesn't keep a log file?
                 return new Path("");
             case VERB_SRL:
                 return new Path( dir.log(), "verb-srl.log" );
@@ -487,6 +492,10 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
     /**
      * @return The location, on the local file system, of the Curator log file
+     * @deprecated This is pretty unreliable. You should probably be using the
+     *             CuratorClient's methods for checking the Curator's status,
+     *             which forego the logs and just *try* connecting to the
+     *             Curator.
      */
     private Path getCuratorLogLocation() {
         return new Path( dir.log(), "curator.log" );

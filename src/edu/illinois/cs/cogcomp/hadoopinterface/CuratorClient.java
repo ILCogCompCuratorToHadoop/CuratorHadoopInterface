@@ -114,7 +114,7 @@ public class CuratorClient {
      * @throws TException If we were unable to connect to the Curator
      */
     public List<AnnotationMode> listAvailableAnnotators() throws TException {
-        Map<String, String > curatorAnnotations;
+        Map<String, String> curatorAnnotations;
         try {
             if( !transport.isOpen() ) {
                 transport.open();
@@ -202,22 +202,28 @@ public class CuratorClient {
                 transport.open();
             }
 
-            if( annotator.equals( AnnotationMode.TOKEN ) ) { // no dependencies
+            // performAnnotation() doesn't work. The following (asking the
+            // Curator to store the record, then using provide()) is a
+            // workaround.
+            // TODO: Fix the performAnnotation() function!!
+            client.storeRecord( toBeAnnotated );
+            toBeAnnotated = client.provide( annotator.toCuratorString(),
+                                            toBeAnnotated.getRawText(),
+                                            true );
+
+            /*if( annotator.equals( AnnotationMode.TOKEN ) ) { // no dependencies
                 toBeAnnotated = client.provide( annotator.toCuratorString(),
                                                 toBeAnnotated.getRawText(),
                                                 true );
             }
             else {
-                // performAnnotation() doesn't work. The following (asking the Curator
-                // to store the record, then using provide()) is a workaround.
-                // TODO: Fix the performAnnotation() function!!
                 client.storeRecord( toBeAnnotated );
 
                 client.performAnnotation( toBeAnnotated,
                                           annotator.toCuratorString(), true );
-            }
+            }*/
         } finally {
-            if( !transport.isOpen() ) {
+            if( transport.isOpen() ) {
                 transport.close();
             }
         }
