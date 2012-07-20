@@ -22,11 +22,11 @@ echo ""
 #########################################################################
 
 CURATOR_DIRECTORY=/shared/gargamel/undergrad/tyoun/curator-0.6.9
-#HADOOP_DIRECTORY=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
-#INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized
+HADOOP_DIRECTORY=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
+INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized
 OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
-#ANNOTATION_TOOL_TO_RUN=$1       # The 1st parameter from the command line
-#INPUT_PATH=$2                   # The 2nd parameter from the command line
+ANNOTATION_TOOL_TO_RUN=$1       # The 1st parameter from the command line
+INPUT_PATH=$2                   # The 2nd parameter from the command line
 TESTING=$3
 
 MSG_COLOR='\e[0;36m'     # Cyan. Might also try dark gray (1;30), green
@@ -62,13 +62,18 @@ cd $CURATOR_DIRECTORY/dist
 sleep 3s
 cd client
 ./runclient.sh -host localhost -port 9010 -in $OUTPUT/serialized_output -mode POST $TESTING 
-echo -e "$MSG_COLOR\n\nShutting down the master Curator. $DEFAULT_COLOR"
+
 # Kill the Curator server
+echo -e "$MSG_COLOR\n\nShutting down the master Curator. $DEFAULT_COLOR"
+# Get list of currently running Java procs | 
+# find the Curator server | 
+# split on spaces (?) | 
+# send the first thing (i.e., the process ID) to the kill command
 jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill
 
-# TODO New Hadoop job:
-#       Have the Hadoop nodes kill the running annotator, Curator, and 
-#       Curator Client processes
+# Have the Hadoop nodes kill the running annotator, Curator, and Curator Client processes
 # In order to do this, launch the HadoopInterface with parameter '-cleanup'
+./bin/hadoop jar CuratorHadoopInterface.jar -d $INPUT_PATH -m $ANNOTATION_TOOL_TO_RUN -cleanup
+
 
 exit 0
