@@ -105,9 +105,13 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             String startingText = inValue.getRawText();
 
             if( RecordTools.hasAnnotation( inValue, toolToRun ) ) {
-                HadoopInterface.logger.logWarning(
-                        "Document already has the requested annotation." );
-                throw new IOException(); // TODO: Remove when not testing!!
+                HadoopInterface.logger.logWarning( "Document "
+                        + inValue.getIdentifier() + ", which begins '"
+                        + RecordTools.getBeginningOfOriginalText( inValue )
+                        + "', already has the requested "
+                        + toolToRun.toString() + " annotation:\n\t"
+                        + inValue.getLabelViews()
+                                 .get( toolToRun.toCuratorString() ) );
             }
 
             try {
@@ -281,10 +285,11 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      */
     private long getEstimatedTimeToStart( AnnotationMode toolToRun ) {
         long timeForSmallModels = 3000; // 3 secs
+        long timeForMidModels = 6000; // 6 secs
         long timeForLargeModels = 30000; // 30 secs
         switch ( toolToRun ) {
             case CHUNK:
-                return timeForSmallModels;
+                return timeForMidModels;
             case COREF:
                 return timeForSmallModels;
             case NER:

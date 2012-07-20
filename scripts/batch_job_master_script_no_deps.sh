@@ -36,6 +36,7 @@ TESTING=$4                      # 4th parameter from CL should be "-test"
 MSG_COLOR='\e[0;36m'     # Cyan. Might also try dark gray (1;30), green
                          # (0;32), or light green (1;32).
 DEFAULT_COLOR='\e[0m'    # Reset to normal
+ERROR_COLOR='\e[0;31m'
 
 #########################################################################
 #                       No need to edit below here                      #
@@ -48,6 +49,18 @@ echo -e "$MSG_COLOR\n\n\nYou said your copy of Curator is located here: $CURATOR
 echo "You requested we run the annotation tool $ANNOTATION_TOOL_TO_RUN on your input"
 echo "You requested we annotate the input text files located here: $INPUT_PATH"
 echo -e "\t(That input directory should be an *absolute* path.) $DEFAULT_COLOR"
+
+# Make sure a proper mode was given
+if [ "$MODE" != "serial" ]; then
+    if [ "$MODE" != "raw" ]; then
+	echo -e "$ERROR_COLOR\n\n\n\tPlease launch this script with the "
+	echo -e "\tproper mode (either 'raw', for new documents, or 'serial'"
+	echo -e "\tfor documents already in serialized Record form, as you"
+	echo -e "\tmight get from a previous Hadoop job)."
+	exit 1;
+    fi
+fi
+
 
 if [ "$MODE" != "serial" ]; then # if we're working with raw text files...
     # Launch the Master Curator

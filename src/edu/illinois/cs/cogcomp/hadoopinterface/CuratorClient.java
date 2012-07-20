@@ -116,10 +116,14 @@ public class CuratorClient {
     public List<AnnotationMode> listAvailableAnnotators() throws TException {
         Map<String, String > curatorAnnotations;
         try {
-            transport.open();
+            if( !transport.isOpen() ) {
+                transport.open();
+            }
             curatorAnnotations = client.describeAnnotations();
         } finally {
-            transport.close();
+            if( transport.isOpen() ) {
+                transport.close();
+            }
         }
 
         List<AnnotationMode> available = new LinkedList<AnnotationMode>();
@@ -204,21 +208,14 @@ public class CuratorClient {
                                                 true );
             }
             else {
-
                 // performAnnotation() doesn't work. The following (asking the Curator
                 // to store the record, then using provide()) is a workaround.
                 // TODO: Fix the performAnnotation() function!!
+                client.storeRecord( toBeAnnotated );
+
                 client.performAnnotation( toBeAnnotated,
                                           annotator.toCuratorString(), true );
             }
-
-
-            /*client.storeRecord( toBeAnnotated );
-
-            // Provide will request the record for the raw text. This is so
-            // roundabout it makes my head hurt.
-            toBeAnnotated = client.provide( annotator.toCuratorString(),
-                                            toBeAnnotated.getRawText(), true );*/
         } finally {
             if( !transport.isOpen() ) {
                 transport.close();
@@ -230,7 +227,10 @@ public class CuratorClient {
                     "The Curator job ran without error, but for some reason, we "
                     + "failed to annotate document whose hash is "
                     + toBeAnnotated.getIdentifier()
-                    + " with annotation type " + annotator.toString() + "." );
+                    + " with annotation type " + annotator.toString() + ".\n"
+                    + "Is the Curator providing " + annotator.toString() + "? "
+                    + ( listAvailableAnnotators().contains(
+                            annotator.toCuratorString() ) ? "Yes." : "No." ) );
         }
 
         return toBeAnnotated;
@@ -573,7 +573,8 @@ public class CuratorClient {
                 msg.append( ". We have " );
                 msg.append( newNumViews );
                 msg.append( " views for it.\nNo database update is necessary, " );
-                msg.append( "but this is troubling." );
+                msg.append( "but this is troubling.\n" );
+                msg.append( RecordTools.getContents( r ) );
                 System.out.println( msg.toString() );
             }
         }

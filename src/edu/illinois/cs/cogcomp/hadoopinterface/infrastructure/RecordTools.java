@@ -110,19 +110,19 @@ public class RecordTools {
         result.append( "\nThe following Label Views: " );
         for ( String key : record.getLabelViews().keySet() ) {
             result.append( key );
-            result.append( " " );
+            result.append( ", " );
         }
         result.append( "\n" );
         result.append( "The following Cluster Views: " );
         for ( String key : record.getClusterViews().keySet() ) {
             result.append( key );
-            result.append( " " );
+            result.append( ", " );
         }
         result.append( "\n" );
         result.append( "The following Parse Views: " );
         for ( String key : record.getParseViews().keySet() ) {
             result.append( key );
-            result.append( " " );
+            result.append( ", " );
         }
         result.append( "\n" );
         result.append( "The following general Views: " );
