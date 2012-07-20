@@ -202,29 +202,35 @@ public class CuratorClient {
                 transport.open();
             }
 
+            if( !RecordTools.meetsDependencyReqs( toBeAnnotated, annotator ) ) {
+                throw new AnnotationFailedException( "Cannot annotate document " +
+                        "with the provided annotations (it is missing " +
+                        "dependencies)." );
+            }
+            else {
+                HadoopInterface.logger.logStatus( "Record provides annotations: "
+                        + RecordTools.getAnnotationsString( toBeAnnotated ) );
+            }
+
             // performAnnotation() doesn't work. The following (asking the
             // Curator to store the record, then using provide()) is a
             // cludgy workaround.
             // TODO: Fix the performAnnotation() function!!
+            HadoopInterface.logger.logStatus( "Storing record..." );
             client.storeRecord( toBeAnnotated );
+            HadoopInterface.logger.logStatus( "Calling provide..." );
+            // NOTE: forceUpdate must be false or else we will also try to
+            // update the dependencies, leading to a fiery death.
             toBeAnnotated = client.provide( annotator.toCuratorString(),
                                             toBeAnnotated.getRawText(),
-                                            true );
-
-            /*if( annotator.equals( AnnotationMode.TOKEN ) ) { // no dependencies
-                toBeAnnotated = client.provide( annotator.toCuratorString(),
-                                                toBeAnnotated.getRawText(),
-                                                true );
-            }
-            else {
-                client.storeRecord( toBeAnnotated );
-            }*/
+                                            false );
         } finally {
             if( transport.isOpen() ) {
                 transport.close();
             }
         }
 
+        HadoopInterface.logger.logStatus( "Ensuring we got the annotation..." );
         if( !RecordTools.hasAnnotation( toBeAnnotated, annotator ) ) {
             throw new AnnotationFailedException(
                     "The Curator job ran without error, but for some reason, we "
@@ -233,7 +239,14 @@ public class CuratorClient {
                     + " with annotation type " + annotator.toString() + ".\n"
                     + "Is the Curator providing " + annotator.toString() + "? "
                     + ( listAvailableAnnotators().contains( annotator )
-                        ? "Yes." : "No." ) );
+                        ? "Yes." : "No." )
+                    + "Second opinion--is it? "
+                    + ( toolIsRunning( annotator ) ? "Yes." : "No." ) );
+        }
+
+        // These two should always be done together
+        if( annotator.equals(AnnotationMode.TOKEN) ) {
+            annotate( toBeAnnotated, AnnotationMode.SENTENCE );
         }
 
         return toBeAnnotated;

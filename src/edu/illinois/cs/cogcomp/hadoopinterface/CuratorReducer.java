@@ -73,6 +73,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                         Iterable<HadoopRecord> inValues,
                         Context context )
             throws IOException, InterruptedException {
+        MessageLogger logger = HadoopInterface.logger;
         FileSystem fs = FileSystem.get( context.getConfiguration() );
         this.fsHandler = new FileSystemHandler( fs );
 
@@ -84,6 +85,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
         launchCuratorIfNecessary( toolToRun );
 
+        logger.logStatus( "Checking if tool can be run." );
         if( !toolCanBeRun( toolToRun ) ) {
             try {
                 throw new IOException( toolToRun.toString() + " cannot be used to " +
@@ -99,6 +101,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         // annotators
         //launchAnnotatorIfNecessary( toolToRun );
 
+        logger.logStatus( "Beginning document annotation." );
         // Annotate each document (There should only ever be one, but the contract
         // with reduce() says you have to accept an iterable of your values.)
         for( HadoopRecord inValue : inValues ) {
@@ -115,6 +118,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             }
 
             try {
+                logger.logStatus( "Annotating the document." );
                 client.annotateSingleDoc( inValue, toolToRun );
             } catch (ServiceUnavailableException e) {
                 String msg = toolToRun.toString()
@@ -145,6 +149,8 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                 throw new IOException(msg);
             }
 
+            logger.logStatus( "Checking for catastrophic errors that may have" +
+                    "occurred during annotation." );
             String postAnnotateText = client.getLastAnnotatedRecord().getRawText();
             if( startingText.equals( postAnnotateText ) ) {
                 int diff = StringUtils.getLevenshteinDistance( startingText,
@@ -160,6 +166,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                 }
             }
 
+            logger.logStatus( "Writing the annotation's output." );
             // Serialize the updated record to the output directory
             Path outputDir = new Path( context.getConfiguration().get("outputDirectory") );
 
@@ -357,72 +364,83 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             StringBuilder file = new StringBuilder();
             file.append( "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n" );
             file.append( "<curator-annotators>\n" );
-            file.append( "<annotator>\n" );
 
-            // TODO: Configs for missing annotators
-            switch (runningTool) {
-                case CHUNK:
-                    file.append( "    <type>labeler</type>\n" );
-                    file.append( "    <field>chunk</field>\n" );
-                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisChunkerHandler</local>\n" );
-                    file.append( "    <requirement>sentences</requirement>\n" );
-                    file.append( "    <requirement>tokens</requirement>\n" );
-                    file.append( "    <requirement>pos</requirement>\n" );
-                    break;
-                case COREF:
-                    file.append( "    <type>clustergenerator</type>\n" );
-                    file.append( "    <field>coref</field>\n" );
-                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisCorefHandler</local>\n" );
-                    file.append( "    <requirement>sentences</requirement>\n" );
-                    file.append( "    <requirement>tokens</requirement>\n" );
-                    file.append( "    <requirement>pos</requirement>\n" );
-                    file.append( "    <requirement>ner</requirement>\n" );
-                    break;
-                case NER:
-                    file.append( "    <type>labeler</type>\n" );
-                    file.append( "    <field>ner</field>\n" );
-                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisNERHandler</local>\n" );
-                    break;
-                case NOM_SRL:
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    break;
-                case PARSE:
-                    file.append( "    <type>multiparser</type>\n" );
-                    file.append( "    <field>stanfordParse</field>\n" );
-                    file.append( "    <field>stanfordDep</field>\n" );
-                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.StanfordParserHandler</local>\n" );
-                    file.append( "    <requirement>tokens</requirement>\n" );
-                    file.append( "    <requirement>sentences</requirement>\n" );
-                    break;
-                case POS:
-                    file.append( "    <type>labeler</type>\n" );
-                    file.append( "    <field>pos</field>\n" );
-                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisPOSHandler</local>\n" );
-                    file.append( "    <requirement>sentences</requirement>\n" );
-                    file.append( "    <requirement>tokens</requirement>\n" );
-                    break;
-                case TOKEN:
-                    file.append( "    <type>multilabeler</type>\n" );
-                    file.append( "    <field>sentences</field>\n" );
-                    file.append( "    <field>tokens</field>\n" );
-                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisTokenizerHandler</local>\n");
-                    break;
-                case VERB_SRL:
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    break;
-                case WIKI:
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    break;
+
+            // Make the tokenizer available to all configurations, as it is
+            // memory-light enough not to slow anything down
+            file.append( "<annotator>\n" );
+            file.append( "    <type>multilabeler</type>\n" );
+            file.append( "    <field>sentences</field>\n" );
+            file.append( "    <field>tokens</field>\n" );
+            file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisTokenizerHandler</local>\n");
+            file.append( "</annotator>\n" );
+
+            if( !runningTool.equals( AnnotationMode.TOKEN )
+                    && !runningTool.equals( AnnotationMode.SENTENCE ) ) {
+                file.append( "<annotator>\n" );
+                // TODO: Configs for missing annotators
+                switch (runningTool) {
+                    case CHUNK:
+                        file.append( "    <type>labeler</type>\n" );
+                        file.append( "    <field>chunk</field>\n" );
+                        file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisChunkerHandler</local>\n" );
+                        file.append( "    <requirement>sentences</requirement>\n" );
+                        file.append( "    <requirement>tokens</requirement>\n" );
+                        file.append( "    <requirement>pos</requirement>\n" );
+                        break;
+                    case COREF:
+                        file.append( "    <type>clustergenerator</type>\n" );
+                        file.append( "    <field>coref</field>\n" );
+                        file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisCorefHandler</local>\n" );
+                        file.append( "    <requirement>sentences</requirement>\n" );
+                        file.append( "    <requirement>tokens</requirement>\n" );
+                        file.append( "    <requirement>pos</requirement>\n" );
+                        file.append( "    <requirement>ner</requirement>\n" );
+                        break;
+                    case NER:
+                        file.append( "    <type>labeler</type>\n" );
+                        file.append( "    <field>ner</field>\n" );
+                        file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisNERHandler</local>\n" );
+                        break;
+                    case NOM_SRL:
+                        file.append( "    \n" );
+                        file.append( "    \n" );
+                        file.append( "    \n" );
+                        file.append( "    \n" );
+                        break;
+                    case PARSE:
+                        file.append( "    <type>multiparser</type>\n" );
+                        file.append( "    <field>stanfordParse</field>\n" );
+                        file.append( "    <field>stanfordDep</field>\n" );
+                        file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.StanfordParserHandler</local>\n" );
+                        file.append( "    <requirement>tokens</requirement>\n" );
+                        file.append( "    <requirement>sentences</requirement>\n" );
+                        break;
+                    case POS:
+                        file.append( "    <type>labeler</type>\n" );
+                        file.append( "    <field>pos</field>\n" );
+                        file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisPOSHandler</local>\n" );
+                        file.append( "    <requirement>sentences</requirement>\n" );
+                        file.append( "    <requirement>tokens</requirement>\n" );
+                        break;
+                    case TOKEN:
+                        // Handled above; placed here for consistency
+                        break;
+                    case VERB_SRL:
+                        file.append( "    \n" );
+                        file.append( "    \n" );
+                        file.append( "    \n" );
+                        break;
+                    case WIKI:
+                        file.append( "    \n" );
+                        file.append( "    \n" );
+                        file.append( "    \n" );
+                        break;
+                }
+
+                file.append( "</annotator>\n" );
             }
 
-            file.append( "</annotator>\n" );
             file.append( "</curator-annotators>\n" );
 
             fsHandler.writeFileToLocal( file.toString(), configLoc );
@@ -580,10 +598,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
     /**
      * @return The location, on the local file system, of the Curator log file
-     * @deprecated This is pretty unreliable. You should probably be using the
-     *             CuratorClient's methods for checking the Curator's status,
-     *             which forego the logs and just *try* connecting to the
-     *             Curator.
      */
     private Path getCuratorLogLocation() {
         return new Path( dir.log(), "curator.log" );

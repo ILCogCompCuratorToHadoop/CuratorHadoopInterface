@@ -8,6 +8,7 @@ import edu.illinois.cs.cogcomp.thrift.base.View;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Scanner;
 import java.util.Set;
 
@@ -131,6 +132,30 @@ public class RecordTools {
             result.append( " " );
         }
         result.append( "\n" );
+        return result.toString();
+    }
+
+    /**
+     * Gets a string that represents the annotations contained in the record.
+     *
+     * @param record The records whose (string-version) contents you want to get
+     * @return A string version of the record's annotations. Example:
+     *             "TOKEN SENTENCE POS CHUNK"
+     */
+    public static String getAnnotationsString( Record record ) {
+        Set<String> allAnnotations = new HashSet<String>();
+
+        allAnnotations.addAll( record.getLabelViews().keySet() );
+        allAnnotations.addAll( record.getClusterViews().keySet() );
+        allAnnotations.addAll( record.getParseViews().keySet() );
+        allAnnotations.addAll( record.getViews().keySet() );
+
+        StringBuilder result = new StringBuilder();
+
+        for ( String key : allAnnotations ) {
+            result.append( AnnotationMode.fromString(key).toString() );
+            result.append( " " );
+        }
         return result.toString();
     }
 

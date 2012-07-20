@@ -126,7 +126,8 @@ fi
 
 # Launch MapReduce job on Hadoop cluster
 echo -e "$MSG_COLOR\n\n\nLaunching the mapreduce job on the Hadoop cluster: $DEFAULT_COLOR"
-./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d serialized -m $ANNOTATION_TOOL_TO_RUN -out serialized_output
+HADOOP_OUTPUT=$ANNOTATION_TOOL_TO_RUN"_output"
+./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d serialized -m $ANNOTATION_TOOL_TO_RUN -out $HADOOP_OUTPUT
 echo -e "$MSG_COLOR\n\n\nJob finished!\n\n$DEFAULT_COLOR"
 
 
@@ -136,11 +137,10 @@ set +e # Do *not* exit the script if a command fails (so we can give
 # When the MapReduce job finishes, copy the data back to local disk
 # TODO: Make this a distributed Hadoop job
 echo -e "$MSG_COLOR Copying the results of the MapReduce job back to the local machine$DEFAULT_COLOR"
-./bin/hadoop fs -copyToLocal serialized_output $OUTPUT
+./bin/hadoop fs -copyToLocal $HADOOP_OUTPUT $OUTPUT
 # If the copy to local failed . . . 
-if [ "$?"-ne 0 ]
-then
-   echo -e "$MSG_COLOR\nCopying to local failed. Try fixing the error, then executing: $COMMAND$DEFAULT_COLOR"
+if [[ $? -ne 0 ]] ; then
+   echo -e "$MSG_COLOR\nCopying to local failed. Try fixing the error, then executing: ./bin/hadoop fs -copyToLocal serialized_output $OUTPUT $DEFAULT_COLOR"
    exit 1
 fi 
 echo -e "$MSG_COLOR\nCopying to local succeeded. $DEFAULT_COLOR"
@@ -153,7 +153,7 @@ cd $CURATOR_DIRECTORY/dist
 ./bin/curator.sh --annotators configs/annotators-empty.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null
 sleep 3s
 cd client
-./runclient.sh -host localhost -port 9010 -in $OUTPUT/serialized_output -mode POST $TESTING 
+./runclient.sh -host localhost -port 9010 -in $OUTPUT/$HADOOP_OUTPUT -mode POST $TESTING 
 echo -e "$MSG_COLOR\n\nShutting down the master Curator. $DEFAULT_COLOR"
 jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill
 

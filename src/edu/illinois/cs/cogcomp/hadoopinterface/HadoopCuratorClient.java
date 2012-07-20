@@ -2,6 +2,8 @@ package edu.illinois.cs.cogcomp.hadoopinterface;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.HadoopSerializationHandler;
+
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.RecordTools;
 import edu.illinois.cs.cogcomp.thrift.base.AnnotationFailedException;
 import edu.illinois.cs.cogcomp.thrift.base.ServiceSecurityException;
 import edu.illinois.cs.cogcomp.thrift.base.ServiceUnavailableException;
@@ -55,24 +57,19 @@ public class HadoopCuratorClient extends CuratorClient {
      * object for later output through the writeOutputFromLastAnnotate() method.
      * @param record The document record on which we will run the annotation tool
      * @param toolToRun The type of annotation that we should get for the record
+     * @postcondition lastAnnotatedRecord contains all of the record parameter's
+     *                previous annotations, along with the new one
      */
 	public void annotateSingleDoc( Record record,
                                    AnnotationMode toolToRun )
             throws ServiceUnavailableException, TException,
             AnnotationFailedException, ServiceSecurityException {
-        try {
-            // Ask the Curator to perform the annotation
-            transport.open();
-            annotate( record, toolToRun );
-        } finally {
-            if( transport.isOpen() ) {
-                transport.close();
-            }
-        }
+        // Ask the Curator to perform the annotation
+        lastAnnotatedRecord = annotate( record, toolToRun );
 
-        // Should contain all of the previous annotations, along with
-        // the new one
-        lastAnnotatedRecord = record;
+        if( !RecordTools.hasAnnotation( lastAnnotatedRecord, toolToRun ) ) {
+            throw new AnnotationFailedException("Annotation was unsuccessful!");
+        }
     }
 
     /**
@@ -86,7 +83,24 @@ public class HadoopCuratorClient extends CuratorClient {
     public void writeOutputFromLastAnnotate( Path outputDir )
             throws TException, IOException {
         Path fileLoc = getLocForSerializedForm( lastAnnotatedRecord, outputDir );
-        serializer.serialize( lastAnnotatedRecord, fileLoc, hdfs );
+
+        try {
+            if( !transport.isOpen() ) {
+                transport.open();
+            }
+            serializer.serialize( lastAnnotatedRecord, fileLoc, hdfs );
+
+            Record reconstructed = serializer.deserialize( fileLoc, hdfs );
+            if( !RecordTools.hasAnnotations( reconstructed ) ) {
+                throw new IOException( "Reconstructed record has no annotations, but original has the following: "
+                                       + RecordTools.getContents( lastAnnotatedRecord ) );
+            }
+        }
+        finally {
+            if( transport.isOpen() ) {
+                transport.close();
+            }
+        }
     }
 
     /**
