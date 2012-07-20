@@ -85,8 +85,13 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         launchCuratorIfNecessary( toolToRun );
 
         if( !toolCanBeRun( toolToRun ) ) {
-            throw new IOException( toolToRun.toString() + " cannot be used to " +
-                    "annotate the document." );
+            try {
+                throw new IOException( toolToRun.toString() + " cannot be used to " +
+                        "annotate the document." + MessageLogger.getPrettifiedList(
+                        client.listAvailableAnnotators() ) );
+            } catch ( TException e ) {
+                throw new IOException("Thrift exception!!");
+            }
         }
 
         // We've moved to launching all tools in local mode (that is, as a
@@ -421,7 +426,8 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      *                    Hadoop node
      */
     private void startCurator( AnnotationMode runningTool ) throws IOException {
-        Path scriptLoc = new Path( dir.bin(), "curator.sh" );
+        // This is confirmed to work with "curator.sh" -- testing local version
+        Path scriptLoc = new Path( dir.bin(), "curator-local.sh" );
         Path annotatorsConfigLoc = getAnnotatorConfigLoc( runningTool );
         // Ensure the config file exists; create it if not
 

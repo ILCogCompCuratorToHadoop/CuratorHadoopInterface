@@ -1,6 +1,9 @@
-package edu.illinois.cs.cogcomp.hadoopinterface;
+package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.AnnotationMode;
+
+import java.io.IOException;
+import java.util.Set;
 
 public class JobHandler {
 
@@ -9,8 +12,8 @@ public class JobHandler {
      *             The first argument must be an annotation type
      *             and the second argument must be an ABSOLUTE input directory path.
      */
-	public static void main(String[] argv) {
-        String requestedAnnotation = argv[0];
+	public static void main(String[] argv) throws IOException {
+        AnnotationMode requestedAnnotation = AnnotationMode.fromString( argv[0] );
         String inputDirectory = argv[1];
 
         // Call batch_master_curator_to_hadoop
@@ -18,7 +21,7 @@ public class JobHandler {
         Runtime.getRuntime().exec("./batch_master_curator_to_hadoop " + requestedAnnotation + " " + inputDirectory);
 
         // Retrieve list of dependencies for requested annotation
-        Set<AnnotationMode> dependencies = AnnotationMode.getDependencies();
+        Set<AnnotationMode> dependencies = requestedAnnotation.getDependencies();
         // Loop through all intermediate dependencies
         for (AnnotationMode a : dependencies) {
             // Launch MapReduce job on Hadoop cluster
