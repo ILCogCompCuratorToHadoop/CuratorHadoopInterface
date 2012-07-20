@@ -178,11 +178,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             // pass Curator output back to Hadoop as Record
             context.write(inKey, inValue);
         }
-
-        // TODO Run a separate MR job (e.g. KillCuratorReducer.java),
-        // after all jobs are through, to kill all tools and local Curators
-        // Command to do this: "jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill"
-        //      See here: http://stackoverflow.com/questions/2131874/shell-script-to-stop-a-java-program
     }
 
     /**
@@ -256,6 +251,9 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      * @throws InterruptedException If sleeping the thread fails
      * @postcondition The requested annotator is running and accessible through
      *                the client
+     * @deprecated Currently, we believe the annotators should only ever be
+     *             launched local to a curator, so this function is completely
+     *             unnecessary.
      */
     public void launchAnnotatorIfNecessary( AnnotationMode toolToRun )
             throws IOException, InterruptedException {
@@ -316,13 +314,133 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
     /**
      * Runs the shell script required to launch the indicated annotation tool.
      * If this script is not found in your Curator directory (i.e., at
+     * `~/curator/dist/scripts/launch_curator_on_this_node.sh`), we'll simply
+     * create it.
+     * @param runningTool The annotation tool that is already running on this
+     *                    Hadoop node
+     */
+    private void startCurator( AnnotationMode runningTool ) throws IOException {
+        // This is confirmed to work with "curator.sh" -- testing local version
+        Path scriptLoc = new Path( dir.bin(), "curator-local.sh" );
+        Path annotatorsConfigLoc = getAnnotatorConfigLoc( runningTool );
+        // Ensure the config file exists; create it if not
+
+        StringBuilder launchScript = new StringBuilder( scriptLoc.toString() );
+        launchScript.append(" --annotators ");
+        launchScript.append( annotatorsConfigLoc.toString() );
+        launchScript.append(" --port " );
+        launchScript.append( Integer.toString( HadoopCuratorClient.PORT ) );
+        launchScript.append(" --threads 10 >& ");
+        launchScript.append( getCuratorLogLocation().toString() );
+        launchScript.append(" &");
+
+        HadoopInterface.logger.logStatus( "Launching Curator on node with "
+                + "command \n\t" + launchScript.toString() );
+        spawnedCuratorProcesses.add( Runtime.getRuntime()
+                                            .exec( launchScript.toString() ) );
+    }
+
+
+    /**
+     * Checks the XML file used to point the Curator to the locally running
+     * annotators. If the file doesn't exist, creates it.
+     *
+     * @param runningTool The annotator currently running on this node
+     * @return The location at which the config file can be accessed.
+     */
+    private Path getAnnotatorConfigLoc(AnnotationMode runningTool) throws IOException {
+        String fileName = "annotators-local-" + runningTool.toString() + ".xml";
+        Path configLoc = new Path( dir.config(), fileName );
+
+        // If the config file doesn't exist, go ahead and create it.
+        if( !FileSystemHandler.localFileExists( configLoc ) ) {
+            StringBuilder file = new StringBuilder();
+            file.append( "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n" );
+            file.append( "<curator-annotators>\n" );
+            file.append( "<annotator>\n" );
+
+            // TODO: Configs for missing annotators
+            switch (runningTool) {
+                case CHUNK:
+                    file.append( "    <type>labeler</type>\n" );
+                    file.append( "    <field>chunk</field>\n" );
+                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisChunkerHandler</local>\n" );
+                    file.append( "    <requirement>sentences</requirement>\n" );
+                    file.append( "    <requirement>tokens</requirement>\n" );
+                    file.append( "    <requirement>pos</requirement>\n" );
+                    break;
+                case COREF:
+                    file.append( "    <type>clustergenerator</type>\n" );
+                    file.append( "    <field>coref</field>\n" );
+                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisCorefHandler</local>\n" );
+                    file.append( "    <requirement>sentences</requirement>\n" );
+                    file.append( "    <requirement>tokens</requirement>\n" );
+                    file.append( "    <requirement>pos</requirement>\n" );
+                    file.append( "    <requirement>ner</requirement>\n" );
+                    break;
+                case NER:
+                    file.append( "    <type>labeler</type>\n" );
+                    file.append( "    <field>ner</field>\n" );
+                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisNERHandler</local>\n" );
+                    break;
+                case NOM_SRL:
+                    file.append( "    \n" );
+                    file.append( "    \n" );
+                    file.append( "    \n" );
+                    file.append( "    \n" );
+                    break;
+                case PARSE:
+                    file.append( "    <type>multiparser</type>\n" );
+                    file.append( "    <field>stanfordParse</field>\n" );
+                    file.append( "    <field>stanfordDep</field>\n" );
+                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.StanfordParserHandler</local>\n" );
+                    file.append( "    <requirement>tokens</requirement>\n" );
+                    file.append( "    <requirement>sentences</requirement>\n" );
+                    break;
+                case POS:
+                    file.append( "    <type>labeler</type>\n" );
+                    file.append( "    <field>pos</field>\n" );
+                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisPOSHandler</local>\n" );
+                    file.append( "    <requirement>sentences</requirement>\n" );
+                    file.append( "    <requirement>tokens</requirement>\n" );
+                    break;
+                case TOKEN:
+                    file.append( "    <type>multilabeler</type>\n" );
+                    file.append( "    <field>sentences</field>\n" );
+                    file.append( "    <field>tokens</field>\n" );
+                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisTokenizerHandler</local>\n");
+                    break;
+                case VERB_SRL:
+                    file.append( "    \n" );
+                    file.append( "    \n" );
+                    file.append( "    \n" );
+                    break;
+                case WIKI:
+                    file.append( "    \n" );
+                    file.append( "    \n" );
+                    file.append( "    \n" );
+                    break;
+            }
+
+            file.append( "</annotator>\n" );
+            file.append( "</curator-annotators>\n" );
+
+            fsHandler.writeFileToLocal( file.toString(), configLoc );
+        }
+        return configLoc;
+    }
+
+    /**
+     * Runs the shell script required to launch the indicated annotation tool.
+     * If this script is not found in your Curator directory (i.e., at
      * `~/curator/dist/scripts/launch_annotator_on_this_node.sh`), we'll simply
      * create it.
      * @param toolToLaunch The annotation tool to launch (more accurately,
      *                     the type of annotation provided by the tool to be
      *                     launched)
      * @deprecated In local mode, you do not need to launch the tool as a
-     *             separate command.
+     *             separate command (it starts as part of the Curator). This is
+     *             now the preferrred way to launch the jobs.
      */
     private void startTool( AnnotationMode toolToLaunch )
             throws IOException {
@@ -423,36 +541,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         }
     }
 
-
-    /**
-     * Runs the shell script required to launch the indicated annotation tool.
-     * If this script is not found in your Curator directory (i.e., at
-     * `~/curator/dist/scripts/launch_curator_on_this_node.sh`), we'll simply
-     * create it.
-     * @param runningTool The annotation tool that is already running on this
-     *                    Hadoop node
-     */
-    private void startCurator( AnnotationMode runningTool ) throws IOException {
-        // This is confirmed to work with "curator.sh" -- testing local version
-        Path scriptLoc = new Path( dir.bin(), "curator-local.sh" );
-        Path annotatorsConfigLoc = getAnnotatorConfigLoc( runningTool );
-        // Ensure the config file exists; create it if not
-
-        StringBuilder launchScript = new StringBuilder( scriptLoc.toString() );
-        launchScript.append(" --annotators ");
-        launchScript.append( annotatorsConfigLoc.toString() );
-        launchScript.append(" --port " );
-        launchScript.append( Integer.toString( HadoopCuratorClient.PORT ) );
-        launchScript.append(" --threads 10 >& ");
-        launchScript.append( getCuratorLogLocation().toString() );
-        launchScript.append(" &");
-
-        HadoopInterface.logger.logStatus( "Launching Curator on node with "
-                + "command \n\t" + launchScript.toString() );
-        spawnedCuratorProcesses.add( Runtime.getRuntime()
-                                            .exec( launchScript.toString() ) );
-    }
-
     /**
      * Returns the log location on the local node for the specified annotation
      * tool.
@@ -499,95 +587,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      */
     private Path getCuratorLogLocation() {
         return new Path( dir.log(), "curator.log" );
-    }
-
-    /**
-     * Checks the XML file used to point the Curator to the locally running
-     * annotators. If the file doesn't exist, creates it.
-     *
-     * @param runningTool The annotator currently running on this node
-     * @return The location at which the config file can be accessed.
-     */
-    private Path getAnnotatorConfigLoc(AnnotationMode runningTool) throws IOException {
-        String fileName = "annotators-local-" + runningTool.toString() + ".xml";
-        Path configLoc = new Path( dir.config(), fileName );
-
-        // If the config file doesn't exist, go ahead and create it.
-        if( !FileSystemHandler.localFileExists( configLoc ) ) {
-            StringBuilder file = new StringBuilder();
-            file.append( "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n" );
-            file.append( "<curator-annotators>\n" );
-            file.append( "<annotator>\n" );
-
-            // TODO: Configs for missing annotators
-            switch (runningTool) {
-                case CHUNK:
-                    file.append( "    <type>labeler</type>\n" );
-                    file.append( "    <field>chunk</field>\n" );
-                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisChunkerHandler</local>\n" );
-                    file.append( "    <requirement>sentences</requirement>\n" );
-                    file.append( "    <requirement>tokens</requirement>\n" );
-                    file.append( "    <requirement>pos</requirement>\n" );
-                    break;
-                case COREF:
-                    file.append( "    <type>clustergenerator</type>\n" );
-                    file.append( "    <field>coref</field>\n" );
-                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisCorefHandler</local>\n" );
-                    file.append( "    <requirement>sentences</requirement>\n" );
-                    file.append( "    <requirement>tokens</requirement>\n" );
-                    file.append( "    <requirement>pos</requirement>\n" );
-                    file.append( "    <requirement>ner</requirement>\n" );
-                    break;
-                case NER:
-                    file.append( "    <type>labeler</type>\n" );
-                    file.append( "    <field>ner</field>\n" );
-                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisNERHandler</local>\n" );
-                    break;
-                case NOM_SRL:
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    break;
-                case PARSE:
-                    file.append( "    <type>multiparser</type>\n" );
-                    file.append( "    <field>stanfordParse</field>\n" );
-                    file.append( "    <field>stanfordDep</field>\n" );
-                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.StanfordParserHandler</local>\n" );
-                    file.append( "    <requirement>tokens</requirement>\n" );
-                    file.append( "    <requirement>sentences</requirement>\n" );
-                    break;
-                case POS:
-                    file.append( "    <type>labeler</type>\n" );
-                    file.append( "    <field>pos</field>\n" );
-                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisPOSHandler</local>\n" );
-                    file.append( "    <requirement>sentences</requirement>\n" );
-                    file.append( "    <requirement>tokens</requirement>\n" );
-                    break;
-                case TOKEN:
-                    file.append( "    <type>multilabeler</type>\n" );
-                    file.append( "    <field>sentences</field>\n" );
-                    file.append( "    <field>tokens</field>\n" );
-                    file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisTokenizerHandler</local>\n");
-                    break;
-                case VERB_SRL:
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    break;
-                case WIKI:
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    file.append( "    \n" );
-                    break;
-            }
-
-            file.append( "</annotator>\n" );
-            file.append( "</curator-annotators>\n" );
-
-            fsHandler.writeFileToLocal( file.toString(), configLoc );
-        }
-        return configLoc;
     }
 
     /**

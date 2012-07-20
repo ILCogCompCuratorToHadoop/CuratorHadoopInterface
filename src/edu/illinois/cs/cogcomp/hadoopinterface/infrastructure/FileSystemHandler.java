@@ -331,7 +331,7 @@ public class FileSystemHandler {
         // Handle appends
         if( appendInsteadOfOverwriting && HDFSFileExists(qualifiedLoc) ) {
             // Append is *not* supported in Hadoop r1.0.3. Damn.
-            // TODO: When 2.0 is final, change to use FileSystem.append() instead
+            // TODO: [Long-term] When 2.0 is final, change to use FileSystem.append() instead
             // dos = fs.append( locationForFile );
 
             byte[] old = readBytesFromHDFS( qualifiedLoc );

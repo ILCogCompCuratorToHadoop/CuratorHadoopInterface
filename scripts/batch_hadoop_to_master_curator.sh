@@ -69,5 +69,6 @@ jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | 
 # TODO New Hadoop job:
 #       Have the Hadoop nodes kill the running annotator, Curator, and 
 #       Curator Client processes
+# In order to do this, launch the HadoopInterface with parameter '-cleanup'
 
 exit 0

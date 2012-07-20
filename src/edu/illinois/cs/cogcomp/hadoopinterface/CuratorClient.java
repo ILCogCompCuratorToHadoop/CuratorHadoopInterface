@@ -314,9 +314,18 @@ public class CuratorClient {
 
         String text = LocalFileSystemHandler.readFileToString( originalFile );
 
-        transport.open();
-        Record dbRecord = client.getRecord( text );
-        transport.close();
+        Record dbRecord;
+        try {
+            if( !transport.isOpen() ) {
+                transport.open();
+            }
+            dbRecord = client.getRecord( text );
+        }
+        finally {
+            if( transport.isOpen() ) {
+                transport.close();
+            }
+        }
         return dbRecord;
     }
 
@@ -498,13 +507,21 @@ public class CuratorClient {
      * @throws TException
      */
     private void printInfoOnKnownAnnotators() throws TException {
-        transport.open();
-        Map<String, String> avail = client.describeAnnotations();
-        System.out.println("Available annotations:");
-        for (String key : avail.keySet()) {
-            System.out.println("\t" + key + " provided by " + avail.get(key) );
+        try {
+            if( !transport.isOpen() ) {
+                transport.open();
+            }
+            Map<String, String> avail = client.describeAnnotations();
+            System.out.println("Available annotations:");
+            for (String key : avail.keySet()) {
+                System.out.println("\t" + key + " provided by " + avail.get(key) );
+            }
         }
-        transport.close();
+        finally {
+            if( transport.isOpen() ) {
+                transport.close();
+            }
+        }
     }
 
     /**

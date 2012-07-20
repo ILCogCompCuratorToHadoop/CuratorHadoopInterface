@@ -53,6 +53,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
                 getConfiguration().get("annotationMode") );
         numReduces = argParser.getNumReduces();
         testing = argParser.isTesting();
+        cleaning = argParser.isCleaning();
 
         configureJob();
 
@@ -81,7 +82,13 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
             setMapperClass( CuratorMapper.class );
         }
 
-        setReducerClass( CuratorReducer.class );
+        // TODO: More things to change in cleaning mode?
+        if( cleaning ) {
+            setReducerClass( CuratorKillerReducer.class );
+        }
+        else {
+            setReducerClass( CuratorReducer.class );
+        }
         //setNumReduceTasks( numReduces );
 
         // We split the input at the document directory level
@@ -247,6 +254,17 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
     }
 
     /**
+     * Determines whether we are running in cleaning mode, where we don't
+     * actually need to process input, we just need to shut down the Curator
+     * running on each of the reducer nodes.
+     * @return True if the command-line arguments told us to run in cleaning
+     *         mode
+     */
+    public boolean isCleaning() {
+        return cleaning;
+    }
+
+    /**
      * After calling the superclass constructor, the configuration can't be
      * modified. Thus, we get build the configuration here before passing it to
      * the superclass constructor.
@@ -289,6 +307,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
     private Path inputDirectory;
     private Path outputDirectory;
     private boolean testing;
+    private boolean cleaning;
     private AnnotationMode mode;
     private MessageLogger logger = HadoopInterface.logger;
     private FileSystem fs;
