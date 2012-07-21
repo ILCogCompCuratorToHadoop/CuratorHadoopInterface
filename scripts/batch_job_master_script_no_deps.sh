@@ -137,7 +137,22 @@ set +e # Do *not* exit the script if a command fails (so we can give
 # When the MapReduce job finishes, copy the data back to local disk
 # TODO: Make this a distributed Hadoop job
 echo -e "$MSG_COLOR Copying the results of the MapReduce job back to the local machine$DEFAULT_COLOR"
+
+if [ -e $OUTPUT/$HADOOP_OUTPUT ]; then
+    echo "Output directory $OUTPUT already exists. Should we delete it and replace?"
+    echo "(If no, we will have to exit the job, let you move things around, then"
+    echo "let you relaunch the job or something.)"
+    echo "Delete exising $OUTPUT ? (y/n)"
+    read ANSWER
+    if [ $ANSWER = 'y' ]; then
+	chmod -R 777 $OUTPUT/$HADOOP_OUTPUT
+	rm -r $OUTPUT/$HADOOP_OUTPUT
+    fi
+fi
+
 ./bin/hadoop fs -copyToLocal $HADOOP_OUTPUT $OUTPUT
+chmod -R 777 $OUTPUT/$HADOOP_OUTPUT
+
 # If the copy to local failed . . . 
 if [[ $? -ne 0 ]] ; then
    echo -e "$MSG_COLOR\nCopying to local failed. Try fixing the error, then executing: ./bin/hadoop fs -copyToLocal serialized_output $OUTPUT $DEFAULT_COLOR"

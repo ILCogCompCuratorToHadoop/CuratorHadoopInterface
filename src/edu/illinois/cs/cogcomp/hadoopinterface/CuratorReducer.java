@@ -149,8 +149,8 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                 throw new IOException(msg);
             }
 
-            logger.logStatus( "Checking for catastrophic errors that may have" +
-                    "occurred during annotation." );
+            logger.logStatus( "Checking for catastrophic errors that may have "
+                              + "occurred during annotation." );
             String postAnnotateText = client.getLastAnnotatedRecord().getRawText();
             if( startingText.equals( postAnnotateText ) ) {
                 int diff = StringUtils.getLevenshteinDistance( startingText,
@@ -222,6 +222,8 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         // Note: the curatorIsRunning() function *appears* to work when I start
         // the Curator Server by hand, but not when using the scripts. . .???
         while( !client.curatorIsRunning() ) {
+            destroyAllSpawnedCuratorProcesses();
+
             // If not, start it and sleep repeatedly until it's ready to go
             startCurator( toolToRun );
 
@@ -232,9 +234,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             // If we've attempted to start it 20 times, we give up
             ++attemptsToStart;
             if( attemptsToStart >= MAX_ATTEMPTS ) {
-                for( Process p : spawnedCuratorProcesses ) {
-                    p.destroy();
-                }
+                destroyAllSpawnedCuratorProcesses();
                 throw new IOException( "Unable to launch Curator. "
                         + "Made " + attemptsToStart + " attempts." );
             }
@@ -246,6 +246,19 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         else {
             HadoopInterface.logger.log( "Successfully launched Curator on node." );
         }
+    }
+
+    /**
+     * Since we keep track of all instances of the Curator that we launch, we can
+     * use this method to kill them if necessary.
+     */
+    private void destroyAllSpawnedCuratorProcesses() {
+        for( Process p : spawnedCuratorProcesses ) {
+            HadoopInterface.logger.logStatus( "Stopping a Curator process that " +
+                    "was launched on this Reduce node.");
+            p.destroy();
+        }
+        spawnedCuratorProcesses.clear();
     }
 
     /**
@@ -290,11 +303,11 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      */
     private long getEstimatedTimeToStart( AnnotationMode toolToRun ) {
         long timeForSmallModels = 3000; // 3 secs
-        long timeForMidModels = 6000; // 6 secs
+        long timeForMidModels = 10000; // 10 secs
         long timeForLargeModels = 30000; // 30 secs
         switch ( toolToRun ) {
             case CHUNK:
-                return timeForMidModels;
+                return timeForMidModels; // By my estimates, takes about 5 secs
             case COREF:
                 return timeForSmallModels;
             case NER:

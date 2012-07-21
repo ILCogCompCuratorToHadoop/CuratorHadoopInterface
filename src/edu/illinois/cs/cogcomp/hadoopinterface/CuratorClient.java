@@ -143,6 +143,8 @@ public class CuratorClient {
         try {
             listAvailableAnnotators();
         } catch ( TException e ) {
+            System.out.println("Couldn't list available annotators. " +
+                    "TException reason: " + e.getMessage());
             return false;
         }
 
@@ -167,13 +169,21 @@ public class CuratorClient {
     public Record annotate( Record toBeAnnotated, AnnotationMode annotator )
             throws ServiceUnavailableException, TException,
             AnnotationFailedException, ServiceSecurityException {
+        MessageLogger logger = HadoopInterface.logger;
         if( !RecordTools.meetsDependencyReqs( toBeAnnotated, annotator ) ) {
-            throw new AnnotationFailedException( "Cannot annotate document " +
-                    "with the provided annotations (it is missing " +
-                    "dependencies)." );
+            StringBuilder msg = new StringBuilder();
+            msg.append( "Cannot annotate document with the provided annotations. " );
+            msg.append( "It is missing dependencies. We require " );
+            msg.append( MessageLogger.getPrettifiedList(
+                    new ArrayList<AnnotationMode>(
+                            (Collection<AnnotationMode>)
+                                    annotator.getDependencies() ) ) );
+            msg.append( " but you provided " );
+            msg.append( RecordTools.getAnnotationsString( toBeAnnotated ) );
+            throw new AnnotationFailedException( msg.toString() );
         }
         else {
-            HadoopInterface.logger.logStatus( "Record provides annotations: "
+            logger.logStatus( "Record provides annotations: "
                     + RecordTools.getAnnotationsString( toBeAnnotated ) );
         }
 
@@ -186,11 +196,14 @@ public class CuratorClient {
             // Curator to store the record, then using provide()) is a
             // cludgy workaround.
             // TODO: Fix the performAnnotation() function!!
-            HadoopInterface.logger.logStatus( "Storing record..." );
-            client.storeRecord( toBeAnnotated );
+            if( !annotator.equals( AnnotationMode.TOKEN )
+                    && !annotator.equals( AnnotationMode.SENTENCE ) ) {
+                HadoopInterface.logger.logStatus( "Storing record..." );
+                client.storeRecord( toBeAnnotated );
+            }
 
-
-            HadoopInterface.logger.logStatus( "Calling provide..." );
+            HadoopInterface.logger.logStatus( "Calling provide for "
+                                              + annotator.toString() + "..." );
             // NOTE: forceUpdate must be false or else we will also try to
             // update the dependencies, leading to a fiery death.
             toBeAnnotated = client.provide( annotator.toCuratorString(),
@@ -214,11 +227,6 @@ public class CuratorClient {
                         ? "Yes." : "No." )
                     + "\nRecord's annotations: "
                     + RecordTools.getAnnotationsString( toBeAnnotated ) );
-        }
-
-        // These two should always be done together
-        if( annotator.equals(AnnotationMode.TOKEN) ) {
-            annotate( toBeAnnotated, AnnotationMode.SENTENCE );
         }
 
         return toBeAnnotated;
@@ -579,7 +587,10 @@ public class CuratorClient {
                 msg.append( newNumViews );
                 msg.append( " views for it.\nNo database update is necessary, " );
                 msg.append( "but this is troubling.\n" );
-                msg.append( RecordTools.getContents( r ) );
+                msg.append( "Views we now know of: ");
+                msg.append( RecordTools.getAnnotationsString( r ) );
+                msg.append( "\nOld views we knew of: ");
+                msg.append( RecordTools.getAnnotationsString( old ) );
                 System.out.println( msg.toString() );
             }
         }
