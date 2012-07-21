@@ -168,18 +168,18 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
 	/**
 	 * Based on getAnnotationsString() method in RecordTools
 	 *
-	 * @return a list of strings of all existing annotations stored in this record
+	 * @return a list of all existing annotations stored in this record
 	 */
-	public ArrayList<String> getAnnotationsAsStringList() {
+	public ArrayList<AnnotationMode> getAnnotationsList() {
         Set<String> allAnnotations = new HashSet<String>();
         allAnnotations.addAll( record.getLabelViews().keySet() );
         allAnnotations.addAll( record.getClusterViews().keySet() );
         allAnnotations.addAll( record.getParseViews().keySet() );
         allAnnotations.addAll( record.getViews().keySet() );
 
-        ArrayList<> result = new ArrayList<String>();
+        ArrayList<AnnotationMode> result = new ArrayList<AnnotationMode>();
         for ( String key : allAnnotations ) {
-            result.add( AnnotationMode.fromString(key).toString() );
+            result.add( AnnotationMode.fromString(key) );
         }
         return result;
 	}

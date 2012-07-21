@@ -169,6 +169,9 @@ public enum AnnotationMode {
      *         however, this annotation is CHUNK (chunking), it will return
      *         a set containing TOKEN and POS (in this order), since chunking 
      *         depends on both tokenization and part of speech.
+	 *
+	 * NOTE: This method should return dependencies in run-time order (i.e. resolving
+	 *       inter-dependencies automatically).
      */
     public ArrayList<AnnotationMode> getDependencies(AnnotationMode typeOfAnnotation) {
         ArrayList<AnnotationMode> deps = new ArrayList<AnnotationMode>();

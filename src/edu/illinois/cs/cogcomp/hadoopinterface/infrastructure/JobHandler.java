@@ -3,11 +3,20 @@ package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+//TODO import AnnotationMode
+//TODO import FileSystemHandler
 
 /**
  * A class to handle annotation dependencies outside of the Curator.
- * Sits between the Curator-to-Hadoop batch script and
- * the Hadoop-to-Curator batch script.
+ * Sits between the Curator-to-Hadoop batch script and the Hadoop-to-Curator batch script.
+ * 
+ * NOTE: This class requires that all files in the input directory have
+ * the same "level" of existing annotations. Any document may be sampled to determine
+ * which annotations have already been completed.
+ *
+ * TODO Future upgrade: allow the user to optionally specify what annotation level to begin at,
+ * so that a mixed input directory can be used by overwriting existing higher-level annotations.
+ *
  * @author Lisa Bao
  */
 
@@ -28,28 +37,28 @@ public class JobHandler {
 
         // Retrieve list of dependencies for requested annotation
         ArrayList<AnnotationMode> dependencies = requestedAnnotation.getDependencies();
-        ArrayList<AnnotationMode> alreadyRun = new ArrayList<AnnotationMode>();
+        
+        Path dir = new Path(inputDirectory);
+        ArrayList<Path> files = FileSystemHandler.getFilesOnlyInDirectory(dir);
+        File sample = files[0].toFile();
 
-        // TODO Currently this doesn't work because we need to process dependencies for each file individually
-        // but the dependencies and alreadyRun arraylists are local to all files.
-        // Quick solution: require consistency on user's part and simply sample the first file to determine needed dependencies.
-
-        // TODO for each file in folder inputDirectory on HDFS:
-            // TODO construct a HadoopRecord called temp
-            ArrayList<String> existingAnnotations = temp.getAnnotationsAsStringList();
-            // convert String list to AnnotationMode list
-            for (String a : existingAnnotations) {
-                alreadyRun.add(AnnotationMode.fromString(a));
+        // TODO construct a HadoopRecord 'temp' from File 'sample'
+        // Retrieve list of existing annotations for comparison
+        ArrayList<AnnotationMode> existingAnnotations = temp.getAnnotationsList();
+        
+        // compare existing to dependencies list and add non-existing dependencies to new list
+        ArrayList<AnnotationMode> depsToRun = new ArrayList<AnnotationMode>();
+        for (AnnotationMode annotation : dependencies) {
+            if (!existingAnnotations.contains(annotation)) {
+                depsToRun.add(annotation);
             }
-
+        }
+            
+        
         // Loop through all intermediate dependencies; really similar to the
         // dependency-checking logic in CuratorHandler's #provide() method
-        // TODO: Tyler started this, but didn't finish  --- we really need to examine
         for (AnnotationMode a : dependencies) {
-            if( !alreadyRun.contains( a ) ) {
-                launchJob( a );
-            }
-            alreadyRun.add( a );
+            launchJob(a);
         }
         // Launch final MapReduce job
         Runtime.getRuntime().exec("echo -e \"Launching final MapReduce job:\"");
