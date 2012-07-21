@@ -586,7 +586,8 @@ public class CuratorClient {
                 msg.append( ". We have " );
                 msg.append( newNumViews );
                 msg.append( " views for it.\nNo database update is necessary, " );
-                msg.append( "but this is troubling.\n" );
+                msg.append( "but this is troubling, UNLESS you have been running" );
+                msg.append( "your jobs on this machine (in which case it's expected).\n" );
                 msg.append( "Views we now know of: ");
                 msg.append( RecordTools.getAnnotationsString( r ) );
                 msg.append( "\nOld views we knew of: ");
@@ -717,18 +718,18 @@ public class CuratorClient {
         newInputRecords = replaceTheRecords;
     }
 
-    public void runChunker() throws TException, ServiceUnavailableException,
+    public void runNER() throws TException, ServiceUnavailableException,
             AnnotationFailedException, ServiceSecurityException {
         transport.open();
 
-        String chunk = AnnotationMode.CHUNK.toCuratorString();
+        String ner = AnnotationMode.NER.toCuratorString();
         for( Record r : newInputRecords ) {
             client.storeRecord( r );
-            r = client.provide(chunk, r.getRawText(), false);
+            r = client.provide(ner, r.getRawText(), false);
 
             // Confirm it worked
-            if( !RecordTools.hasAnnotation( r, AnnotationMode.CHUNK ) ) {
-                System.out.println( "Couldn't find " + chunk + " annotation!" );
+            if( !RecordTools.hasAnnotation( r, AnnotationMode.NER ) ) {
+                System.out.println( "Couldn't find " + ner + " annotation!" );
             }
         }
 

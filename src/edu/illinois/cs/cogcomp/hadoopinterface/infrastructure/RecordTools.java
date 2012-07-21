@@ -7,10 +7,7 @@ import edu.illinois.cs.cogcomp.thrift.base.Labeling;
 import edu.illinois.cs.cogcomp.thrift.base.View;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 
 /**
  * A utility class for working with Records. Most of these should really
@@ -176,7 +173,7 @@ public class RecordTools {
     public static boolean meetsDependencyReqs(
             Record r,
             AnnotationMode annoToPerform ) {
-        Set<AnnotationMode> dependencies = annoToPerform.getDependencies();
+        List<AnnotationMode> dependencies = annoToPerform.getDependencies();
         for( AnnotationMode dep : dependencies ) {
             if( !RecordTools.hasAnnotation( r, dep ) ) {
                 return false;

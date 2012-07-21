@@ -1,8 +1,7 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
 
 /**
  * A class to handle annotation dependencies outside of the Curator.
@@ -36,6 +35,7 @@ public class JobHandler {
 
         // TODO for each file in folder inputDirectory on HDFS:
             // TODO construct a HadoopRecord called temp
+            HadoopRecord temp = new HadoopRecord();
             ArrayList<String> existingAnnotations = temp.getAnnotationsAsStringList();
             // convert String list to AnnotationMode list
             for (String a : existingAnnotations) {

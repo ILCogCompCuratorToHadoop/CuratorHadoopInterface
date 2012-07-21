@@ -15,6 +15,9 @@ import org.apache.thrift.TException;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * A version of the Curator's document record, for use on the Hadoop Distributed
@@ -170,14 +173,14 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
 	 *
 	 * @return a list of strings of all existing annotations stored in this record
 	 */
-	public ArrayList<String> getAnnotationsAsStringList() {
+	public ArrayList<String> getAnnotationsAsStringList( ) {
         Set<String> allAnnotations = new HashSet<String>();
-        allAnnotations.addAll( record.getLabelViews().keySet() );
-        allAnnotations.addAll( record.getClusterViews().keySet() );
-        allAnnotations.addAll( record.getParseViews().keySet() );
-        allAnnotations.addAll( record.getViews().keySet() );
+        allAnnotations.addAll( this.getLabelViews().keySet() );
+        allAnnotations.addAll( this.getClusterViews().keySet() );
+        allAnnotations.addAll( this.getParseViews().keySet() );
+        allAnnotations.addAll( this.getViews().keySet() );
 
-        ArrayList<> result = new ArrayList<String>();
+        ArrayList<String> result = new ArrayList<String>();
         for ( String key : allAnnotations ) {
             result.add( AnnotationMode.fromString(key).toString() );
         }
