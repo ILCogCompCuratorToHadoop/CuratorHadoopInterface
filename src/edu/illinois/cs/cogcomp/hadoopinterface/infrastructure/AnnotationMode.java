@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
  * @TODO: Make sure this actually represents all the tools we need!
  */
 public enum AnnotationMode {
-    CHUNK, COREF, NER, NOM_SRL, PARSE, POS, SENTENCE, TOKEN, VERB_SRL, WIKI;
+    CHUNK, COREF, NER, NOM_SRL, PARSE, POS, SENTENCE, STANFORD_PARSE, TOKEN, VERB_SRL, WIKI;
 
     /**
      * Takes a string version of an annotation mode and returns the equivalent
@@ -39,11 +39,13 @@ public enum AnnotationMode {
             regexes.put( "ner", NER );
             regexes.put( "named", NER );
             regexes.put( "parse", PARSE );
-            regexes.put( "stanford", PARSE );
+            regexes.put( "charniak", PARSE );
+            regexes.put( "stanford", STANFORD_PARSE );
             regexes.put( "pos", POS );
             regexes.put( "part", POS );
             regexes.put( "sentence", SENTENCE );
             regexes.put( "token", TOKEN );
+            regexes.put( "nom", NOM_SRL );
             regexes.put( "verb", VERB_SRL );
             regexes.put( "wiki", WIKI );
 
@@ -99,7 +101,7 @@ public enum AnnotationMode {
             case COREF:
                 return "coref";
             case NER:
-                return "ner-ext";
+                return "ner-ext";     // TODO: Should this be "ner"?
             case NOM_SRL:
                 return "nom";
             case PARSE:
