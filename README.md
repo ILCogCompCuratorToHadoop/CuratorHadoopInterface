@@ -1,7 +1,10 @@
 <!-- -*-Markdown-*- -->
 
+The Curator-to-Hadoop Interface
+========================================
+
 About the Project
-=================
+----------------------------------------
 
 This is a tool for interfacing the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) with a [Hadoop](http://hadoop.apache.org/) cluster. To contribute to the project, contact @s3cur3.
 
@@ -22,5 +25,29 @@ The advantages to this system are as follows:
   
 * It allows for the pre-processing of a large corpora (for instance, after one annotation tool has been upgraded) with little user intervention, freeing up more time to solve research problems.
 
+Use notes
+----------------------------------------
 
+Make sure you have all the files present in the [[Manifest]] section.
+
+Manifest
+----------------------------------------
+
+Ensure that, in addition to your stock, working Hadoop and Curator
+installations, following files are present in your directories.
+
+* `hadoop-1.0.3/`
+
+    * `curator.jar`
+    * `lib/`
+
+        * `curator-interfaces.jar`
+        * `curator-server.jar`
+        * `libthrift.jar` (currently tested on Thrift v0.4)
+
+* `curator-0.6.9/`
+
+    * `bin/`
+
+         * `curator-local.sh` modified to add stuff to the class path. Full class path line: `COMPONENT_CLASSPATH=$CURATOR_BASE:$COMPONENTDIR/curator-server.jar:$COMPONENTDIR/illinois-tokenizer-server.jar:$COMPONENTDIR/illinois-pos-server.jar:$COMPONENTDIR/illinois-chunker-server.jar:$COMPONENTDIR/illinois-coref-server.jar:$COMPONENTDIR/stanford-parser-server.jar:$COMPONENTDIR/curator-interfaces.jar:$COMPONENTDIR/illinois-ner-extended-server.jar`
 
