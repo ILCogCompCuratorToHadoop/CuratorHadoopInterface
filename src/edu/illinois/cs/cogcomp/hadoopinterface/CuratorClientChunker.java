@@ -40,7 +40,7 @@ public class CuratorClientChunker extends CuratorClient {
 
 
         // Create records from the input text files
-        System.out.println( "Ready to create records from the plain text in " +
+        System.out.println( "Ready to reserialize records from serialized form in " +
                 "the input directory." );
         theClient.addRecordsFromJobDirectory( new File("/shared/gargamel/undergrad/tyoun/hadoop-1.0.3/POS_output/"), false );
 
@@ -48,7 +48,7 @@ public class CuratorClientChunker extends CuratorClient {
                 + " text files in the directory into records.");
 
         // Run a tool (for testing purposes)
-        theClient.runChunker();
+        theClient.runNER();
 
     }
 }

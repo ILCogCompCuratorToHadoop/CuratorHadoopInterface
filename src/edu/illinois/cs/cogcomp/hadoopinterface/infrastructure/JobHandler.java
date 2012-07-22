@@ -3,6 +3,7 @@ package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.ArrayList;
 //TODO import AnnotationMode
 //TODO import FileSystemHandler
 
@@ -55,11 +56,12 @@ public class JobHandler {
         }
             
         
-        // Loop through all intermediate dependencies; really similar to the
+        // Loop through new, intermediate dependencies; really similar to the
         // dependency-checking logic in CuratorHandler's #provide() method
-        for (AnnotationMode a : dependencies) {
+        for (AnnotationMode a : depsToRun) {
             launchJob(a);
         }
+		
         // Launch final MapReduce job
         Runtime.getRuntime().exec("echo -e \"Launching final MapReduce job:\"");
         Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d serialized -m " + requestedAnnotation + " -out serialized_output");
