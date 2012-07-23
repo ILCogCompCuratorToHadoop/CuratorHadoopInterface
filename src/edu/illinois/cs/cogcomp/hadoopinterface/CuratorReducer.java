@@ -91,7 +91,8 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         // Launch the annotator and the Curator
         try {
             launchAnnotatorIfNecessary( toolToRun );
-            Thread.sleep( getEstimatedTimeToStart( toolToRun ) * 5 );
+            Thread.sleep( getEstimatedTimeToStart( toolToRun ) );
+            context.progress();
             launchCuratorIfNecessary( toolToRun );
         } catch ( TException e ) {
             throw new IOException( e.getMessage() );
@@ -353,7 +354,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             case NER:
                 return timeForLargeModels;
             case NOM_SRL:
-                return timeForLargeModels;
+                return timeForLargeModels * 3;
             case PARSE:
                 return timeForMidModels;
             case POS:
@@ -363,7 +364,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             case TOKEN:
                 return timeForSmallModels;
             case VERB_SRL:
-                return timeForLargeModels;
+                return timeForLargeModels * 3;
             case WIKI:
                 return timeForLargeModels;
             default:
@@ -554,19 +555,19 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             case NER:
                 // NOTE: NER has to be launched from the directory above the
                 // Curator. This is annoying.
-                scriptLocation = new Path( "curator/dist/bin/illinois-ner-extended-server.pl" );
+                scriptLocation = new Path( "bin/illinois-ner-extended-server.pl" );
                 port = 9093;
                 break;
             case NOM_SRL:
-                scriptLocation = new Path( dir.bin(), "illinois-nom-srl-server.sh" );
+                scriptLocation = new Path( "bin/illinois-nom-srl-server.sh" );
                 port = 14910;
                 break;
             case VERB_SRL:
-                scriptLocation = new Path( dir.bin(), "illinois-verb-srl-server.sh" );
+                scriptLocation = new Path( "bin/illinois-verb-srl-server.sh" );
                 port = 14810;
                 break;
             case WIKI:
-                scriptLocation = new Path( dir.bin(), "illinois-wikifier-server.sh" );
+                scriptLocation = new Path( "bin/illinois-wikifier-server.sh" );
                 port = 15231;
                 break;
             case PARSE:
@@ -594,12 +595,13 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                               + " annotator on node with command \n\t"
                               + cmd.toString() );
 
-            spawnedAnnotatorProcesses.add( Runtime.getRuntime()
-                                                  .exec( cmd.toString() ) );
+            // Launch the process from the user directory (e.g., /home/username/)
+            spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
+                    cmd.toString(), new String[0],
+                    new File( dir.dist().toString() ) ) );
         }
         // NER is launched in a weird way.
         else if( toolToLaunch.equals( AnnotationMode.NER ) ) {
-            String bin = dir.bin().toString();
             String configs = dir.config().toString();
             String logs = dir.log().toString();
             String user = dir.user().toString();
@@ -645,8 +647,15 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             logger.logStatus( "Launching Charniak parser on node with "
                               + "command \n\t" + cmd.toString() );
 
-            spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
-                    cmd.toString(), new String[0], new File( charniakDir ) ) );
+            Process p = Runtime.getRuntime().exec( cmd.toString(), new String[0],
+                                                   new File( charniakDir ) );
+            spawnedAnnotatorProcesses.add( p );
+
+            StreamGobbler err = new StreamGobbler( p.getErrorStream(), "ERR:" );
+            StreamGobbler out = new StreamGobbler( p.getInputStream(), "" );
+
+            err.start();
+            out.start();
         }
     }
 

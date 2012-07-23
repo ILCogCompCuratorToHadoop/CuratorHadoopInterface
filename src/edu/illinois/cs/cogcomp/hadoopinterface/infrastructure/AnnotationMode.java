@@ -101,11 +101,11 @@ public enum AnnotationMode {
             case COREF:
                 return "coref";
             case NER:
-                return "ner";     // TODO: Should this be "ner-ext"?
+                return "ner";
             case NOM_SRL:
                 return "nom";
             case PARSE:
-                return "stanfordParse";  // TODO: Is this the one to use?
+                return "charniak";  // TODO: Is this the one to use?
             case POS:
                 return "pos";
             case SENTENCE:
