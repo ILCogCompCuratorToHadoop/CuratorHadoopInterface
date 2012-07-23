@@ -161,12 +161,12 @@ public class RecordTools {
 	 *
 	 * @return a list of all existing annotations stored in this record
 	 */
-	public ArrayList<AnnotationMode> getAnnotationsList() {
+	public static List<AnnotationMode> getAnnotationsList( Record r ) {
         Set<String> allAnnotations = new HashSet<String>();
-        allAnnotations.addAll( this.getLabelViews().keySet() );
-        allAnnotations.addAll( this.getClusterViews().keySet() );
-        allAnnotations.addAll( this.getParseViews().keySet() );
-        allAnnotations.addAll( this.getViews().keySet() );
+        allAnnotations.addAll( r.getLabelViews().keySet() );
+        allAnnotations.addAll( r.getClusterViews().keySet() );
+        allAnnotations.addAll( r.getParseViews().keySet() );
+        allAnnotations.addAll( r.getViews().keySet() );
 
         ArrayList<AnnotationMode> result = new ArrayList<AnnotationMode>();
         for ( String key : allAnnotations ) {

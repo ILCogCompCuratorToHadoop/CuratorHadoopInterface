@@ -1,9 +1,15 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
+import edu.illinois.cs.cogcomp.thrift.curator.Record;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.thrift.TException;
+
+import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.ArrayList;
+import java.util.List;
 //TODO import AnnotationMode
 //TODO import FileSystemHandler
 //TODO import SerializationHandler
@@ -30,7 +36,7 @@ public class JobHandler {
      *             The first argument must be the targeted annotation type.
      *             The second argument must be an ABSOLUTE input directory path.
      */
-	public static void main(String[] argv) throws IOException {
+	public static void main(String[] argv) throws IOException, TException {
         AnnotationMode requestedAnnotation = AnnotationMode.fromString( argv[0] );
         String inputDirectory = argv[1];
 
@@ -42,14 +48,17 @@ public class JobHandler {
         ArrayList<AnnotationMode> dependencies = requestedAnnotation.getDependencies();
         
         Path dir = new Path(inputDirectory);
-        ArrayList<Path> files = FileSystemHandler.getFilesOnlyInDirectory(dir);
-        File sample = files[0].toFile();
+        FileSystemHandler handler = new FileSystemHandler(
+                FileSystem.getLocal( new Configuration() ) );
+        List<Path> files = handler.getFilesOnlyInDirectory( dir );
+        File sample = new File( files.get(0).toString() );
 
         // Construct a (non-Hadoop) Record 'sampleRecord' from File 'sample'
-        Record sampleRecord = SerializationHandler.deserialize(sample);
+        Record sampleRecord = ( new SerializationHandler() ).deserialize(sample);
         
         // Retrieve list of existing annotations for comparison
-        ArrayList<AnnotationMode> existingAnnotations = RecordTools.getAnnotationsList(sampleRecord);
+        List<AnnotationMode> existingAnnotations =
+                RecordTools.getAnnotationsList( sampleRecord );
         
         // compare existing to dependencies list and add non-existing dependencies to new list
         ArrayList<AnnotationMode> depsToRun = new ArrayList<AnnotationMode>();
