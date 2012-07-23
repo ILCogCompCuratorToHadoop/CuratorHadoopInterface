@@ -135,6 +135,29 @@ public class CuratorClient {
     }
 
     /**
+     * A pure wrapper for the Thrift client's describeAnnotations.
+     * @return A Map associating keys (which are Curator annotation types,
+     *         such as "ner" or "tokens") with values (which is a string
+     *         describing the class that provide the annotation, such as
+     *         "Illinois Tokenizer identifies as illinoistokenizer-0.4")
+     * @throws TException
+     */
+    public Map<String,String> describeAnnotations( ) throws TException {
+        try {
+            if( !transport.isOpen() ) {
+                transport.open();
+            }
+            return client.describeAnnotations();
+        } finally {
+            if( transport.isOpen() ) {
+                transport.close();
+            }
+        }
+
+
+    }
+
+    /**
      * Attempts to connect to the Curator. If it does so successfully,
      * it will return true.
      * @return True if we were able to connect to the Curator, false otherwise

@@ -101,7 +101,7 @@ public enum AnnotationMode {
             case COREF:
                 return "coref";
             case NER:
-                return "ner-ext";     // TODO: Should this be "ner-ext"?
+                return "ner";     // TODO: Should this be "ner-ext"?
             case NOM_SRL:
                 return "nom";
             case PARSE:

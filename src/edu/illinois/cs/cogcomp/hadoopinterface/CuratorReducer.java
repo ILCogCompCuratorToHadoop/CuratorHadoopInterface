@@ -91,6 +91,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         // Launch the annotator and the Curator
         try {
             launchAnnotatorIfNecessary( toolToRun );
+            Thread.sleep( getEstimatedTimeToStart( toolToRun ) * 5 );
             launchCuratorIfNecessary( toolToRun );
         } catch ( TException e ) {
             throw new IOException( e.getMessage() );
@@ -143,8 +144,8 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                 try {
                     String msg = toolToRun.toString()
                             + " annotations are not available.\n" + e.getReason()
-                            + "\nWe know of these annotations: " + MessageLogger
-                            .getPrettifiedList( client.listAvailableAnnotators() );
+                            + "\nWe know of these annotations: ";
+                    msg = msg + client.describeAnnotations().toString();
                     logger.logError( msg );
                     throw new IOException( msg );
                 } catch ( TException ignored ) { }
@@ -232,7 +233,17 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      */
     private boolean toolCanBeRun( AnnotationMode tool ) {
         try {
-            return client.listAvailableAnnotators().contains( tool );
+            String toolName = tool.toCuratorString();
+            // NER's naming convention is weird. // TODO: Necessary?
+            if( tool.equals( AnnotationMode.NER ) ) {
+                toolName = "ner";
+            }
+            Map<String, String> annotators = client.describeAnnotations();
+
+            // Tool can be run if we both know of the annotation and its
+            // provider is not null.
+            return annotators.containsKey( toolName )
+                    && !annotators.get( toolName ).contains( "null" );
         } catch ( TException e ) {
             logger.logError( "Thrift error while checking if " +
                     "a tool can be run." );
