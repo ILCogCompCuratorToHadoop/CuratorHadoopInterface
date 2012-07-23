@@ -10,10 +10,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-//TODO import AnnotationMode
-//TODO import FileSystemHandler
-//TODO import SerializationHandler
-//TODO import RecordTools
 
 /**
  * A class to handle annotation dependencies outside of the Curator.
@@ -69,25 +65,37 @@ public class JobHandler {
         }
         
         // Loop through new, intermediate dependencies
-        for (AnnotationMode a : depsToRun) {
-            launchJob(a);
+        boolean firstTime = true;
+        AnnotationMode lastAnnotation = new AnnotationMode();
+        for (int i = 0; i < depsToRun.length(); i++) {
+            if (firstTime) {
+                launchJob(depsToRun[i], "first_serialized_input", depsToRun[i].toString());
+                firstTime = false;
+            }
+            else {
+                launchJob(depsToRun[i], depsToRun[i-1].toString(), depsToRun[i].toString());
+            }
+            // store last annotation mode for use as final input directory
+            if (i == depsToRun.length()-1) {
+                lastAnnotation = depsToRun[i];
+            }
         }
 		
         // Launch final MapReduce job
         Runtime.getRuntime().exec("echo -e \"Launching final MapReduce job:\"");
-        Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d serialized -m " + requestedAnnotation + " -out serialized_output");
+        Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d " + lastAnnotation.toString() + " -m " + requestedAnnotation.toString() + " -out " + requestedAnnotation.toString());
         Runtime.getRuntime().exec("echo -e \"\n\n\nFinal MapReduce job is finished!\n\n\"");
 
         // Call batch_hadoop_to_master_curator
         // copies files from HDFS to local disk and database
-        Runtime.getRuntime().exec("./batch_hadoop_to_master_curator " + requestedAnnotation + " " + inputDirectory);
+        Runtime.getRuntime().exec("./batch_hadoop_to_master_curator " + requestedAnnotation.toString() + " " + inputDirectory);
 
     } // END OF MAIN
 
-    private static void launchJob( AnnotationMode a ) throws IOException {
+    private static void launchJob( AnnotationMode a, String inDir, String outDir ) throws IOException {
         // Launch MapReduce job on Hadoop cluster
         Runtime.getRuntime().exec("echo -e \"\n\n\nLaunching intermediate MapReduce job on the Hadoop cluster:\"");
-        Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d serialized -m " + a.toString() + " -out serialized_output");
+        Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d " + inDir + " -m " + a.toString() + " -out " + outDir);
         Runtime.getRuntime().exec("echo -e \"\n\n\nAn intermediate job has been finished...\n\n\"");
     }
 

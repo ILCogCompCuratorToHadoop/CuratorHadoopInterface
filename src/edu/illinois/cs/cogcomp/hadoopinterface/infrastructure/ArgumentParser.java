@@ -218,14 +218,6 @@ public class ArgumentParser {
         return mode;
     }
 
-    /**
-     * @TODO: Implement this functionality!!
-     * @return
-     */
-    public boolean isIntermediate() {
-        return intermediate;
-    }
-
     private AnnotationMode mode;
 
     private String directory;
@@ -235,5 +227,4 @@ public class ArgumentParser {
     private Integer numReduces;
     private boolean testing = false;
     private boolean cleaning = false;
-    private boolean intermediate = false;
 }
