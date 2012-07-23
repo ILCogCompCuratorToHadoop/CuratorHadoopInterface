@@ -155,7 +155,26 @@ public class RecordTools {
         }
         return result.toString();
     }
+	
+	/**
+	 * Based on getAnnotationsString() method
+	 *
+	 * @return a list of all existing annotations stored in this record
+	 */
+	public ArrayList<AnnotationMode> getAnnotationsList() {
+        Set<String> allAnnotations = new HashSet<String>();
+        allAnnotations.addAll( this.getLabelViews().keySet() );
+        allAnnotations.addAll( this.getClusterViews().keySet() );
+        allAnnotations.addAll( this.getParseViews().keySet() );
+        allAnnotations.addAll( this.getViews().keySet() );
 
+        ArrayList<AnnotationMode> result = new ArrayList<AnnotationMode>();
+        for ( String key : allAnnotations ) {
+            result.add( AnnotationMode.fromString(key) );
+        }
+        return result;
+	}	
+	
     /**
      * Checks that the record provides the required dependencies for a particular
      * annotation tool. For instance, if you indicate that the annotation to be

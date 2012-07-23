@@ -42,8 +42,11 @@ public class JobHandler {
         Path dir = new Path(inputDirectory);
         ArrayList<Path> files = FileSystemHandler.getFilesOnlyInDirectory(dir);
         File sample = files[0].toFile();
+        String sampleName = sample.getName();
+        String docHash = sampleName.substring(0, sampleName.length() - 4);
 
         // TODO construct a HadoopRecord 'temp' from File 'sample'
+
         // Retrieve list of existing annotations for comparison
         ArrayList<AnnotationMode> existingAnnotations = temp.getAnnotationsList();
         
@@ -54,10 +57,8 @@ public class JobHandler {
                 depsToRun.add(annotation);
             }
         }
-            
         
-        // Loop through new, intermediate dependencies; really similar to the
-        // dependency-checking logic in CuratorHandler's #provide() method
+        // Loop through new, intermediate dependencies
         for (AnnotationMode a : depsToRun) {
             launchJob(a);
         }

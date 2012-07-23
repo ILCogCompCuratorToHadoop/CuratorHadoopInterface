@@ -167,25 +167,6 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
     public boolean meetsDependencyReqs( AnnotationMode annotationToPerform ) {
         return RecordTools.meetsDependencyReqs( this, annotationToPerform );
     }
-
-	/**
-	 * Based on getAnnotationsString() method in RecordTools
-	 *
-	 * @return a list of all existing annotations stored in this record
-	 */
-	public ArrayList<AnnotationMode> getAnnotationsList() {
-        Set<String> allAnnotations = new HashSet<String>();
-        allAnnotations.addAll( this.getLabelViews().keySet() );
-        allAnnotations.addAll( this.getClusterViews().keySet() );
-        allAnnotations.addAll( this.getParseViews().keySet() );
-        allAnnotations.addAll( this.getViews().keySet() );
-
-        ArrayList<AnnotationMode> result = new ArrayList<AnnotationMode>();
-        for ( String key : allAnnotations ) {
-            result.add( AnnotationMode.fromString(key) );
-        }
-        return result;
-	}
 	
     @Override
     public int compareTo( Record record ) {
