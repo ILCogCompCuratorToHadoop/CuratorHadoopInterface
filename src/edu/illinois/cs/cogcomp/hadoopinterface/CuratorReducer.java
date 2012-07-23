@@ -14,6 +14,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.thrift.TException;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
@@ -78,7 +79,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                         Iterable<HadoopRecord> inValues,
                         Context context )
             throws IOException, InterruptedException {
-        MessageLogger logger = HadoopInterface.logger;
         FileSystem fs = FileSystem.get( context.getConfiguration() );
         this.fsHandler = new FileSystemHandler( fs );
 
@@ -98,14 +98,24 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
         // Confirm the launch worked
         logger.logStatus( "Checking if tool can be run." );
-        if( !toolCanBeRun( toolToRun ) ) {
-            try {
-                throw new IOException( toolToRun.toString()
-                        + " cannot be used to " +
-                        "annotate the document. Available annotators: "
-                        + MessageLogger.getPrettifiedList(
-                        client.listAvailableAnnotators() ) );
-            } catch ( TException fromListAnnotators ) { }
+        int numCyclesWaited = 0;
+        while( !toolCanBeRun( toolToRun ) ) {
+            // If the tool isn't ready, we'll wait a bit.
+            logger.logStatus( "Annotator for " + toolToRun.toString()
+                              + " isn't ready. Waiting...");
+
+            Thread.sleep( getEstimatedTimeToStart( toolToRun ) );
+
+            ++numCyclesWaited;
+            if( numCyclesWaited > MAX_ATTEMPTS ) {
+                try {
+                    throw new IOException( toolToRun.toString()
+                            + " cannot be used to " +
+                            "annotate the document. Available annotators: "
+                            + MessageLogger.getPrettifiedList(
+                            client.listAvailableAnnotators() ) );
+                } catch ( TException fromListAnnotators ) { }
+            }
         }
 
         logger.logStatus( "Beginning document annotation." );
@@ -224,7 +234,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         try {
             return client.listAvailableAnnotators().contains( tool );
         } catch ( TException e ) {
-            HadoopInterface.logger.logError( "Thrift error while checking if " +
+            logger.logError( "Thrift error while checking if " +
                     "a tool can be run." );
             return false;
         }
@@ -267,10 +277,10 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         }
 
         if( numCyclesWaited == 0 ) {
-            HadoopInterface.logger.log( "Curator was already running on node." );
+            logger.log( "Curator was already running on node." );
         }
         else {
-            HadoopInterface.logger.log( "Successfully launched Curator on node." );
+            logger.log( "Successfully launched Curator on node." );
         }
     }
 
@@ -280,12 +290,12 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      */
     private void destroyAllSpawnedProcesses() {
         for( Process p : spawnedCuratorProcesses ) {
-            HadoopInterface.logger.logStatus( "Stopping a Curator process that " +
+            logger.logStatus( "Stopping a Curator process that " +
                     "was launched on this Reduce node." );
             p.destroy();
         }
         for( Process p : spawnedAnnotatorProcesses ) {
-            HadoopInterface.logger.logStatus( "Stopping an annotator process " +
+            logger.logStatus( "Stopping an annotator process " +
                     "that was launched on this Reduce node." );
             p.destroy();
         }
@@ -378,7 +388,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         launchScript.append( getCuratorLogLocation().toString() );
         launchScript.append(" &");
 
-        HadoopInterface.logger.logStatus( "Launching Curator on node with "
+        logger.logStatus( "Launching Curator on node with "
                 + "command \n\t" + launchScript.toString() );
         spawnedCuratorProcesses.add( Runtime.getRuntime()
                                             .exec( launchScript.toString() ) );
@@ -523,7 +533,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         } catch( IOException ignored ) { }
 
         // Figure out location of shell script based on tool in use
-        Path scriptLocation;
+        Path scriptLocation = null;
         int port = -1;
         switch( toolToLaunch ) {
             case COREF:
@@ -531,7 +541,9 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                 port = 9094;
                 break;
             case NER:
-                scriptLocation = new Path( dir.bin(), "illinois-ner-extended-server.pl" );
+                // NOTE: NER has to be launched from the directory above the
+                // Curator. This is annoying.
+                scriptLocation = new Path( "curator/dist/bin/illinois-ner-extended-server.pl" );
                 port = 9093;
                 break;
             case NOM_SRL:
@@ -546,20 +558,31 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                 scriptLocation = new Path( dir.bin(), "illinois-wikifier-server.sh" );
                 port = 15231;
                 break;
+            case PARSE:
+                // Charniak is started really weird. This is a dummy case so that
+                // we don't throw an error. We'll handle the Charniak separately
+                // below.
+                break;
             default:
-                throw new IllegalArgumentException( "Tool" +
+                throw new IllegalArgumentException( "Tool " +
                         toolToLaunch.toString() + " cannot be started manually." );
         }
 
         // Build up the command line command that will start the annotator
         StringBuilder cmd = new StringBuilder();
-        if( toolToLaunch != AnnotationMode.NER ) {
+        if( toolToLaunch != AnnotationMode.NER &&
+                toolToLaunch != AnnotationMode.PARSE ) {
             cmd.append( scriptLocation.toString() );
             cmd.append( " -p " );
             cmd.append( port );
             cmd.append( " >& " );
             cmd.append( getLogLocation( toolToLaunch ).toString() );
             cmd.append( " &" );
+
+            logger.logStatus( "Launching " + toolToLaunch.toString()
+                              + " annotator on node with command \n\t"
+                              + cmd.toString() );
+
             spawnedAnnotatorProcesses.add( Runtime.getRuntime()
                                                   .exec( cmd.toString() ) );
         }
@@ -568,34 +591,51 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             String bin = dir.bin().toString();
             String configs = dir.config().toString();
             String logs = dir.log().toString();
+            String user = dir.user().toString();
+
+            //cmd.append( "./" );
             cmd.append( scriptLocation.toString() );
-            cmd.append( " " );
+            cmd.append( " 1234 " ); // some ID
             cmd.append( port );
             cmd.append( " " );
             cmd.append( configs );
             cmd.append( "/ner.conll.config >& " );
             cmd.append( logs );
-            cmd.append( "/ner-ext-conll.log &\n" );
-            cmd.append( bin );
-            cmd.append( "/illinois-ner-extended-server.pl 9094 " );
-            cmd.append( configs );
-            cmd.append( "/ner.ontonotes.config >& " );
-            cmd.append( logs );
-            cmd.append( "/ner-ext-ontonotes.log &" );
-            spawnedCuratorProcesses.add( Runtime.getRuntime()
-                                                .exec( cmd.toString() ) );
+            cmd.append( "/ner-ext-conll.log &" );
+
+            StringBuilder cmd2 = new StringBuilder( );
+            cmd2.append( "./" );
+            cmd2.append( scriptLocation.toString() );
+            cmd2.append( " 1234 " ); // some ID
+            cmd2.append( ++port );
+            cmd2.append( " " );
+            cmd2.append( configs );
+            cmd2.append( "/ner.ontonotes.config >& " );
+            cmd2.append( logs );
+            cmd2.append( "/ner-ext-ontonotes.log &" );
+
+            logger.logStatus( "Launching NER annotator on node with "
+                              + "command \n\t" + cmd.toString()
+                              + "\n\t" + cmd2.toString() );
+
+            spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
+                    cmd.toString(), new String[0], new File( user ) ) );
+            spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
+                    cmd2.toString(), new String[0], new File( user ) ) );
+
         }
         // Charniak parser is also launched differently
         else if( toolToLaunch.equals(AnnotationMode.PARSE) ) {
-            cmd.append( "cd " );
-            cmd.append( dir.bin() );
-            cmd.append( "CharniakServer\n");
+            String charniakDir = new Path( dir.dist(), "CharniakServer" ).toString();
             cmd.append( "./start_charniak.sh 9987 charniak9987 >& " );
             cmd.append( getLogLocation( toolToLaunch ) );
             cmd.append( " &\n" );
 
-            spawnedAnnotatorProcesses.add( Runtime.getRuntime()
-                                                  .exec( cmd.toString() ) );
+            logger.logStatus( "Launching Charniak parser on node with "
+                              + "command \n\t" + cmd.toString() );
+
+            spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
+                    cmd.toString(), new String[0], new File( charniakDir ) ) );
         }
     }
 
@@ -657,6 +697,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             logDir = new Path( distDir, "logs" );
             binDir = new Path( distDir, "bin" );
             configDir = new Path( distDir, "configs" );
+            userDir = distDir.getParent().getParent();
         }
 
         public Path dist() {
@@ -674,6 +715,11 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             return configDir;
         }
 
+        public Path user() {
+            return userDir;
+        }
+
+        private final Path userDir;
         private final Path distDir;
         private final Path logDir;
         private final Path binDir;
@@ -686,5 +732,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
     private List<Process> spawnedCuratorProcesses;
     private List<Process> spawnedAnnotatorProcesses;
     private Set<AnnotationMode> toolsThatMustBeLaunched;
+    private static final MessageLogger logger = HadoopInterface.logger;
     private static final int MAX_ATTEMPTS = 10;
 }
