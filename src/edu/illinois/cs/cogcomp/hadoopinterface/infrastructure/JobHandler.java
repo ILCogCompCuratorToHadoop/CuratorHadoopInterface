@@ -1,9 +1,5 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.ArrayList;
 //TODO import AnnotationMode
 //TODO import FileSystemHandler
 
@@ -21,6 +17,7 @@ import java.util.ArrayList;
  * @author Lisa Bao
  */
 
+
 public class JobHandler {
 
     /**
@@ -28,7 +25,7 @@ public class JobHandler {
      *             The first argument must be the targeted annotation type.
      *             The second argument must be an ABSOLUTE input directory path.
      */
-	public static void main(String[] argv) throws IOException {
+	/*public static void main(String[] argv) throws IOException {
         AnnotationMode requestedAnnotation = AnnotationMode.fromString( argv[0] );
         String inputDirectory = argv[1];
 
@@ -78,6 +75,6 @@ public class JobHandler {
         Runtime.getRuntime().exec("echo -e \"\n\n\nLaunching intermediate MapReduce job on the Hadoop cluster:\"");
         Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d serialized -m " + a.toString() + " -out serialized_output");
         Runtime.getRuntime().exec("echo -e \"\n\n\nAn intermediate job has been finished...\n\n\"");
-    }
+    }*/
 
 }
