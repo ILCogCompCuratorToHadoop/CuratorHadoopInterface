@@ -1,7 +1,13 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.ArrayList;
 //TODO import AnnotationMode
 //TODO import FileSystemHandler
+//TODO import SerializationHandler
+//TODO import RecordTools
 
 /**
  * A class to handle annotation dependencies outside of the Curator.
@@ -17,7 +23,6 @@ package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
  * @author Lisa Bao
  */
 
-
 public class JobHandler {
 
     /**
@@ -25,7 +30,7 @@ public class JobHandler {
      *             The first argument must be the targeted annotation type.
      *             The second argument must be an ABSOLUTE input directory path.
      */
-	/*public static void main(String[] argv) throws IOException {
+	public static void main(String[] argv) throws IOException {
         AnnotationMode requestedAnnotation = AnnotationMode.fromString( argv[0] );
         String inputDirectory = argv[1];
 
@@ -39,13 +44,12 @@ public class JobHandler {
         Path dir = new Path(inputDirectory);
         ArrayList<Path> files = FileSystemHandler.getFilesOnlyInDirectory(dir);
         File sample = files[0].toFile();
-        String sampleName = sample.getName();
-        String docHash = sampleName.substring(0, sampleName.length() - 4);
 
-        // TODO construct a HadoopRecord 'temp' from File 'sample'
-
+        // Construct a (non-Hadoop) Record 'sampleRecord' from File 'sample'
+        Record sampleRecord = SerializationHandler.deserialize(sample);
+        
         // Retrieve list of existing annotations for comparison
-        ArrayList<AnnotationMode> existingAnnotations = temp.getAnnotationsList();
+        ArrayList<AnnotationMode> existingAnnotations = RecordTools.getAnnotationsList(sampleRecord);
         
         // compare existing to dependencies list and add non-existing dependencies to new list
         ArrayList<AnnotationMode> depsToRun = new ArrayList<AnnotationMode>();
@@ -76,6 +80,6 @@ public class JobHandler {
         Runtime.getRuntime().exec("echo -e \"\n\n\nLaunching intermediate MapReduce job on the Hadoop cluster:\"");
         Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d serialized -m " + a.toString() + " -out serialized_output");
         Runtime.getRuntime().exec("echo -e \"\n\n\nAn intermediate job has been finished...\n\n\"");
-    }*/
+    }
 
 }
