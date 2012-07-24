@@ -66,21 +66,24 @@ public class JobHandler {
         
         // Loop through new, intermediate dependencies
         boolean firstTime = true;
-        AnnotationMode lastAnnotation = new AnnotationMode();
-        for (int i = 0; i < depsToRun.length(); i++) {
+        AnnotationMode lastAnnotation;
+        for (int i = 0; i < depsToRun.size(); i++) {
             if (firstTime) {
-                launchJob(depsToRun[i], "first_serialized_input", depsToRun[i].toString());
+                launchJob(depsToRun.get(i), "first_serialized_input", depsToRun.get(i).toString());
                 firstTime = false;
             }
             else {
-                launchJob(depsToRun[i], depsToRun[i-1].toString(), depsToRun[i].toString());
+                launchJob(depsToRun.get(i), depsToRun.get(i-1).toString(), depsToRun.get(i).toString());
             }
             // store last annotation mode for use as final input directory
-            if (i == depsToRun.length()-1) {
-                lastAnnotation = depsToRun[i];
+            if (i == depsToRun.size()-1) {
+                lastAnnotation = depsToRun.get(i);
             }
         }
-		
+
+        // Satisfy the Java compiler by ensure this is assigned to
+        lastAnnotation = depsToRun.get( depsToRun.size() - 1 );
+
         // Launch final MapReduce job
         System.out.println("Launching final MapReduce job:");
         Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d " + lastAnnotation.toString() + " -m " + requestedAnnotation.toString() + " -out " + requestedAnnotation.toString());

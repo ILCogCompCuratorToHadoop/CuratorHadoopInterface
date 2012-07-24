@@ -58,6 +58,13 @@ public enum AnnotationMode {
                 }
             }
 
+            // Special case. We don't want to use a regex formed from "srl"
+            // because it's ambiguous. However, the Curator uses "srl" to identify
+            // specifically Verb SRL, and it uses "nom" to identify Nominal SRL.
+            if( s.equals( "srl" ) ) {
+                return VERB_SRL;
+            }
+
             throw new IllegalModeException(
                     "Parse mode " + s + " not recognized. Please try one of "
                     + "the following: \n\t" + getKnownAnnotations() );

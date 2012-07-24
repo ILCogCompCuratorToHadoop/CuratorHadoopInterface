@@ -21,6 +21,7 @@ echo ""
 CURATOR_DIRECTORY=/shared/gargamel/undergrad/tyoun/curator-0.6.9
 HADOOP_DIRECTORY=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized
+LIB_DIR=/shared/grandpa/opt/lib # Where we find the thrift libraries
 # In the output directory, we will place a dir called "serialized" which
 # will store the job's output records
 OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
@@ -127,7 +128,7 @@ fi
 # Launch MapReduce job on Hadoop cluster
 echo -e "$MSG_COLOR\n\n\nLaunching the mapreduce job on the Hadoop cluster: $DEFAULT_COLOR"
 HADOOP_OUTPUT=$ANNOTATION_TOOL_TO_RUN"_output"
-./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d serialized -m $ANNOTATION_TOOL_TO_RUN -out $HADOOP_OUTPUT
+./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d serialized -m $ANNOTATION_TOOL_TO_RUN -out $HADOOP_OUTPUT -lib $LIB_DIR -reduces 1
 echo -e "$MSG_COLOR\n\n\nJob finished!\n$DEFAULT_COLOR"
 
 

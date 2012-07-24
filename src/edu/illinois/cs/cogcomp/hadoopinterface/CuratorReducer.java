@@ -81,6 +81,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             throws IOException, InterruptedException {
         FileSystem fs = FileSystem.get( context.getConfiguration() );
         this.fsHandler = new FileSystemHandler( fs );
+        setEnvVars( context.getConfiguration() );
 
         AnnotationMode toolToRun = AnnotationMode
                 .fromString( context.getConfiguration().get("annotationMode") );
@@ -200,6 +201,22 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
     }
 
     /**
+     * Taking information from the job configuration, this sets up the
+     * environment variables we'll use when launching the Curator and annotators.
+     * @param config The job's Configuration object
+     * @postcondition envVarsForRuntimeExec is safe to use
+     */
+    private void setEnvVars( Configuration config ) {
+        if( !config.get( "libPath" ).equals("") ) {
+            envVarsForRuntimeExec = new String[] { "LD_LIBRARY_PATH="
+                                                   + config.get( "libPath" ) };
+        }
+        else {
+            envVarsForRuntimeExec = new String[0];
+        }
+    }
+
+    /**
      * Throws an error if the two strings are not roughly the same.
      * @param original One string to be compared
      * @param other The other string
@@ -266,11 +283,10 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             // If not, start it and sleep until it's ready to go
             if( spawnedCuratorProcesses.isEmpty() ) {
                 startCurator( toolToRun );
-            }
 
-            // Give it time to start up; since we're running the tools in local
-            // mode, this will depend on the tool.
-            Thread.sleep( getEstimatedTimeToStart( toolToRun ) );
+                // Give Curator itself time to start up
+                Thread.sleep( getEstimatedTimeToStart( AnnotationMode.TOKEN ));
+            }
 
             // If we've waited more than the max number of times, quit.
             ++numCyclesWaited;
@@ -376,7 +392,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             case COREF:
                 return timeForSmallModels;
             case NER:
-                return timeForLargeModels; // Estimate: 1 min 10 sec
+                return timeForMidModels*3; // Estimate: < 30 sec
             case NOM_SRL:
                 return (int)(timeForMidModels * 1.5); // By my estimates, it takes 8 secs
             case PARSE:
@@ -388,7 +404,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             case TOKEN:
                 return timeForSmallModels;
             case VERB_SRL:
-                return (int)(timeForMidModels * 1.5);
+                return (int)(timeForLargeModels / 1.5); // Est <45 secs
             case WIKI:
                 return timeForLargeModels;
             default:
@@ -424,7 +440,8 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
         logger.logStatus( "Launching Curator on node with "
                 + "command \n\t" + launchScript.toString() );
-        Process p = Runtime.getRuntime().exec( launchScript.toString() );
+        Process p = Runtime.getRuntime().exec( launchScript.toString(),
+                                               envVarsForRuntimeExec );
         spawnedCuratorProcesses.add( p );
 
         // Handle the output from the Curator (we don't want to print it, but
@@ -631,7 +648,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
             // Launch the process from the user directory (e.g., /home/username/)
             spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
-                    cmd.toString(), new String[0], dirToLaunchAgainst ) );
+                    cmd.toString(), envVarsForRuntimeExec, dirToLaunchAgainst ) );
         }
         // NER is launched in a weird way.
         else if( toolToLaunch.equals( AnnotationMode.NER ) ) {
@@ -658,9 +675,9 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
                     + "\n\t" + cmd2.toString() );
 
             spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
-                    cmd.toString(), new String[0], dirToLaunchAgainst ) );
+                    cmd.toString(), envVarsForRuntimeExec, dirToLaunchAgainst ) );
             spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
-                    cmd2.toString(), new String[0], dirToLaunchAgainst ) );
+                    cmd2.toString(), envVarsForRuntimeExec, dirToLaunchAgainst ) );
 
         }
         // Charniak parser is also launched differently
@@ -677,9 +694,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
 
             // TODO: Make the Thrift library path a parameter
             spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
-                    cmd.toString(),
-                    new String[] {"LD_LIBRARY_PATH=/shared/grandpa/opt/lib"},
-                    dirToLaunchAgainst ) );
+                    cmd.toString(), envVarsForRuntimeExec, dirToLaunchAgainst ) );
         }
 
         // Use the StreamGobbler to output the messages from the annotator to the
@@ -782,6 +797,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
     private final PathStruct dir;
     private FileSystemHandler fsHandler;
     private HadoopCuratorClient client;
+    private String [] envVarsForRuntimeExec;
     private List<Process> spawnedCuratorProcesses;
     private List<Process> spawnedAnnotatorProcesses;
     private Set<AnnotationMode> toolsThatMustBeLaunched;

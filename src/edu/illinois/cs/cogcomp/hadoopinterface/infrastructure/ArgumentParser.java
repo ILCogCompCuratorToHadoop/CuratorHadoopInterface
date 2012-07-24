@@ -28,6 +28,7 @@ public class ArgumentParser {
     public ArgumentParser(String[] args)
             throws BadCommandLineUsageException {
         testing = false;
+        lib = "";
 
         if( args.length < 2 ) {
             StringBuilder err = new StringBuilder();
@@ -35,7 +36,7 @@ public class ArgumentParser {
             err.append( "<document directory> <mode>\n\tor:\n\t\t" );
             err.append( "-d <document directory> -m <mode> [-out <output " );
             err.append( " directory>] [-maps <number of maps>] [-reduces " );
-            err.append( "<number of reduces>] [-test]\n" );
+            err.append( "<number of reduces>] [-lib /path/to/lib/] [-test]\n" );
             err.append( "You tried to pass these parameters:\n\t" );
 
             for( String arg : args ) {
@@ -96,8 +97,8 @@ public class ArgumentParser {
                 else if( args[i].equals("-cleanup") ) {
                     cleaning = true;
                 }
-                else if( args[i].equals("-intermediate") ) {
-                    intermediate = true;
+                else if( args[i].equals("-lib") ) {
+                    lib = args[ ++i ];
                 }
             }
 
@@ -211,6 +212,15 @@ public class ArgumentParser {
     }
 
     /**
+     * @return The directory (local to each Hadoop node) which should be used
+     *         as the library during a MapReduce job. Should contain Thrift
+     *         libraries.
+     */
+    public String getLibPath() {
+        return lib;
+    }
+
+    /**
      * @return The annotation mode parsed from the command line parameters
 
      */
@@ -223,6 +233,7 @@ public class ArgumentParser {
     private String directory;
 
     private String outputDirectory;
+    private String lib;
     private Integer numMaps;
     private Integer numReduces;
     private boolean testing = false;
