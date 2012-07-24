@@ -14,12 +14,12 @@ import java.util.List;
 /**
  * A class to handle annotation dependencies outside of the Curator.
  * Sits between the Curator-to-Hadoop batch script and the Hadoop-to-Curator batch script.
- * 
+ *
  * NOTE: This class requires that all files in the input directory have
  * the same "level" of existing annotations. Any document may be sampled to determine
  * which annotations have already been completed.
  *
- * TODO Future upgrade: allow the user to optionally specify what annotation level to begin at,
+ * This version of the Job Handler allows the user to optionally specify what annotation level to begin at,
  * so that a mixed input directory can be used by overwriting existing higher-level annotations.
  *
  * @author Lisa Bao
@@ -31,8 +31,9 @@ public class JobHandler {
      * @param argv String arguments from command line.
      *             The first argument must be the targeted annotation type.
      *             The second argument must be an absolute, local input directory path.
+     *             The third argument must be either a starting annotation (dependency), or empty.
      */
-	public static void main(String[] argv) throws IOException, TException {
+    public static void main(String[] argv) throws IOException, TException {
         AnnotationMode requestedAnnotation = AnnotationMode.fromString( argv[0] );
         String inputDirectory = argv[1];
 
@@ -40,30 +41,41 @@ public class JobHandler {
         // launches Master Curator, copies files to HDFS
         Runtime.getRuntime().exec("./batch_master_curator_to_hadoop " + requestedAnnotation.toString() + " " + inputDirectory);
 
-        // Retrieve list of dependencies for requested annotation
         ArrayList<AnnotationMode> dependencies = requestedAnnotation.getDependencies();
-        
-        Path dir = new Path(inputDirectory);
-        FileSystemHandler handler = new FileSystemHandler(
-                FileSystem.getLocal( new Configuration() ) );
-        List<Path> files = handler.getFilesOnlyInDirectory( dir );
-        File sample = new File( files.get(0).toString() );
-
-        // Construct a (non-Hadoop) Record 'sampleRecord' from File 'sample'
-        Record sampleRecord = ( new SerializationHandler() ).deserialize(sample);
-        
-        // Retrieve list of existing annotations for comparison
-        List<AnnotationMode> existingAnnotations =
-                RecordTools.getAnnotationsList( sampleRecord );
-        
-        // compare existing to dependencies list and add non-existing dependencies to new list
         ArrayList<AnnotationMode> depsToRun = new ArrayList<AnnotationMode>();
-        for (AnnotationMode annotation : dependencies) {
-            if (!existingAnnotations.contains(annotation)) {
-                depsToRun.add(annotation);
+
+        try { // if 3rd param is specified...
+            String minDependency = argv[2];
+            AnnotationMode minAnnotation = AnnotationMode.fromString(minDependency);
+            ArrayList<AnnotationMode> minDeps = minAnnotation.getDependencies();
+
+            // remove existing dependencies from run list
+            depsToRun = new ArrayList<AnnotationMode>(dependencies);
+            for (AnnotationMode a : minDeps) {
+                depsToRun.remove(a);
             }
-        }
-        
+        } catch (ArrayIndexOutOfBoundsException e) { //otherwise, proceed as normal
+            Path dir = new Path(inputDirectory);
+            FileSystemHandler handler = new FileSystemHandler(
+                    FileSystem.getLocal( new Configuration() ) );
+            List<Path> files = handler.getFilesOnlyInDirectory( dir );
+            File sample = new File( files.get(0).toString() );
+
+            // Construct a (non-Hadoop) Record 'sampleRecord' from randomly chosen File 'sample'
+            Record sampleRecord = ( new SerializationHandler() ).deserialize( sample );
+
+            // Retrieve list of existing annotations for comparison
+            List<AnnotationMode> existingAnnotations =
+                    RecordTools.getAnnotationsList( sampleRecord );
+
+            // compare existing to dependencies list and add non-existing dependencies to new list
+            for (AnnotationMode annotation : dependencies) {
+                if (!existingAnnotations.contains(annotation)) {
+                    depsToRun.add(annotation);
+                }
+            }
+        } // END CATCH
+
         // Loop through new, intermediate dependencies
         boolean firstTime = true;
         AnnotationMode lastAnnotation;
@@ -81,8 +93,8 @@ public class JobHandler {
             }
         }
 
-        // Satisfy the Java compiler by ensure this is assigned to
-        lastAnnotation = depsToRun.get( depsToRun.size() - 1 );
+        // Satisfy the compiler that this will not wind up as null
+        lastAnnotation = depsToRun.get( depsToRun.size()-1 );
 
         // Launch final MapReduce job
         System.out.println("Launching final MapReduce job:");
