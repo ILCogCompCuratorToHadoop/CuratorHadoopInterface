@@ -1,0 +1,71 @@
+Manifest-Version: 1.0
+Class-Path: curator-interfaces.jar curator-server.jar illinois-chunker
+ -server.jar illinois-coref-server.jar illinois-ner-extended-server.ja
+ r illinois-nom-srl-server.jar illinois-pos-server.jar illinois-tokeni
+ zer-server.jar illinois-verb-srl-server.jar illinois-wikifier-server.
+ jar stanford-parser-server.jar curator-interfaces.jar curator-server.
+ jar illinois-chunker-server.jar illinois-coref-server.jar illinois-ne
+ r-extended-server.jar illinois-nom-srl-server.jar illinois-pos-server
+ .jar illinois-tokenizer-server.jar illinois-verb-srl-server.jar illin
+ ois-wikifier-server.jar stanford-parser-server.jar asm-2.2.1.jar comm
+ ons-beanutils-1.7.0.jar commons-beanutils-core-1.8.0.jar commons-cli-
+ 1.2.jar commons-collections-3.2.1.jar commons-configuration-1.5.jar c
+ ommons-configuration-1.6.jar commons-digester-1.8.jar commons-lang-2.
+ 4.jar commons-lang-2.5.jar commons-logging-1.1.1.jar coreUtilities-0.
+ 1.1.jar coreUtilities-0.1.2.jar edison-0.2.7.jar edison-0.2.9.jar h2-
+ 1.1.118.jar illinoisSRL-3.0.3.jar Jama-1.0.2.jar jwnl-1.4_rc3.jar jwn
+ l.jar LBJ-2.8.2.jar LBJ2.jar LBJ2Library.jar LBJLibrary-2.8.2.jar Lbj
+ NerTagger-2.1.jar liblinear-1.5-with-deps.jar libthrift-0.4.jar libth
+ rift.jar lingpipe-4.0.1.jar log4j-1.2.13.jar log4j-1.2.9.jar logback-
+ classic-0.9.17.jar logback-classic-0.9.28.jar logback-core-0.9.17.jar
+  logback-core-0.9.28.jar lucene-core-2.4.1.jar oro-2.0.8.jar protobuf
+ -java-2.3.0.jar secondstring-20060615.jar slf4j-api-1.5.8.jar slf4j-a
+ pi-1.6.1.jar slf4j-simple-1.5.8.jar snowball-1.0.jar Wikifier.jar asm
+ -2.2.1.jar commons-beanutils-1.7.0.jar commons-beanutils-core-1.8.0.j
+ ar commons-cli-1.2.jar commons-collections-3.2.1.jar commons-configur
+ ation-1.5.jar commons-configuration-1.6.jar commons-digester-1.8.jar 
+ commons-lang-2.4.jar commons-lang-2.5.jar commons-logging-1.1.1.jar c
+ oreUtilities-0.1.1.jar coreUtilities-0.1.2.jar edison-0.2.7.jar ediso
+ n-0.2.9.jar h2-1.1.118.jar illinoisSRL-3.0.3.jar Jama-1.0.2.jar jwnl-
+ 1.4_rc3.jar jwnl.jar LBJ-2.8.2.jar LBJ2.jar LBJ2Library.jar LBJLibrar
+ y-2.8.2.jar LbjNerTagger-2.1.jar liblinear-1.5-with-deps.jar libthrif
+ t-0.4.jar libthrift.jar lingpipe-4.0.1.jar log4j-1.2.13.jar log4j-1.2
+ .9.jar logback-classic-0.9.17.jar logback-classic-0.9.28.jar logback-
+ core-0.9.17.jar logback-core-0.9.28.jar lucene-core-2.4.1.jar oro-2.0
+ .8.jar protobuf-java-2.3.0.jar secondstring-20060615.jar slf4j-api-1.
+ 5.8.jar slf4j-api-1.6.1.jar slf4j-simple-1.5.8.jar snowball-1.0.jar W
+ ikifier.jar junit-4.10.jar hadoop-core-1.0.3.jar hadoop-core-1.0.3.ja
+ r commons-logging-api-1.0.4.jar commons-logging-1.1.1.jar mockito-all
+ -1.8.5.jar commons-math-2.1.jar hadoop-thriftfs-1.0.3.jar jackson-map
+ per-asl-1.8.8.jar commons-httpclient-3.0.1.jar jasper-runtime-5.5.12.
+ jar servlet-api-2.5-20081211.jar kfs-0.2.2.jar jersey-json-1.8.jar co
+ re-3.1.1.jar commons-lang-2.4.jar jackson-core-asl-1.8.8.jar commons-
+ beanutils-core-1.8.0.jar jersey-server-1.8.jar commons-codec-1.4.jar 
+ asm-3.2.jar commons-beanutils-1.7.0.jar commons-daemon-1.0.1.jar jett
+ y-util-6.1.26.jar hadoop-fairscheduler-1.0.3.jar commons-digester-1.8
+ .jar aspectjrt-1.6.5.jar junit-4.5.jar hsqldb-1.8.0.10.jar jasper-com
+ piler-5.5.12.jar jets3t-0.6.1.jar commons-net-1.4.1.jar jdeb-0.8.jar 
+ xmlenc-0.52.jar commons-configuration-1.6.jar commons-collections-3.2
+ .1.jar commons-el-1.0.jar jersey-core-1.8.jar oro-2.0.8.jar commons-i
+ o-2.1.jar log4j-1.2.15.jar slf4j-api-1.4.3.jar jsch-0.1.42.jar hadoop
+ -capacity-scheduler-1.0.3.jar slf4j-log4j12-1.4.3.jar commons-cli-1.2
+ .jar jetty-6.1.26.jar aspectjtools-1.6.5.jar MarkdownDoclet-3.0.jar h
+ adoop-core-1.0.3.jar commons-logging-api-1.0.4.jar commons-logging-1.
+ 1.1.jar mockito-all-1.8.5.jar commons-math-2.1.jar hadoop-thriftfs-1.
+ 0.3.jar jackson-mapper-asl-1.8.8.jar commons-httpclient-3.0.1.jar jas
+ per-runtime-5.5.12.jar servlet-api-2.5-20081211.jar kfs-0.2.2.jar jer
+ sey-json-1.8.jar core-3.1.1.jar commons-lang-2.4.jar jackson-core-asl
+ -1.8.8.jar commons-beanutils-core-1.8.0.jar jersey-server-1.8.jar com
+ mons-codec-1.4.jar asm-3.2.jar commons-beanutils-1.7.0.jar commons-da
+ emon-1.0.1.jar jetty-util-6.1.26.jar hadoop-fairscheduler-1.0.3.jar c
+ ommons-digester-1.8.jar aspectjrt-1.6.5.jar junit-4.5.jar hsqldb-1.8.
+ 0.10.jar jasper-compiler-5.5.12.jar jets3t-0.6.1.jar commons-net-1.4.
+ 1.jar jdeb-0.8.jar xmlenc-0.52.jar commons-configuration-1.6.jar comm
+ ons-collections-3.2.1.jar commons-el-1.0.jar jersey-core-1.8.jar oro-
+ 2.0.8.jar commons-io-2.1.jar log4j-1.2.15.jar slf4j-api-1.4.3.jar jsc
+ h-0.1.42.jar hadoop-capacity-scheduler-1.0.3.jar slf4j-log4j12-1.4.3.
+ jar commons-cli-1.2.jar jetty-6.1.26.jar aspectjtools-1.6.5.jar Markd
+ ownDoclet-3.0.jar
+Main-Class: edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.Job
+ Handler
+
