@@ -128,7 +128,7 @@ fi
 echo -e "$MSG_COLOR\n\n\nLaunching the mapreduce job on the Hadoop cluster: $DEFAULT_COLOR"
 HADOOP_OUTPUT=$ANNOTATION_TOOL_TO_RUN"_output"
 ./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d serialized -m $ANNOTATION_TOOL_TO_RUN -out $HADOOP_OUTPUT
-echo -e "$MSG_COLOR\n\n\nJob finished!\n\n$DEFAULT_COLOR"
+echo -e "$MSG_COLOR\n\n\nJob finished!\n$DEFAULT_COLOR"
 
 
 set +e # Do *not* exit the script if a command fails (so we can give
@@ -136,10 +136,11 @@ set +e # Do *not* exit the script if a command fails (so we can give
 
 # When the MapReduce job finishes, copy the data back to local disk
 # TODO: Make this a distributed Hadoop job
-echo -e "$MSG_COLOR Copying the results of the MapReduce job back to the local machine$DEFAULT_COLOR"
+echo -e "$MSG_COLOR\nCopying the results of the MapReduce job back to the local machine $DEFAULT_COLOR"
 
 if [ -e $OUTPUT/$HADOOP_OUTPUT ]; then
-    echo "Output directory $OUTPUT already exists. Should we delete it and replace?"
+    echo -e "$ERROR_COLOROutput directory $OUTPUT/$HADOOP_OUTPUT already exists.$DEFAULT_COLOR"
+    echo "Should we delete it and replace?"
     echo "(If no, we will have to exit the job, let you move things around, then"
     echo "let you relaunch the job or something.)"
     echo "Delete exising $OUTPUT ? (y/n)"
@@ -158,7 +159,7 @@ if [[ $? -ne 0 ]] ; then
    echo -e "$MSG_COLOR\nCopying to local failed. Try fixing the error, then executing: ./bin/hadoop fs -copyToLocal serialized_output $OUTPUT $DEFAULT_COLOR"
    exit 1
 fi 
-echo -e "$MSG_COLOR\nCopying to local succeeded. $DEFAULT_COLOR"
+echo -e "$MSG_COLOR\nCopying to local (at $OUTPUT/$HADOOP_OUTPUT) succeeded. $DEFAULT_COLOR"
 
 set -e
 

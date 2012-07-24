@@ -51,7 +51,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
         outputDirectory = new Path( getConfiguration().get("outputDirectory") );
         mode = AnnotationMode.fromString(
                 getConfiguration().get("annotationMode") );
-        numReduces = argParser.getNumReduces();
+        numReduces = argParser.getNumReduces(); // TODO: Set this based on num input files!
         testing = argParser.isTesting();
         cleaning = argParser.isCleaning();
 
@@ -89,7 +89,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
         else {
             setReducerClass( CuratorReducer.class );
         }
-        //setNumReduceTasks( numReduces );
+        setNumReduceTasks( numReduces );
 
         // We split the input at the document directory level
         setInputFormatClass( DirectoryInputFormat.class );

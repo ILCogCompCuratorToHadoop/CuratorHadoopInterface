@@ -166,8 +166,10 @@ public class CuratorClient {
         try {
             listAvailableAnnotators();
         } catch ( TException e ) {
-            System.out.println("Couldn't list available annotators. " +
-                    "TException reason: " + e.getMessage());
+            System.out.println("\nCouldn't list available annotators. "
+                    + "\nThis may be perfectly normal (if, for instance, the "
+                    + "Curator hasn't finished starting yet).\n\t"
+                    + "TException reason: " + e.getMessage());
             return false;
         }
 
@@ -609,7 +611,7 @@ public class CuratorClient {
                 msg.append( ". We have " );
                 msg.append( newNumViews );
                 msg.append( " views for it.\nNo database update is necessary, " );
-                msg.append( "but this is troubling, UNLESS you have been running" );
+                msg.append( "but this is troubling, UNLESS you have been running " );
                 msg.append( "your jobs on this machine (in which case it's expected).\n" );
                 msg.append( "Views we now know of: ");
                 msg.append( RecordTools.getAnnotationsString( r ) );

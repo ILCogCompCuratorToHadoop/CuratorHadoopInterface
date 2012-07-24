@@ -16,10 +16,15 @@ public class StreamGobbler extends Thread {
 
 
     public StreamGobbler( InputStream is, String prefix ) {
-        this.is = is;
+        this(is, prefix, true);
+    }
+
+    public StreamGobbler( InputStream inputStream,
+                          String prefix, boolean alsoPrintToStdOut ) {
+        this.is = inputStream;
         this.prefix = prefix;
         this.sb = new StringBuilder();
-        this.print = false;
+        this.print = alsoPrintToStdOut;
     }
 
     public void run() {
@@ -28,8 +33,16 @@ public class StreamGobbler extends Thread {
             BufferedReader br = new BufferedReader(isr);
             String line = null;
             while ((line = br.readLine()) != null) {
-                System.out.println(prefix + " " + line);
-                sb.append(line);
+                // if it's not a "comment"
+                // (Charniak outputs a few hundred thousand lines of utterly
+                // useless diagnostics that begin with ##, but it
+                // occassionally has a useful message as well)
+                if( !line.contains("##") ) {
+                    if( print ) {
+                        System.out.println(prefix + " " + line);
+                    }
+                    sb.append(line);
+                }
             }
         } catch (IOException ioe) {
             ioe.printStackTrace();
