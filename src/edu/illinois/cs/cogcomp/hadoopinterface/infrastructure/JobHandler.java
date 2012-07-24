@@ -30,7 +30,7 @@ public class JobHandler {
     /**
      * @param argv String arguments from command line.
      *             The first argument must be the targeted annotation type.
-     *             The second argument must be an ABSOLUTE input directory path.
+     *             The second argument must be an absolute, local input directory path.
      */
 	public static void main(String[] argv) throws IOException, TException {
         AnnotationMode requestedAnnotation = AnnotationMode.fromString( argv[0] );
@@ -82,9 +82,9 @@ public class JobHandler {
         }
 		
         // Launch final MapReduce job
-        Runtime.getRuntime().exec("echo -e \"Launching final MapReduce job:\"");
+        System.out.println("Launching final MapReduce job:");
         Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d " + lastAnnotation.toString() + " -m " + requestedAnnotation.toString() + " -out " + requestedAnnotation.toString());
-        Runtime.getRuntime().exec("echo -e \"\n\n\nFinal MapReduce job is finished!\n\n\"");
+        System.out.println("Final MapReduce job is finished!");
 
         // Call batch_hadoop_to_master_curator
         // copies files from HDFS to local disk and database
@@ -94,9 +94,9 @@ public class JobHandler {
 
     private static void launchJob( AnnotationMode a, String inDir, String outDir ) throws IOException {
         // Launch MapReduce job on Hadoop cluster
-        Runtime.getRuntime().exec("echo -e \"\n\n\nLaunching intermediate MapReduce job on the Hadoop cluster:\"");
+        System.out.println("Launching intermediate MapReduce job on the Hadoop cluster:");
         Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d " + inDir + " -m " + a.toString() + " -out " + outDir);
-        Runtime.getRuntime().exec("echo -e \"\n\n\nAn intermediate job has been finished...\n\n\"");
+        System.out.println("An intermediate job has been finished...");
     }
 
 }
