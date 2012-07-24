@@ -10,8 +10,7 @@ This is a tool for interfacing the [Curator](http://cogcomp.cs.illinois.edu/trac
 
 The overall goal of the project is to provide an architecture for efficiently processing large text corpora using Hadoop/MapReduce. This architecture consists of the following:
 
-* A set of changes to the Curator which allow it two new "modes" in
-  which to operate:  
+* A set of changes to the Curator which allow it two new "modes" in which to operate:  
     1. local mode, which runs on each node in the Hadoop cluster and waits for input from the Hadoop process manager, and
     2. master mode, which sets up the inputs for the Hadoop cluster and sends batch jobs to the cluster.
 	
@@ -85,10 +84,9 @@ manually on the Hadoop node, there will be problems.
 If you have issues running the annotation tools in Hadoop (especially
 the Charniak parser), try passing an additional argument when you
 launch the job on Hadoop. (To do so, you may have to modify the script that
-gives the job to the Hadoop Job Handler).
-
-Add the argument `-lib some\_library\_path` to the call to
-Hadoop. That library path should be an absolute path (i.e.,
-one beginning with `/`), and inside that directory should be the
-Thrift library files (e.g., `libthrift.so.0`).
+gives the job to the Hadoop Job Handler.) Add the argument 
+`-lib some\_library\_path` to the call to Hadoop. That library path 
+should be an absolute path (i.e., one beginning with `/`), 
+and inside that directory should be the Thrift library files 
+(e.g., `libthrift.so.0`).
 
