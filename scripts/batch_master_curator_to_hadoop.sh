@@ -25,7 +25,7 @@ INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized
 # will store the job's output records
 OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 ANNOTATION_TOOL_TO_RUN=$1       # The 1st parameter from the command line
-INPUT_PATH=$2                   # The 2nd parameter from the command line
+INPUT_PATH=$2                   # The 2nd parameter from the command line (must be local path)
 MODE=$3                         # 3rd parameter from CL should be "serial" 
                                 #   or "raw"
 TESTING=$4                      # 4th parameter from CL should be "-test"
@@ -109,8 +109,8 @@ else
     echo -e "$MSG_COLOR\n\n\nCopying the serialized records to HDFS: $DEFAULT_COLOR"
     cd $HADOOP_DIRECTORY
     set +e # Do *not* exit the script if any command fails
-    ./bin/hadoop dfs -rmr serialized
-    ./bin/hadoop dfs -mkdir serialized
+    ./bin/hadoop dfs -rmr first_serialized_input
+    ./bin/hadoop dfs -mkdir first_serialized_input
     
     # If this came from a MapReduce job, let's not copy the MR output back
     if [ -f $INPUT_PATH/mapreduce_out ]; then
@@ -121,9 +121,5 @@ else
     ./bin/hadoop dfs -copyFromLocal $INPUT_PATH/* serialized
     echo -e "$MSG_COLOR\nCopied successfully. $DEFAULT_COLOR"
 fi
-
-# Call the JobHandler class to launch (multiple) MR jobs including dependencies
-# TODO check syntax, particularly if INPUT_PATH is the correct path in HDFS
-./bin/hadoop jar JobHandler.jar $ANNOTATION_MODE_TO_RUN $INPUT_PATH
 
 exit 0
