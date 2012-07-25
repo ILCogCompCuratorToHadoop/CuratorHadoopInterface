@@ -24,7 +24,6 @@ echo ""
 CURATOR_DIRECTORY=/shared/gargamel/undergrad/tyoun/curator-0.6.9
 HADOOP_DIRECTORY=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized
-OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 PATH_IN_HADOOP=$1                   # The 2nd parameter from the command line
 DESTINATION_IN_LOCAL=$2             # Should be an absolute path on the
                                     # local disk
@@ -56,18 +55,9 @@ echo -e "$MSG_COLOR\nCopying the results of the MapReduce job back to the local 
 
 # Does the directory we want to copy to already exist? Throw an error if so.
 if [ -e $DESTINATION_IN_LOCAL ]; then
-    echo -e "$ERROR_COLOROutput directory $OUTPUT/$DESTINATION_IN_LOCAL already exists.$DEFAULT_COLOR"
-    echo "Should we delete it and replace?"
-    echo "(If no, we will have to exit the job, let you move things around, then"
-    echo "let you relaunch the job or something.)"
-    echo "Delete exising $OUTPUT ? (y/n)"
-    read ANSWER
-    if [ $ANSWER = 'y' ]; then
-	chmod -R 777 $DESTINATION_IN_LOCAL
-	rm -r $DESTINATION_IN_LOCAL
-    else
-        exit 1
-    fi
+    echo -e "$ERROR_COLOR\nOutput directory $DESTINATION_IN_LOCAL already exists.$DEFAULT_COLOR"
+    echo -e "\tMoving your old version up one directory."
+    mv $DESTINATION_IN_LOCAL $DESTINATION_IN_LOCAL/../old_output
 fi
 
 echo -e "$MSG_COLOR\nCreating output directory $DESTINATION_IN_LOCAL $DEFAULT_COLOR"
@@ -75,12 +65,12 @@ mkdir $DESTINATION_IN_LOCAL
 
 # Do the actual copy operation
 # TODO: Make this a distributed Hadoop job
-./bin/hadoop fs -copyToLocal $DESTINATION_IN_LOCAL $OUTPUT
+./bin/hadoop fs -copyToLocal $PATH_IN_HADOOP $DESTINATION_IN_LOCAL
 
 # If the copy to local failed . . . 
 if [[ $? -ne 0 ]] ; then
    echo -e "$MSG_COLOR\nCopying to local failed. Try fixing the error, then executing:"
-   echo -e "./bin/hadoop fs -copyToLocal $DESTINATION_IN_LOCAL $OUTPUT\n$DEFAULT_COLOR"
+   echo -e "scripts/copy_output_from_hadoop.sh $1 $2 $3 $4"
    exit 1
 fi 
 echo -e "$MSG_COLOR\nCopying to local (at $DESTINATION_IN_LOCAL) succeeded.\n$DEFAULT_COLOR"
@@ -96,12 +86,16 @@ set -e
 
 
 # Have Master Curator read in the updated Records and update the database accordingly
-echo -e "$MSG_COLOR\n\n\nRe-launching the master Curator. $DEFAULT_COLOR"
+echo -e "$MSG_COLOR\n\n\nRe-launching the master Curator and asking it"
+echo -e "to reconstruct the serialized records we got from Hadoop. $DEFAULT_COLOR"
 cd $CURATOR_DIRECTORY/dist
 ./bin/curator.sh --annotators configs/annotators-empty.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null
 sleep 3s
 cd client
-./runclient.sh -host localhost -port 9010 -in $OUTPUT/serialized_output -mode POST $TESTING 
+# NOTE: From Hadoop, we copy some directory (named, e.g., "TOKEN").
+#       That directory goes into DESTINATION_IN_LOCAL, so the actual
+#       directory we need to work with is $DESTINATION_IN_LOCAL/$PATH_IN_HADOOP.
+./runclient.sh -host localhost -port 9010 -in $DESTINATION_IN_LOCAL/$PATH_IN_HADOOP -mode POST
 
 # Kill the Curator server
 echo -e "$MSG_COLOR\n\nShutting down the master Curator. $DEFAULT_COLOR"
