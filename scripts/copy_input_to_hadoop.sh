@@ -28,11 +28,12 @@ ANNOTATION_TOOL_TO_RUN=$1       # The 1st parameter from the command line
 INPUT_PATH=$2                   # The 2nd parameter from the command line (must be local path)
 MODE=$3                         # 3rd parameter from CL should be "serial" 
                                 #   or "raw"
-TESTING=$4                      # 4th parameter from CL should be "-test"
-                                #   (no quotes) to run in test mode.
+DESTINATION_FOR_INPUT_IN_HADOOP=$4
 
 
 
+# If you're running logging the output of this to a file, you might want
+# to comment out these colors for a more readable plain text file.
 MSG_COLOR='\e[0;36m'     # Cyan. Might also try dark gray (1;30), green
                          # (0;32), or light green (1;32).
 DEFAULT_COLOR='\e[0m'    # Reset to normal
@@ -85,7 +86,7 @@ if [ "$MODE" != "serial" ]; then # if we're working with raw text files...
     # records from the text in the input directory
     echo -e "$MSG_COLOR\n\n\nLaunching the master curator client:$DEFAULT_COLOR"
     cd client
-    ./runclient.sh -host localhost -port 9010 -in $INPUT_PATH -out $INTERMEDIATE_OUTPUT -mode PRE $TESTING 
+    ./runclient.sh -host localhost -port 9010 -in $INPUT_PATH -out $INTERMEDIATE_OUTPUT -mode PRE
 
     echo -e "$MSG_COLOR\n\nShutting down locally running Curator. $DEFAULT_COLOR"
     # Get list of currently running Java procs | find the Curator server | split on spaces (?) | send the first thing (i.e., the process ID) to the kill command
@@ -95,10 +96,10 @@ if [ "$MODE" != "serial" ]; then # if we're working with raw text files...
     echo -e "$MSG_COLOR\n\n\nCopying the serialized records to HDFS: $DEFAULT_COLOR"
     cd $HADOOP_DIRECTORY
     set +e # Do *not* exit the script if any command fails
-    ./bin/hadoop dfs -rmr serialized
-    ./bin/hadoop dfs -mkdir serialized
+    ./bin/hadoop dfs -rmr $DESTINATION_FOR_INPUT_IN_HADOOP
+    ./bin/hadoop dfs -mkdir $DESTINATION_FOR_INPUT_IN_HADOOP
     set -e # Exit the script if any command fails
-    ./bin/hadoop dfs -copyFromLocal $INTERMEDIATE_OUTPUT/* serialized
+    ./bin/hadoop dfs -copyFromLocal $INTERMEDIATE_OUTPUT/* $DESTINATION_FOR_INPUT_IN_HADOOP
     echo -e "$MSG_COLOR\nCopied successfully. $DEFAULT_COLOR"
 
 
@@ -109,8 +110,8 @@ else
     echo -e "$MSG_COLOR\n\n\nCopying the serialized records to HDFS: $DEFAULT_COLOR"
     cd $HADOOP_DIRECTORY
     set +e # Do *not* exit the script if any command fails
-    ./bin/hadoop dfs -rmr first_serialized_input
-    ./bin/hadoop dfs -mkdir first_serialized_input
+    ./bin/hadoop dfs -rmr $DESTINATION_FOR_INPUT_IN_HADOOP
+    ./bin/hadoop dfs -mkdir $DESTINATION_FOR_INPUT_IN_HADOOP
     
     # If this came from a MapReduce job, let's not copy the MR output back
     if [ -f $INPUT_PATH/mapreduce_out ]; then
@@ -118,7 +119,7 @@ else
     fi
 
     set -e # Exit the script if any command fails
-    ./bin/hadoop dfs -copyFromLocal $INPUT_PATH/* serialized
+    ./bin/hadoop dfs -copyFromLocal $INPUT_PATH/* $DESTINATION_FOR_INPUT_IN_HADOOP
     echo -e "$MSG_COLOR\nCopied successfully. $DEFAULT_COLOR"
 fi
 

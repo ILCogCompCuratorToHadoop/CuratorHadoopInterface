@@ -25,10 +25,12 @@ CURATOR_DIRECTORY=/shared/gargamel/undergrad/tyoun/curator-0.6.9
 HADOOP_DIRECTORY=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized
 OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
-ANNOTATION_TOOL_TO_RUN=$1       # The 1st parameter from the command line
-INPUT_PATH=$2                   # The 2nd parameter from the command line
-TESTING=$3
+PATH_IN_HADOOP=$1                   # The 2nd parameter from the command line
+DESTINATION_IN_LOCAL=$2             # Should be an absolute path on the
+                                    # local disk
 
+# If you're running logging the output of this to a file, you might want
+# to comment out these colors for a more readable plain text file.
 MSG_COLOR='\e[0;36m'     # Cyan. Might also try dark gray (1;30), green
                          # (0;32), or light green (1;32).
 DEFAULT_COLOR='\e[0m'    # Reset to normal
@@ -37,22 +39,60 @@ ERROR_COLOR='\e[0;31m'
 #########################################################################
 #                       No need to edit below here                      #
 
+
+# Move to the Hadoop directory
+cd /shared/gargamel/undergrad/tyoun/hadoop-1.0.3
+
+
+
+
+
+
 set +e # Do *not* exit the script if a command fails (so we can give
        # useful suggestions to the user)
 
 # When the MapReduce job finishes, copy the data back to local disk
+echo -e "$MSG_COLOR\nCopying the results of the MapReduce job back to the local machine $DEFAULT_COLOR"
+
+# Does the directory we want to copy to already exist? Throw an error if so.
+if [ -e $DESTINATION_IN_LOCAL ]; then
+    echo -e "$ERROR_COLOROutput directory $OUTPUT/$DESTINATION_IN_LOCAL already exists.$DEFAULT_COLOR"
+    echo "Should we delete it and replace?"
+    echo "(If no, we will have to exit the job, let you move things around, then"
+    echo "let you relaunch the job or something.)"
+    echo "Delete exising $OUTPUT ? (y/n)"
+    read ANSWER
+    if [ $ANSWER = 'y' ]; then
+	chmod -R 777 $DESTINATION_IN_LOCAL
+	rm -r $DESTINATION_IN_LOCAL
+    else
+        exit 1
+    fi
+fi
+
+echo -e "$MSG_COLOR\nCreating output directory $DESTINATION_IN_LOCAL $DEFAULT_COLOR"
+mkdir $DESTINATION_IN_LOCAL
+
+# Do the actual copy operation
 # TODO: Make this a distributed Hadoop job
-echo -e "$MSG_COLOR Copying the results of the MapReduce job back to the local machine$DEFAULT_COLOR"
-./bin/hadoop fs -copyToLocal serialized_output $OUTPUT
+./bin/hadoop fs -copyToLocal $DESTINATION_IN_LOCAL $OUTPUT
+
 # If the copy to local failed . . . 
-if [ "$?"-ne 0 ]
-then
-   echo -e "$MSG_COLOR\nCopying to local failed. Try fixing the error, then executing: $COMMAND$DEFAULT_COLOR"
+if [[ $? -ne 0 ]] ; then
+   echo -e "$MSG_COLOR\nCopying to local failed. Try fixing the error, then executing:"
+   echo -e "./bin/hadoop fs -copyToLocal $DESTINATION_IN_LOCAL $OUTPUT\n$DEFAULT_COLOR"
    exit 1
 fi 
-echo -e "$MSG_COLOR\nCopying to local succeeded. $DEFAULT_COLOR"
+echo -e "$MSG_COLOR\nCopying to local (at $DESTINATION_IN_LOCAL) succeeded.\n$DEFAULT_COLOR"
 
-set -e # Exit the script if a command fails
+chmod -R 777 $DESTINATION_IN_LOCAL
+
+set -e
+
+
+
+
+
 
 
 # Have Master Curator read in the updated Records and update the database accordingly

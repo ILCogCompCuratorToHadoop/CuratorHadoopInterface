@@ -207,7 +207,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
      * @postcondition envVarsForRuntimeExec is safe to use
      */
     private void setEnvVars( Configuration config ) {
-        if( !config.get( "libPath" ).equals("") ) {
+        if( config.get( "libPath" ) != null ) {
             envVarsForRuntimeExec = new String[] { "LD_LIBRARY_PATH="
                                                    + config.get( "libPath" ) };
         }

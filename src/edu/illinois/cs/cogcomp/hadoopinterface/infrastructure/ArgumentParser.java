@@ -36,7 +36,8 @@ public class ArgumentParser {
             err.append( "<document directory> <mode>\n\tor:\n\t\t" );
             err.append( "-d <document directory> -m <mode> [-out <output " );
             err.append( " directory>] [-maps <number of maps>] [-reduces " );
-            err.append( "<number of reduces>] [-lib /path/to/lib/] [-test]\n" );
+            err.append( "<number of reduces>] [-lib /path/to/lib/] [-cleanup] " +
+                    "[-test]\n" );
             err.append( "You tried to pass these parameters:\n\t" );
 
             for( String arg : args ) {

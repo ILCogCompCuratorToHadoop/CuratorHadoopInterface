@@ -60,12 +60,8 @@ public class LocalFileSystemHandler {
                                           String data,
                                           boolean overwrite )
             throws IOException {
-        if ( path.exists() && !overwrite ) {
-            throw new IOException( "File at path "+ path
-                                   + " already exists; cannot overwrite it." );
-        }
-
-        BufferedWriter out = new BufferedWriter( new FileWriter( path ) );
+        BufferedWriter out = new BufferedWriter(
+                new FileWriter( path, !overwrite ) );
         out.write( data );
         out.close();
     }

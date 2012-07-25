@@ -83,7 +83,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
         }
 
         // TODO: More things to change in cleaning mode?
-        if( cleaning ) {
+        if( isCleaning() ) {
             setReducerClass( CuratorKillerReducer.class );
         }
         else {
