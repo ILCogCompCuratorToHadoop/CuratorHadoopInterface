@@ -36,6 +36,7 @@ import java.util.List;
  * </ul>
  *
  * @author Lisa Bao
+ * @author Tyler Young
  */
 
 public class JobHandler {
@@ -60,7 +61,7 @@ public class JobHandler {
         ArrayList<AnnotationMode> dependencies = requestedAnnotation.getDependencies();
         ArrayList<AnnotationMode> depsToRun = new ArrayList<AnnotationMode>();
 
-        if( argv.length == 3 ) { // if we have 3 args
+        if( argv.length == 3 ) { // if we have 3 arguments
             String minDependency = argv[2];
             AnnotationMode minAnnotation = AnnotationMode.fromString(minDependency);
             ArrayList<AnnotationMode> minDeps = minAnnotation.getDependencies();
@@ -71,38 +72,43 @@ public class JobHandler {
                 depsToRun.remove(a);
             }
         }
-        else { // Only have 2 arguments from command line
-            // We take a random sample of the files in the input and inspect them
-            // for annotations
+        else { // only have 2 arguments from command line
+            // We take a random sample of the files in the input and inspect them for annotations
             // TODO: differentiate between raw text and serialized?
-            // TODO: die gracefully if directory is empty
             File dir = new File(inputDirectory);
-            List<File> files = Arrays.asList( dir.listFiles() );
-            File sample = new File( files.get(0).toString() );
 
-            // Decide what annotations need to be run
-            List<AnnotationMode> existingAnnotations;
-            try {
-                // Construct a (non-Hadoop) Record 'sampleRecord' from randomly chosen File 'sample'
-                Record sampleRecord =
-                        ( new SerializationHandler() ).deserialize( sample );
-
-                // Retrieve list of existing annotations for comparison
-                existingAnnotations = RecordTools.getAnnotationsList(sampleRecord);
-            } catch( TException e ) { // Probably wasn't a serialized record
-                System.out.println( "It looks like the files you gave us are not "
-                                    + "the output of a previous annotation.\n"
-                                    + "We're going to assume they are new, raw"
-                                    + "text.");
-                existingAnnotations = new ArrayList<AnnotationMode>();
+            if (dir.listFiles() == null) {
+                // TODO die gracefully
+                throw new IOException("ERROR! The given directory " + inputDirectory + " is not valid.");
             }
+            else {
+                List<File> files = Arrays.asList( dir.listFiles() );
+                File sample = new File( files.get(0).toString() );
 
-            // TODO: inform the user what we found regarding present annotations and dependencies
+                // Decide what annotations need to be run
+                List<AnnotationMode> existingAnnotations;
+                try {
+                    // Construct a (non-Hadoop) Record 'sampleRecord' from randomly chosen File 'sample'
+                    Record sampleRecord =
+                            ( new SerializationHandler() ).deserialize( sample );
 
-            // compare existing to dependencies list and add non-existing dependencies to new list
-            for (AnnotationMode annotation : dependencies) {
-                if (!existingAnnotations.contains(annotation)) {
-                    depsToRun.add(annotation);
+                    // Retrieve list of existing annotations for comparison
+                    existingAnnotations = RecordTools.getAnnotationsList(sampleRecord);
+                } catch( TException e ) { // Probably wasn't a serialized record
+                    System.out.println( "It looks like the files you gave us are not "
+                                        + "the output of a previous annotation.\n"
+                                        + "We're going to assume they are new, raw"
+                                        + "text.");
+                    existingAnnotations = new ArrayList<AnnotationMode>();
+                }
+
+                // TODO: inform the user what we found regarding present annotations and dependencies
+
+                // compare existing to dependencies list and add non-existing dependencies to new list
+                for (AnnotationMode annotation : dependencies) {
+                    if (!existingAnnotations.contains(annotation)) {
+                        depsToRun.add(annotation);
+                    }
                 }
             }
         } // END else
@@ -129,7 +135,10 @@ public class JobHandler {
 
         // Launch final MapReduce job
         System.out.println("Launching final MapReduce job:");
-        Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d " + lastAnnotation.toString() + " -m " + requestedAnnotation.toString() + " -out " + requestedAnnotation.toString());
+        Runtime.getRuntime().exec("./bin/hadoop jar curator.jar -d " 
+                + lastAnnotation.toString() + " -m " 
+                + requestedAnnotation.toString() + " -out " 
+                + requestedAnnotation.toString());
         System.out.println("Final MapReduce job is finished!");
 
         // Call batch_hadoop_to_master_curator
