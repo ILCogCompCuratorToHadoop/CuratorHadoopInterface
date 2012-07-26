@@ -4,3 +4,4 @@ edu.illinois.cs.cogcomp.hadoopinterface.infrastructure
 edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions
 edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.input
 edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.tests
+org.apache.thrift.transport

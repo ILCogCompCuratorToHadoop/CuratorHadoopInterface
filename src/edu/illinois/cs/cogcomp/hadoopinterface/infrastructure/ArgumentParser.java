@@ -146,6 +146,10 @@ public class ArgumentParser {
         usage.append(testing ? "Yes." : "No.");
         usage.append("\n");
 
+        usage.append("\tRun in cleanup mode? ");
+        usage.append(cleaning ? "Yes." : "No.");
+        usage.append("\n");
+
         HadoopInterface.logger.logStatus( usage.toString() );
     }
 

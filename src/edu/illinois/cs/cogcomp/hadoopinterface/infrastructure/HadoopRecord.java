@@ -15,9 +15,6 @@ import org.apache.thrift.TException;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * A version of the Curator's document record, for use on the Hadoop Distributed
@@ -42,6 +39,7 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
     public HadoopRecord() {
         super();
 
+        logger = new MessageLogger( true );
         serializer = new HadoopSerializationHandler();
     }
 
@@ -58,6 +56,7 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
                          Configuration config )
             throws IOException {
         super();
+        logger = new MessageLogger( true );
 
         try {
             initializeAllVars( documentHash, fs, config );
@@ -83,8 +82,6 @@ public class HadoopRecord extends Record implements WritableComparable< Record >
             throws IOException, TException {
         Path doc = new Path( config.get( "inputDirectory" ),
                              documentHash + ".txt" );
-
-        logger = new MessageLogger( true );
 
         logger.logStatus( "Reconstructing this HadoopRecord from file "
                           + doc.toString() );

@@ -21,16 +21,22 @@ import java.util.Random;
 /**
  * A job configuration object for a Hadoop job that interfaces with the Curator.
  * This configuration "knows" what mapper and reducer will be used, and it also
- * knows how to access the file system for this job.
+ * knows how to access the file system for this job. Because it handles setup for
+ * the MapReduce job, <strong>it is conceptually quite different from, but related to,
+ * the standard Hadoop job class.</strong>
  *
  * The configuration provides the following variables to the rest of the program
- * (available via the Configuration's `get()` method):
+ * (available via the Configuration's <code>get()</code> method):
  *
- *      - annotationMode: the tool that we're running over this batch of documents
- *      - inputDirectory: the directory in which you will find a number of
+ * <ul>
+ *      <li>annotationMode: the tool that we're running over this batch of documents</li>
+ *      <li>inputDirectory: the directory in which you will find a number of
  *          directories named with document hashes (those directories will contain
- *          the actual text files for annotation)
- *      - outputDirectory: similar to inputDirectory
+ *          the actual text files for annotation)</li>
+ *      <li>outputDirectory: similar to inputDirectory</li>
+ *      <li>libPath: the directory in which Hadoop nodes can find the
+ *          Thrift libraries</li>
+ * </ul>
  *
  * @author Tyler Young
  */
@@ -82,11 +88,12 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
             setMapperClass( CuratorMapper.class );
         }
 
-        // TODO: More things to change in cleaning mode?
         if( isCleaning() ) {
+            logger.log( "Set reducer to CuratorKillerReducer" );
             setReducerClass( CuratorKillerReducer.class );
         }
         else {
+            logger.log( "Set reducer to CuratorReducer" );
             setReducerClass( CuratorReducer.class );
         }
         setNumReduceTasks( numReduces );
@@ -145,33 +152,37 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
      * @throws IOException Possible IOException from file operations
      */
     public void checkFileSystem( ) throws IOException {
-        Path inputDirectory = getInputDirectory();
+        if( !isCleaning() ) {
+            Path inputDirectory = getInputDirectory();
 
-        if( fsHandler.HDFSFileExists( HadoopInterface.TMP_DIR ) ) {
-            throw new IOException( "Temp directory "
-                                           + fs.makeQualified(HadoopInterface.TMP_DIR)
-                                           + " already exists.  Please remove it first.");
-        }
-        if( !fsHandler.HDFSFileExists( inputDirectory ) ) {
-            throw new BadInputDirectoryException( "Input directory "
-                                                          + fs.makeQualified( inputDirectory ) + " does not exist. "
-                                                          + "Please create it in the Hadoop file system first." );
-        }
-        if( !fsHandler.isDir( inputDirectory ) ) {
-            throw new BadInputDirectoryException( "The file "
-                                                          + fs.makeQualified( inputDirectory ) + " is not a directory. "
-                                                          + "Please check the documentation for this package for "
-                                                          + "information on how to structure the input directory.");
-        }
+            if( fsHandler.HDFSFileExists( HadoopInterface.TMP_DIR ) ) {
+                throw new IOException( "Temp directory "
+                        + fs.makeQualified(HadoopInterface.TMP_DIR)
+                        + " already exists.  Please remove it first.");
+            }
+            if( !fsHandler.HDFSFileExists( inputDirectory ) ) {
+                throw new BadInputDirectoryException( "Input directory "
+                        + fs.makeQualified( inputDirectory ) + " does not exist. "
+                        + "Please create it in the Hadoop file system first." );
+            }
+            if( !fsHandler.isDir( inputDirectory ) ) {
+                throw new BadInputDirectoryException( "The file "
+                        + fs.makeQualified( inputDirectory )
+                        + " is not a directory. Please check the documentation "
+                        + "for this package for information on how to structure "
+                        + "the input directory.");
+            }
 
-        List<Path> inputFiles = fsHandler.getFilesOnlyInDirectory(
-                inputDirectory );
-        for( Path inputFile : inputFiles ) {
-            if( fsHandler.getFileSizeInBytes( inputFile ) < 1 ) {
-                throw new EmptyInputException( "Input in document directory "
-                                                       + fs.makeQualified( inputDirectory ) + " has no "
-                                                       + "recognized input.  Please create input files in the "
-                                                       + "Hadoop file system before starting this program.");
+            List<Path> inputFiles =
+                    fsHandler.getFilesOnlyInDirectory( inputDirectory );
+            for( Path inputFile : inputFiles ) {
+                if( fsHandler.getFileSizeInBytes( inputFile ) < 1 ) {
+                    throw new EmptyInputException( "Input in document directory "
+                            + fs.makeQualified( inputDirectory ) + " has no "
+                            + "recognized input.  Please create input files in "
+                            + "the Hadoop file system before starting this "
+                            + "program." );
+                }
             }
         }
     }
@@ -286,6 +297,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
                     + Integer.toString( rng.nextInt(1000) );
         }
 
+
         String outputDirectory;
         if( !argParser.getOutputDirectory().equals( "" ) ) {
             outputDirectory = argParser.getOutputDirectory();
@@ -295,6 +307,14 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
                     + System.currentTimeMillis();
         }
 
+        // In cleaning mode, we ignore the user's output directory!
+        if( argParser.isCleaning() ) {
+            Random rng = new Random();
+            outputDirectory = "/scratch/mapreduce_out_"
+                    + Integer.toString( rng.nextInt(10000) );
+
+
+        }
 
         String libPath = argParser.getLibPath();
         if( !libPath.equals( "" ) ) {

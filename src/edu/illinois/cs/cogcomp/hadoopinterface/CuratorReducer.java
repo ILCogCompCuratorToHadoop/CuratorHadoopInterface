@@ -30,13 +30,15 @@ import java.util.*;
  * @author Tyler A. Young
  * @author Lisa Y. Bao
  */
-public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopRecord> {
+public class CuratorReducer
+        extends Reducer<Text, HadoopRecord, Text, HadoopRecord> {
+    public static final String userDir = System.getProperty( "user.home" );
 
     /**
      * Constructs a CuratorReducer
      */
     public CuratorReducer() throws CuratorNotFoundException, IOException {
-        Path curatorDir = new Path( System.getProperty( "user.home" ), "curator" );
+        Path curatorDir = new Path( userDir, "curator" );
         Path distDir = new Path( curatorDir, "dist" );
         distDir.makeQualified( FileSystem.get( new Configuration() ) );
         dir = new PathStruct( distDir );
@@ -283,9 +285,17 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             // If not, start it and sleep until it's ready to go
             if( spawnedCuratorProcesses.isEmpty() ) {
                 startCurator( toolToRun );
+            }
 
-                // Give Curator itself time to start up
-                Thread.sleep( getEstimatedTimeToStart( AnnotationMode.TOKEN ));
+            // Give Curator itself time to start up
+            // If we're running a tool that starts *with* the Curator
+            // (instead of *before* the Curator), wait a bit longer
+            if( !toolsThatMustBeLaunched.contains( toolToRun ) ) {
+                Thread.sleep( getEstimatedTimeToStart( toolToRun ) );
+            }
+            else {
+                // Minimum amount of time to wait is for the tokenizer
+                Thread.sleep( getEstimatedTimeToStart(AnnotationMode.TOKEN) );
             }
 
             // If we've waited more than the max number of times, quit.
@@ -362,10 +372,16 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         return flagInFileSystem.exists();
     }
 
-    // TODO: Unset this after we shut down the tool!
-    private void setToolHasBeenLaunched( boolean newValue ) throws IOException {
-        File flagInFileSystem = new File( dir.user().toString(),
-                "_annotator_launched" );
+    /**
+     * Sets or unsets the flag in the file system which is used to indicate that
+     * an annotation tool is running on this Reduce node.
+     * @param newValue True if the flag should indicate that there is indeed an
+     *                 annotator which needs to be shut down later, or false if
+     *                 it should indicate there are no more running annotators.
+     * @throws IOException If the flag in the file system cannot be set
+     */
+    public static void setToolHasBeenLaunched( boolean newValue ) throws IOException {
+        File flagInFileSystem = new File( userDir, "_annotator_launched" );
         if( newValue ) {
             flagInFileSystem.createNewFile();
         }
@@ -447,10 +463,11 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         // Handle the output from the Curator (we don't want to print it, but
         // we can't just leave the output stream there, as it can cause deadlock
         // in some OS's implementations)
+        File curatorLog = new File( getCuratorLogLocation().toString() );
         StreamGobbler err = new StreamGobbler( p.getErrorStream(),
-                                               "Curator ERR: ", false );
+                "Curator ERR: ", false, curatorLog );
         StreamGobbler out = new StreamGobbler( p.getInputStream(),
-                                               "Curator: ", false );
+                "Curator: ", false, curatorLog );
 
         err.start();
         out.start();
@@ -575,7 +592,6 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         }
         return configLoc;
     }
-
 
     /**
      * Runs the shell script required to launch the indicated annotation tool.
@@ -707,6 +723,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
         out.start();
     }
 
+
     /**
      * Returns the log location on the local node for the specified annotation
      * tool.
@@ -765,7 +782,7 @@ public class CuratorReducer extends Reducer<Text, HadoopRecord, Text, HadoopReco
             logDir = new Path( distDir, "logs" );
             binDir = new Path( distDir, "bin" );
             configDir = new Path( distDir, "configs" );
-            userDir = distDir.getParent().getParent();
+            this.userDir = new Path( CuratorReducer.userDir );
         }
 
         public Path dist() {

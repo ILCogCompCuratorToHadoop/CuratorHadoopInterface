@@ -105,9 +105,4 @@ echo -e "$MSG_COLOR\n\nShutting down the master Curator. $DEFAULT_COLOR"
 # send the first thing (i.e., the process ID) to the kill command
 jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill
 
-# Have the Hadoop nodes kill the running annotator, Curator, and Curator Client processes
-# In order to do this, launch the HadoopInterface with parameter '-cleanup'
-./bin/hadoop jar HadoopInterface.jar -d $INPUT_PATH -m $ANNOTATION_TOOL_TO_RUN -cleanup
-
-
 exit 0

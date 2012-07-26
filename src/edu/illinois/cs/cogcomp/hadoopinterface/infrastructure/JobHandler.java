@@ -1,12 +1,12 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
+import com.sun.istack.internal.Nullable;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
+import org.apache.thrift.TException;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * A class to handle annotation dependencies outside of the Curator.
@@ -29,8 +29,9 @@ import java.util.List;
  *          (If you know for certain that your documents should be run through
  *          the POS tagger first.)
  * @precondition The following files/directories are in place on this machine:
+ *
  * <ul>
- *     <li>curator-0.6.9</li>
+ *     <li>curator-0.6.9 (whose dist directory contains, among other things, the `client` directory</li>
  *     <li>JobHandler (contains a number of .jar dependencies and scripts)</li>
  * </ul>
  * @precondition You have opened the `.sh` files in the scripts directory and
@@ -57,25 +58,83 @@ public class JobHandler {
      */
     public static void main(String[] argv) throws Exception {
         AnnotationMode requestedAnnotation = AnnotationMode.fromString( argv[0] );
-        String inputDirectory = argv[1];
+        String inputDirAsString = argv[1];
 
         // Check input
-        File inputDirAsFile = new File(inputDirectory);
-
-        if (inputDirAsFile.listFiles() == null) {
+        File inputDir = new File( inputDirAsString );
+        // If we find no files to sample, throw an error
+        if( getSampleFileFromDir( inputDir ) == null ) {
             throw new IOException( "ERROR! The given directory "
-                                   + inputDirectory + " is not valid." );
+                                   + inputDirAsString + " is not valid." );
         }
 
 
-        boolean inputIsSerializedRecords =
-                containsSerializedRecords( inputDirectory );
+        boolean inputIsSerializedRecords = containsSerializedRecords( inputDir );
+
+        if( inputIsSerializedRecords ) {
+            System.out.println( "\nIt looks like the input you provided are "
+                                + "serialized records (output from a previous"
+                                + "Hadoop job)." );
+        }
+        else {
+            System.out.println( "\nIt looks like the files you gave us are not "
+                                + "the output of a previous annotation.\n"
+                                + "We're going to assume they are new, raw "
+                                + "text.\n" );
+        }
+
+
+        // Determine dependencies
+        List<AnnotationMode> depsToRun =
+                determineDependencies( argv, requestedAnnotation,
+                                       inputDir, inputIsSerializedRecords );
 
 
 
         // Call copy_input_to_hadoop
         // If necessary, this launches the Master Curator and serializes the raw
         // text into records before copying the files to HDFS
+        copyInputToHadoop( requestedAnnotation, inputDirAsString,
+                inputIsSerializedRecords );
+
+
+        // Annotate the documents for each new, intermediate dependency
+        String inputToThisJob = "first_serialized_input";
+        for( AnnotationMode dependencyToGet : depsToRun ) {
+            String outputFromThisJob = dependencyToGet.toString();
+
+            launchJob( dependencyToGet, inputToThisJob, outputFromThisJob );
+
+            // Set up for the next job (next job's input is this job's output)
+            inputToThisJob = outputFromThisJob;
+        }
+        // At this point, inputToThisJob is either the output from the last
+        // dependency we needed, or it is "first_serialized_input" (in the case
+        // where we didn't need any dependencies)
+
+
+
+
+        // Launch final MapReduce job
+        System.out.println("Launching final MapReduce job.");
+        String finalOutputInHadoop = requestedAnnotation.toString();
+        launchJob( requestedAnnotation, inputToThisJob, finalOutputInHadoop );
+        System.out.println("Final MapReduce job is finished!\n\n");
+
+
+
+
+        // Copy the output files (serialized records) from HDFS to the local disk,
+        // and add them to a locally-running Curator's database
+        // Uses the copy_output_from_hadoop.sh script
+        copyOutputFromHadoop( inputDirAsString, finalOutputInHadoop );
+
+        System.out.println("\n\nJob completed successfully!\n\n");
+    } // END OF MAIN
+
+    private static void copyInputToHadoop(
+            AnnotationMode requestedAnnotation, String inputDirectory,
+            boolean inputIsSerializedRecords ) throws Exception {
         System.out.println( "\nCopying your input files from \n\t" + inputDirectory
                 + "\nto the Hadoop cluster.");
 
@@ -107,10 +166,12 @@ public class JobHandler {
         }
 
         System.out.println( "\nFinished copying files.\n");
+    }
 
-
-
-        // Determine dependencies
+    private static List<AnnotationMode> determineDependencies(
+            String[] argv, AnnotationMode requestedAnnotation,
+            File inputDirAsFile, boolean inputIsSerializedRecords )
+            throws IOException, TException {
         System.out.println( "\nGetting the list of dependencies to run.\n");
         List<AnnotationMode> dependencies = requestedAnnotation.getDependencies();
         List<AnnotationMode> depsToRun = new ArrayList<AnnotationMode>();
@@ -134,41 +195,23 @@ public class JobHandler {
         else { // only have 2 arguments from command line
             // We take a random sample of the files in the input and inspect
             // them for annotations
-            List<File> files = Arrays.asList( inputDirAsFile.listFiles() );
-            File sample = new File( files.get(0).toString() );
 
-            // Decide what annotations need to be run
-            List<AnnotationMode> existingAnnotations;
+            Set<AnnotationMode> existingAnnos = new HashSet<AnnotationMode>();
             if( inputIsSerializedRecords ) {
-                // Construct a (non-Hadoop) Record 'sampleRecord' from randomly
-                // chosen File 'sample'
-                Record sampleRecord =
-                        ( new SerializationHandler() ).deserialize( sample );
-
-                // Retrieve list of existing annotations for comparison
-                existingAnnotations =
-                        RecordTools.getAnnotationsList( sampleRecord );
+                existingAnnos = getCommonAnnotations( inputDirAsFile );
 
                 System.out.println( "It looks like the records you gave us "
                         + "have the following annotations already:\n\t"
-                        + RecordTools.getAnnotationsString( sampleRecord )
+                        + existingAnnos.toString()
                         + "\n" );
             }
-            else { // Input isn't serialized records
-                inputIsSerializedRecords = false;
-
-                System.out.println( "It looks like the files you gave us are not "
-                                    + "the output of a previous annotation.\n"
-                                    + "We're going to assume they are new, raw "
-                                    + "text.\n" );
-                existingAnnotations = new ArrayList<AnnotationMode>();
-            }
+            // Note: At this point, if we have raw text, existingAnnos is empty
 
             // compare existing annotations to those in the dependencies list and
             // add annotations to our to-do list as necessary
-            for (AnnotationMode annotation : dependencies) {
-                if (!existingAnnotations.contains(annotation)) {
-                    depsToRun.add(annotation);
+            for( AnnotationMode annotation : dependencies ) {
+                if( !existingAnnos.contains(annotation) ) {
+                    depsToRun.add( annotation );
                 }
             }
         } // END else
@@ -180,34 +223,16 @@ public class JobHandler {
         }
         else {
             System.out.println( "We will get the following dependencies, in "
-                                + "order:\n\t" + depsToRun.toString() + "\n\n" );
+                                + "order, before moving on to "
+                                + requestedAnnotation.toString()
+                                + ":\n\t" + depsToRun.toString() + "\n\n" );
         }
+        return depsToRun;
+    }
 
-
-
-        // Annotate the documents for each new, intermediate dependency
-        String inputToThisJob = "first_serialized_input";
-        for( AnnotationMode dependencyToGet : depsToRun ) {
-            String outputFromThisJob = dependencyToGet.toString();
-
-            launchJob( dependencyToGet, inputToThisJob, outputFromThisJob );
-
-            // Set up for the next job (next job's input is this job's output)
-            inputToThisJob = outputFromThisJob;
-        }
-        // At this point, inputToThisJob is either the output from the last
-        // dependency we needed, or it is "first_serialized_input" (in the case
-        // where we didn't need any dependencies)
-
-        // Launch final MapReduce job
-        System.out.println("Launching final MapReduce job.");
-        String finalOutputInHadoop = requestedAnnotation.toString();
-        launchJob( requestedAnnotation, inputToThisJob, finalOutputInHadoop );
-        System.out.println("Final MapReduce job is finished!\n\n");
-
-        // Copy the output files (serialized records) from HDFS to the local disk,
-        // and add them to a locally-running Curator's database
-        // Uses the copy_output_from_hadoop.sh script
+    private static void copyOutputFromHadoop( String inputDirectory,
+                                              String finalOutputInHadoop )
+            throws Exception {
         String finalOutputInLocal = inputDirectory + "/output";
         System.out.println( "\nCopying your serialized records from \n\t"
                 + finalOutputInHadoop + "\non the Hadoop cluster back to the local "
@@ -215,8 +240,8 @@ public class JobHandler {
 
 
         String copyOutputCmd = "scripts/copy_output_from_hadoop.sh "
-                               + finalOutputInHadoop + " "
-                               + finalOutputInLocal;
+                + finalOutputInHadoop + " "
+                + finalOutputInLocal;
         Process copyOutputProc = Runtime.getRuntime().exec( copyOutputCmd );
 
         // Capture the output and write it to a file
@@ -229,8 +254,7 @@ public class JobHandler {
         }
 
         System.out.println( "\nFinished copying files.\n" );
-    } // END OF MAIN
-
+    }
 
     private static void launchJob( AnnotationMode a,
                                    String inDir,
@@ -267,6 +291,7 @@ public class JobHandler {
         System.out.println("Job has finished...");
     }
 
+
     private static void gobbleOutputFromProcess( Process process,
                                                  String logFileName )
             throws IOException {
@@ -285,21 +310,13 @@ public class JobHandler {
         out.start();
     }
 
-    private static boolean containsSerializedRecords( String directory ) {
+    private static boolean containsSerializedRecords( File directory ) {
         try {
-            File dir = new File( directory );
-            File sample = null;
+            File sample = getSampleFileFromDir( directory );
 
-            for( File f : dir.listFiles() ) {
-                if( !f.isHidden() ) {
-                    sample = f;
-                    break;
-                }
-            }
-
-           // Construct a (non-Hadoop) Record 'sampleRecord' from randomly
-           // chosen File 'sample'
-           Record sampleRecord =
+            // Construct a (non-Hadoop) Record 'sampleRecord' from randomly
+            // chosen File 'sample'
+            Record sampleRecord =
                             ( new SerializationHandler() ).deserialize( sample );
 
             // If we were able to deserialize, it must be a serialized record!
@@ -307,6 +324,95 @@ public class JobHandler {
         } catch( Exception e ) {
             return false;
         }
+    }
+
+    private static Set<AnnotationMode> getCommonAnnotations( File directory )
+            throws IOException, TException {
+        List<File> samples = getSampleFilesFromDir( directory, 25 );
+
+        if( samples.size() == 0 ) {
+            throw new IOException( "No records found in input directory "
+                    + directory.toString() );
+        }
+
+        System.out.println( "Took a sample of " + samples.size()
+                            + " records in determining the set of common "
+                            + "annotations.");
+
+        // Decide what annotations need to be run
+        List<AnnotationMode> commonAnnotations = null;
+
+        // Construct a Record 'sampleRecord' from randomly
+        // chosen File 'sample'
+        for( File sample : samples ) {
+            Record sampleRecord =
+                    ( new SerializationHandler() ).deserialize( sample );
+
+            // Retrieve list of existing annotations for comparison
+            List<AnnotationMode> thisRecordsAnnos =
+                    RecordTools.getAnnotationsList( sampleRecord );
+
+            if( commonAnnotations == null ) {
+                // Set the baseline (the first record we have)
+                commonAnnotations = new LinkedList<AnnotationMode>(
+                        RecordTools.getAnnotationsList( sampleRecord ) );
+            }
+            else {
+                System.out.println( "This record provides "
+                        + thisRecordsAnnos.toString() + ".\nPrevious common: "
+                        + commonAnnotations.toString() );
+                for( int i = 0; i < commonAnnotations.size(); i++ ) {
+                    // Check that we aren't out of bounds, since we're modifying
+                    // the size of the array as we go
+                    if( i < commonAnnotations.size() ) {
+                       AnnotationMode commonAnno = commonAnnotations.get(i);
+
+                        if( !thisRecordsAnnos.contains( commonAnno ) ) {
+                            commonAnnotations.remove( commonAnno );
+                        }
+                    }
+                }
+
+                System.out.println( "New common: " + commonAnnotations.toString() );
+            }
+        }
+
+        return new HashSet<AnnotationMode>( commonAnnotations );
+    }
+
+    @Nullable
+    private static File getSampleFileFromDir( File directory ) {
+        List<File> sampleList = getSampleFilesFromDir( directory, 1 );
+        if( sampleList.size() > 0 ) {
+            return sampleList.get( 0 );
+        }
+
+        return null;
+    }
+
+    private static List<File> getSampleFilesFromDir( File directory,
+                                                     int numFiles ) {
+        // We actually have to use the copy constructor here, because the List
+        // returned from Arrays.asList is immutable!
+        List<File> allFiles =
+                new ArrayList<File>(Arrays.asList( directory.listFiles() ) );
+        Random rng = new Random();
+        List<File> samples = new ArrayList<File>();
+
+        // Go until we have either collected the requested number of files
+        // or we have no more files to consider
+        while( samples.size() < numFiles && allFiles.size() > 0 ) {
+            File potentialSample = allFiles.get( rng.nextInt( allFiles.size() ) );
+
+            if( !potentialSample.isHidden() && !potentialSample.isDirectory() ) {
+                samples.add( potentialSample );
+                allFiles.remove( potentialSample );
+            } else {
+                allFiles.remove( potentialSample );
+            }
+        }
+
+        return samples;
     }
 
 }
