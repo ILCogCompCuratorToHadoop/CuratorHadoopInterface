@@ -49,10 +49,10 @@ echo -e "$MSG_COLOR\n\n\n$ANNOTATION_TOOL_TO_RUN job finished!\n$DEFAULT_COLOR"
 
 # Have the Hadoop nodes kill the running annotator, Curator, and Curator Client processes
 # In order to do this, launch the HadoopInterface with parameter '-cleanup'
-echo -e "$MSG_COLOR\n\nRunning cleanup . . . $DEFAULT_COLOR"
-echo "(Note that this is another MapReduce job which we run in order "
-echo "to shut down the previously used annotators.)"
+#echo -e "$MSG_COLOR\n\nRunning cleanup . . . $DEFAULT_COLOR"
+#echo "(Note that this is another MapReduce job which we run in order "
+#echo "to shut down the previously used annotators.)"
 
-./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -lib $LIB_DIR_ON_HADOOP_NODES -reduces 1 -cleanup
+#./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -lib $LIB_DIR_ON_HADOOP_NODES -reduces 1 -cleanup
 
-echo -e "$MSG_COLOR\n\n\nCleanup finished!\n$DEFAULT_COLOR"
+#echo -e "$MSG_COLOR\n\n\nCleanup finished!\n$DEFAULT_COLOR"

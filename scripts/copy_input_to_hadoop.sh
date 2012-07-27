@@ -52,6 +52,8 @@ echo "You requested we run the annotation tool $ANNOTATION_TOOL_TO_RUN on your i
 echo "You requested we annotate the input text files located here: $INPUT_PATH"
 echo -e "\t(That input directory should be an *absolute* path.) $DEFAULT_COLOR"
 
+echo -e "\nYou launched this script like this: copy_input_to_hadoop.sh $*"
+
 # Make sure a proper mode was given
 if [ "$MODE" != "serial" ]; then
     if [ "$MODE" != "raw" ]; then

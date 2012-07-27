@@ -113,4 +113,9 @@ Curator. This version makes the following modifications:
   ago. Also modified the `runServer()` method's signature to take a
   Curator.Iface (the CuratorHandler), and had it spawn a thread of the
   `InactiveCuratorKiller` right before calling `server.serve()`.
-
+- in `[Curator home]/curator-annotators/`, each
+  [annotation type]Server/[annotation type]Handler pair has been
+  modified to monitor and kill the handler after a period of
+  inactivity, almost identical to the modifications made in the
+  CuratorServer/CuratorHandler.
+  

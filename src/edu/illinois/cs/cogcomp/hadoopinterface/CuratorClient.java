@@ -220,7 +220,7 @@ public class CuratorClient {
             // performAnnotation() doesn't work. The following (asking the
             // Curator to store the record, then using provide()) is a
             // cludgy workaround.
-            // TODO: Fix the performAnnotation() function!!
+            // TODO: [Long-term] Fix the performAnnotation() function!!
             if( !annotator.equals( AnnotationMode.TOKEN )
                     && !annotator.equals( AnnotationMode.SENTENCE ) ) {
                 HadoopInterface.logger.logStatus( "Storing record..." );
