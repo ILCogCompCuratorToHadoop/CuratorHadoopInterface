@@ -198,8 +198,25 @@ public class CuratorReducer
             // Pass Curator output back to Hadoop as Record
             logger.logStatus( "Finished serializing record "
                     + inValue.getDocumentHash() + " to " + outputDir.toString() );
+
+            shutDownAnnotatorIfNecessary( toolToRun );
+
             context.write(inKey, inValue);
         }
+    }
+
+    /**
+     * If the annotator is one that needs to be manually shut down after each
+     * annotation, we will do that.
+     * @param annotator The annotator that has just finished its job
+     * @TODO: Write this method!
+     */
+    private void shutDownAnnotatorIfNecessary( AnnotationMode annotator ) {
+        if( annotator.equals( AnnotationMode.PARSE ) ) {
+
+
+        }
+
     }
 
     /**
@@ -669,7 +686,6 @@ public class CuratorReducer
         // NER is launched in a weird way.
         else if( toolToLaunch.equals( AnnotationMode.NER ) ) {
             String configs = dir.config().toString();
-            String logs = dir.log().toString();
 
             cmd.append( scriptLocation.toString() );
             cmd.append( " nerconll " ); // some ID
@@ -708,7 +724,6 @@ public class CuratorReducer
                     + "\n\t from directory "
                     + dirToLaunchAgainst.toString() );
 
-            // TODO: Make the Thrift library path a parameter
             spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
                     cmd.toString(), envVarsForRuntimeExec, dirToLaunchAgainst ) );
         }

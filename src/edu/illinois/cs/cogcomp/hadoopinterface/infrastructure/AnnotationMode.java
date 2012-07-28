@@ -11,7 +11,6 @@ import java.util.regex.Pattern;
  * Defines "modes" for the Curator-to-Hadoop interface (i.e., annotation types
  * which the tool will run with.
  * @author Tyler Young
- * @TODO: Make sure this actually represents all the tools we need!
  */
 public enum AnnotationMode {
     CHUNK, COREF, NER, NOM_SRL, PARSE, POS, SENTENCE, STANFORD_PARSE, TOKEN, VERB_SRL, WIKI;
@@ -112,7 +111,7 @@ public enum AnnotationMode {
             case NOM_SRL:
                 return "nom";
             case PARSE:
-                return "charniak";  // TODO: Is this the one to use?
+                return "charniak";
             case POS:
                 return "pos";
             case SENTENCE:

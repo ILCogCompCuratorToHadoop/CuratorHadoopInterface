@@ -24,11 +24,12 @@ INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized
 # In the output directory, we will place a dir called "serialized" which
 # will store the job's output records
 OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
-ANNOTATION_TOOL_TO_RUN=$1       # The 1st parameter from the command line
-INPUT_PATH=$2                   # The 2nd parameter from the command line (must be local path)
-MODE=$3                         # 3rd parameter from CL should be "serial" 
+INPUT_PATH=$1                   # The 1st parameter from the command line 
+                                #   (must be a local path to be copied to 
+                                #   HDFS)
+MODE=$2                         # 2nd parameter from CL should be "serial" 
                                 #   or "raw"
-DESTINATION_FOR_INPUT_IN_HADOOP=$4
+DESTINATION_FOR_INPUT_IN_HADOOP=$3
 
 
 
@@ -50,6 +51,8 @@ echo -e "$MSG_COLOR\n\n\nYou said your copy of Curator is located here: $CURATOR
 echo "You requested we run the annotation tool $ANNOTATION_TOOL_TO_RUN on your input"
 echo "You requested we annotate the input text files located here: $INPUT_PATH"
 echo -e "\t(That input directory should be an *absolute* path.) $DEFAULT_COLOR"
+
+echo -e "\nYou launched this script like this: copy_input_to_hadoop.sh $*"
 
 # Make sure a proper mode was given
 if [ "$MODE" != "serial" ]; then

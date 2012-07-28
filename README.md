@@ -3,7 +3,7 @@
 The Curator-to-Hadoop Interface
 ========================================
 
-About the Project
+Overview (About the Project)
 ----------------------------------------
 
 This is a tool for interfacing the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) with a [Hadoop](http://hadoop.apache.org/) cluster. To contribute to the project, contact @s3cur3.
@@ -24,10 +24,13 @@ The advantages to this system include:
 
 * Pre-processing of large corpora (for instance, after one annotation tool has been upgraded) with little user intervention, freeing up more time to solve research problems.
 
-Use notes
+Getting Started
 ----------------------------------------
 
 Make sure you have all the files present in the [[Manifest]] section.
+
+TODO: Step-by-step guide to go from downloading the package through
+compiling, setting up a job, getting the output, etc.
 
 ### Examining the Log Files ###
 
@@ -89,3 +92,29 @@ should be an absolute path (i.e., one beginning with `/`),
 and inside that directory should be the Thrift library files 
 (e.g., `libthrift.so.0`).
 
+
+
+Modifications to the existing Curator infrastructure
+----------------------------------------
+
+This package requires a (currently) custom-built version of the
+Curator. This version makes the following modifications:
+
+- in `[Curator home]/curator-interfaces/curator.thrift`: added
+  `getTimeOfLastAnnotation()` method
+- in `[Curator home]/curator-server/CuratorHandler.java`:
+  added `getTimeOfLastAnnotation()` and modified `performAnnotation()`
+  to update a new private field `lastAnnotationTime`
+- in `[Curator home]/curator-server/CuratorHandler.java`: added the
+  private `InactiveCuratorKiller` class, which periodically queries
+  the `CuratorHandler`'s last annotation time and calls
+  `Runtime.exit()` if the last annotation took place too long
+  ago. Also modified the `runServer()` method's signature to take a
+  Curator.Iface (the CuratorHandler), and had it spawn a thread of the
+  `InactiveCuratorKiller` right before calling `server.serve()`.
+- in `[Curator home]/curator-annotators/`, each
+  [annotation type]Server/[annotation type]Handler pair has been
+  modified to monitor and kill the handler after a period of
+  inactivity, almost identical to the modifications made in the
+  CuratorServer/CuratorHandler.
+  

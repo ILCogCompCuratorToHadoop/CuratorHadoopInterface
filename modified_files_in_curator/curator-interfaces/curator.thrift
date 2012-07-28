@@ -73,9 +73,9 @@ service Curator extends base.BaseService {
   Record wsprovide(1:string view_name, 2:list<string> sentences, 3:bool forceUpdate)
   throws (1:base.ServiceUnavailableException suex, 2:base.AnnotationFailedException afex),
 
-  /** Annotates the given Record (by modifying the Record itself) with the requested view. Parameter `record` is the Record to which an annotation should be added, and parameter view_name is the type of annotation to be performed on the record. TODO: Test this! */
-  void performAnnotation(1:Record record, 2:string view_name, 3:bool forceUpdate)
-  throws (1:base.ServiceUnavailableException suex, 2:base.AnnotationFailedException afex),
+  /** Returns the (standard Unix milliseconds) time of last annotation 
+   activity (which may be the beginning or end of the last annotation performed).*/
+  i64 getTimeOfLastAnnotation(),
 
   /** Returns the Record for a given text. */
   Record getRecord(1:string text) throws (1:base.ServiceUnavailableException ex, 2:base.AnnotationFailedException ex2),

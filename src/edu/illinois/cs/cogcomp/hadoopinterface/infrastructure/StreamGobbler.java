@@ -29,11 +29,12 @@ public class StreamGobbler extends Thread {
 
     /**
      * Constructs a StreamGobbler that writes to the indicated file. If the
-     * @param inputStream
-     * @param prefix
-     * @param alsoPrintToStdOut
-     * @param logFile
-     * @TODO: Document!
+     * @param inputStream The stream that we should handle
+     * @param prefix A string with which to prefix each output from this stream
+     *               (e.g., "Message: " or "ERROR: ").
+     * @param alsoPrintToStdOut True if we should log all messages to the standard
+     *                          output as well as the file
+     * @param logFile The log file to which we should log all output
      */
     public StreamGobbler( InputStream inputStream,
                           String prefix, boolean alsoPrintToStdOut,
@@ -45,6 +46,9 @@ public class StreamGobbler extends Thread {
         }
     }
 
+    /**
+     * Begins logging all the output from the input stream
+     */
     public void run() {
         try {
             BufferedWriter writer = null;
@@ -83,6 +87,10 @@ public class StreamGobbler extends Thread {
 
     }
 
+    /**
+     * @return A string representing everything we've read from the input stream
+     *         so far
+     */
     public String getOutput() {
         return sb.toString();
     }

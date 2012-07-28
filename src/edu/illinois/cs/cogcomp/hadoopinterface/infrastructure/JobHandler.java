@@ -43,7 +43,6 @@ import java.util.*;
  *
  * @author Lisa Bao
  * @author Tyler Young
- * @TODO Document methods!
  */
 
 public class JobHandler {
@@ -51,10 +50,19 @@ public class JobHandler {
             "first_serialized_input";
 
     /**
+     * Set up a string of Hadoop jobs to run the requested annotation on the
+     * documents in the (locally residing) input directory. Handles all
+     * dependencies leading up to the requested annotation, and copies the output
+     * of the final job back to the local machine.
      * @param argv String arguments from command line.
+     *
      *             The first argument must be the targeted annotation type.
-     *             The second argument must be an absolute, local input directory path.
-     *             The third argument must be either a starting annotation (dependency), or empty.
+     *
+     *             The second argument must be an absolute, local input
+     *             directory path.
+     *
+     *             The third argument must be either a starting annotation
+     *             (dependency), or empty.
      */
     public static void main(String[] argv) throws Exception {
         AnnotationMode requestedAnnotation = AnnotationMode.fromString( argv[0] );
@@ -94,8 +102,7 @@ public class JobHandler {
         // Call copy_input_to_hadoop
         // If necessary, this launches the Master Curator and serializes the raw
         // text into records before copying the files to HDFS
-        copyInputToHadoop( requestedAnnotation, inputDirAsString,
-                inputIsSerializedRecords );
+        copyInputToHadoop( inputDirAsString, inputIsSerializedRecords );
 
 
         // Annotate the documents for each new, intermediate dependency
@@ -132,17 +139,28 @@ public class JobHandler {
         System.out.println("\n\nJob completed successfully!\n\n");
     } // END OF MAIN
 
-    private static void copyInputToHadoop(
-            AnnotationMode requestedAnnotation, String inputDirectory,
-            boolean inputIsSerializedRecords ) throws Exception {
-        System.out.println( "\nCopying your input files from \n\t" + inputDirectory
-                + "\nto the Hadoop cluster.");
+
+    /**
+     * Copies the input directory (containing either serialized records or raw
+     * text) from the local machine into the Hadoop Distributed File System
+     * (HDFS).
+     * @param localDirectoryToCopyFrom The location on the local machine from
+     *                                 which we should copy files into Hadoop
+     * @param inputIsSerializedRecords True if the files in the local directory
+     *                                 are Thrift-serialized records, false if
+     *                                 they are raw text instead.
+     * @throws Exception
+     */
+    private static void copyInputToHadoop( String localDirectoryToCopyFrom,
+                                           boolean inputIsSerializedRecords )
+            throws Exception {
+        System.out.println( "\nCopying your input files from \n\t"
+                            + localDirectoryToCopyFrom
+                            + "\nto the Hadoop cluster.");
 
         StringBuilder fileCopyCmd = new StringBuilder();
         fileCopyCmd.append( "scripts/copy_input_to_hadoop.sh " );
-        fileCopyCmd.append( requestedAnnotation.toString() );
-        fileCopyCmd.append( " " );
-        fileCopyCmd.append( inputDirectory );
+        fileCopyCmd.append( localDirectoryToCopyFrom );
 
         if( inputIsSerializedRecords ) {
             fileCopyCmd.append( " serial " );
@@ -168,6 +186,23 @@ public class JobHandler {
         System.out.println( "\nFinished copying files.\n");
     }
 
+    /**
+     * This method is a bit of a cludge. Based on the command line parameters, it
+     * gets the list of annotations that need to be performed before running the
+     * annotation requested by the user.
+     * @param argv The command line arguments
+     * @param requestedAnnotation The annotation requested by the user
+     * @param inputDirAsFile The input directory (on the local machine) in which
+     *                       we will find the documents to be annotated (either
+     *                       raw text or serialized records).
+     * @param inputIsSerializedRecords True if the files in the input directory
+     *                                 are Thrift-serialized records, false if
+     *                                 they are raw text instead.
+     * @return The list of annotations to get, in order, before getting the
+     *         user's desired annotation.
+     * @throws IOException
+     * @throws TException
+     */
     private static List<AnnotationMode> determineDependencies(
             String[] argv, AnnotationMode requestedAnnotation,
             File inputDirAsFile, boolean inputIsSerializedRecords )
@@ -230,32 +265,19 @@ public class JobHandler {
         return depsToRun;
     }
 
-    private static void copyOutputFromHadoop( String inputDirectory,
-                                              String finalOutputInHadoop )
-            throws Exception {
-        String finalOutputInLocal = inputDirectory + "/output";
-        System.out.println( "\nCopying your serialized records from \n\t"
-                + finalOutputInHadoop + "\non the Hadoop cluster back to the local "
-                + "machine, into the directory\n\t" + finalOutputInLocal );
-
-
-        String copyOutputCmd = "scripts/copy_output_from_hadoop.sh "
-                + finalOutputInHadoop + " "
-                + finalOutputInLocal;
-        Process copyOutputProc = Runtime.getRuntime().exec( copyOutputCmd );
-
-        // Capture the output and write it to a file
-        gobbleOutputFromProcess( copyOutputProc, "copy_output_from_hadoop.log" );
-
-        // Wait until the process finishes
-        int copyOutputResult = copyOutputProc.waitFor();
-        if( copyOutputResult != 0 ) {
-            throw new Exception("Error while copying the output from Hadoop!");
-        }
-
-        System.out.println( "\nFinished copying files.\n" );
-    }
-
+    /**
+     * Launches a Hadoop job on the cluster. Will annotate all documents in the
+     * HDFS input directory with the indicated annotation mode, then write the
+     * output of that job to the indicated HDFS output directory.
+     * @param a The type of annotation to run on the document collection
+     * @param inDir The location of the directory in the Hadoop Distributed File
+     *              System (HDFS) where we can find the serialized records that
+     *              should be annotated.
+     * @param outDir The location in the Hadoop Distributed File
+     *               System (HDFS) where we should write the serialized records
+     *               after we finish annotating them
+     * @throws Exception
+     */
     private static void launchJob( AnnotationMode a,
                                    String inDir,
                                    String outDir ) throws Exception {
@@ -291,7 +313,53 @@ public class JobHandler {
         System.out.println("Job has finished...");
     }
 
+    /**
+     * After finishing all jobs in Hadoop, this method will copy the output
+     * directory (containing the newly annotated serialized records) from the
+     * Hadoop Distributed File System (HDFS) back to the local machine.
+     * @param localDirectoryToCopyTo The location on the local machine to which
+     *                               we should copy the output
+     * @param directoryInHDFSToCopyFrom The location in HDFS from which we should
+     *                                  copy the output
+     * @throws Exception
+     */
+    private static void copyOutputFromHadoop( String localDirectoryToCopyTo,
+                                              String directoryInHDFSToCopyFrom )
+            throws Exception {
+        String finalOutputInLocal = localDirectoryToCopyTo + "/output";
+        System.out.println( "\nCopying your serialized records from \n\t"
+                + directoryInHDFSToCopyFrom + "\non the Hadoop cluster back to the local "
+                + "machine, into the directory\n\t" + finalOutputInLocal );
 
+
+        String copyOutputCmd = "scripts/copy_output_from_hadoop.sh "
+                + directoryInHDFSToCopyFrom + " "
+                + finalOutputInLocal;
+        Process copyOutputProc = Runtime.getRuntime().exec( copyOutputCmd );
+
+        // Capture the output and write it to a file
+        gobbleOutputFromProcess( copyOutputProc, "copy_output_from_hadoop.log" );
+
+        // Wait until the process finishes
+        int copyOutputResult = copyOutputProc.waitFor();
+        if( copyOutputResult != 0 ) {
+            throw new Exception("Error while copying the output from Hadoop!");
+        }
+
+        System.out.println( "\nFinished copying files.\n" );
+    }
+
+
+    /**
+     * Logs the output from the indicated process to both the
+     * standard output/standard error stream and to a log file with the indicated
+     * name.
+     * @param process The process whose output we should "gobble"
+     * @param logFileName The name of the log file to which we should write.
+     *                    This should be a filename only (like "mylog.txt")---we
+     *                    will take care of placing it in the proper directory.
+     * @throws IOException
+     */
     private static void gobbleOutputFromProcess( Process process,
                                                  String logFileName )
             throws IOException {
@@ -310,6 +378,14 @@ public class JobHandler {
         out.start();
     }
 
+    /**
+     * Attempts to reconstruct text files in the directory into serialized
+     * records. If it is successful, it returns true, indicating that we believe
+     * the directory contains only serialized records.
+     * @param directory The directory in question
+     * @return True if we are able to reconstruct records from their serialized
+     *         form (i.e., from text files in the directory). False otherwise.
+     */
     private static boolean containsSerializedRecords( File directory ) {
         try {
             File sample = getSampleFileFromDir( directory );
@@ -326,6 +402,16 @@ public class JobHandler {
         }
     }
 
+    /**
+     * Looks at a relatively large subset of all the serialized records
+     * present in the directory and returns a set of annotations which are common
+     * to all examined records.
+     * @param directory The directory containing serialized records
+     * @return The set of common annotations shared between all records in the
+     *         directory
+     * @throws IOException
+     * @throws TException
+     */
     private static Set<AnnotationMode> getCommonAnnotations( File directory )
             throws IOException, TException {
         List<File> samples = getSampleFilesFromDir( directory, 25 );
@@ -380,6 +466,12 @@ public class JobHandler {
         return new HashSet<AnnotationMode>( commonAnnotations );
     }
 
+    /**
+     * Returns a single file at random from the indicated directory.
+     * @param directory The directory from which we should sample a file
+     * @return A single non-directory, non-hidden file chosen at random from the
+     *         directory. If there are no such files, returns null.
+     */
     @Nullable
     private static File getSampleFileFromDir( File directory ) {
         List<File> sampleList = getSampleFilesFromDir( directory, 1 );
@@ -390,6 +482,20 @@ public class JobHandler {
         return null;
     }
 
+    /**
+     * Returns a collection of files from a directory. These files are chosen
+     * at random from the set of all files in the directory, but there will never
+     * be duplicates in the list, nor will the list contain hidden files or
+     * subdirectories. The list returned will contain at most `numFiles` files,
+     * but it may contain fewer files if the directory does not contain that
+     * many (non-hidden, non-directory) files.
+     * @param directory The directory from which we should sample files
+     * @param numFiles The maximum number of files to sample (we will attempt to
+     *                 get exactly this number, but may fail to do so if there
+     *                 are not that many matching files in the directory)
+     * @return A list containing files selected at random from the directory. May
+     *         be empty if there were no files.
+     */
     private static List<File> getSampleFilesFromDir( File directory,
                                                      int numFiles ) {
         // We actually have to use the copy constructor here, because the List
