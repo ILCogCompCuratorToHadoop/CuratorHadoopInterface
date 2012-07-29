@@ -93,7 +93,7 @@ public class CuratorReducer
 
         // Launch the annotator and the Curator
         try {
-            shutdownPreviousJobsCurator( toolToRun );
+            shutDownCuratorFromPreviousJob( toolToRun );
             launchAnnotatorIfNecessary( toolToRun );
             context.progress();
             launchCuratorIfNecessary( toolToRun );
@@ -152,6 +152,10 @@ public class CuratorReducer
                             + e.getReason() + "\nWe know of these annotations: "
                             + client.describeAnnotations().toString();
                     logger.logError( msg );
+
+                    // Panic. This error probably indicates the NLP tool died a
+                    // fiery death.
+                    shutdownAllLocalNLPTools();
                     throw new IOException( msg );
                 } catch ( TException ignored ) { }
             } catch (TException e) {
@@ -167,7 +171,6 @@ public class CuratorReducer
                 String msg = "Failed attempting annotation "
                         + toolToRun.toString() + ".\n" + e.getReason();
                 logger.logError( msg );
-
                 throw new IOException(msg);
             } catch ( ServiceSecurityException e ) {
                 String msg = "Failed attempting database access for annotation "
@@ -215,62 +218,71 @@ public class CuratorReducer
      *                  running on this node and does not provide this annotator,
      *                  we assume it's from an older job and we shut it down.
      */
-    private void shutdownPreviousJobsCurator( AnnotationMode toolToRun )
+    private void shutDownCuratorFromPreviousJob( AnnotationMode toolToRun )
             throws IOException {
         try {
             if( !client.listAvailableAnnotators().contains( toolToRun ) ) {
-                // Command to kill the Curator specifically:
-                //      "jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill"
-                //      See here: http://stackoverflow.com/questions/2131874/shell-script-to-stop-a-java-program
-
-                // We should never have more than MAX_RUNNING_TOOLS to kill.
-                int MAX_RUNNING_TOOLS = 5;
-                for( int attempts = 0; attempts < MAX_RUNNING_TOOLS; ++attempts ) {
-                    String killCmd = "jps -l | " + // Get the list of all running Java processes
-                            // Select the first matching process
-                            "grep edu.illinois.cs.cogcomp | head -n 1 | " +
-                            // Split the line on spaces
-                            "cut -d ' ' -f 1 | " +
-                            // Send the first element of the split line
-                            // (i.e., the process ID) to the kill command
-                            "xargs -n1 kill";
-
-                    String[] cmd = {
-                            "/bin/sh",
-                            "-c",
-                            killCmd
-                    };
-
-                    try {
-                        Process p = Runtime.getRuntime().exec(cmd);
-
-                        StreamGobbler err = new StreamGobbler( p.getErrorStream(),
-                                "ERR: ", true );
-                        StreamGobbler out = new StreamGobbler( p.getInputStream(),
-                                "", true );
-                        err.start();
-                        out.start();
-
-                        if( p.waitFor() == 0 ) {
-                            System.out.println( "Successfully shut down "
-                                    + "a process." );
-                        }
-                        else {
-                            // stop when grep fails to find a matching process
-                            System.out.println( "Failed to shut down a process. "
-                                    + "Exiting . . ." );
-                            break;
-                        }
-                    } catch( RuntimeException e ) {
-                        throw new IOException( "Runtime exception shutting down "
-                                + "an older Curator process!\n" + e.getMessage() );
-                    } catch ( InterruptedException ignored ) { }
-                }
+                shutdownAllLocalNLPTools();
 
             }
         } catch ( TException ignored ) {
             // Couldn't list available annotators (probably because the Curator
             // isn't running at all
+        }
+    }
+
+    /**
+     * Shuts down the Curator and any running annotation tools. This should
+     * be used only when the reduce() job has failed catastrophically.
+     * @throws IOException
+     */
+    private void shutdownAllLocalNLPTools() throws IOException {
+        // Command to kill the Curator specifically:
+        //      "jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill"
+        //      See here: http://stackoverflow.com/questions/2131874/shell-script-to-stop-a-java-program
+
+        // We should never have more than MAX_RUNNING_TOOLS to kill.
+        int MAX_RUNNING_TOOLS = 5;
+        for( int attempts = 0; attempts < MAX_RUNNING_TOOLS; ++attempts ) {
+            String killCmd = "jps -l | " + // Get the list of all running Java processes
+                    // Select the first matching process
+                    "grep edu.illinois.cs.cogcomp | head -n 1 | " +
+                    // Split the line on spaces
+                    "cut -d ' ' -f 1 | " +
+                    // Send the first element of the split line
+                    // (i.e., the process ID) to the kill command
+                    "xargs -n1 kill";
+
+            String[] cmd = {
+                    "/bin/sh",
+                    "-c",
+                    killCmd
+            };
+
+            try {
+                Process p = Runtime.getRuntime().exec(cmd);
+
+                StreamGobbler err = new StreamGobbler( p.getErrorStream(),
+                        "ERR: ", true );
+                StreamGobbler out = new StreamGobbler( p.getInputStream(),
+                        "", true );
+                err.start();
+                out.start();
+
+                if( p.waitFor() == 0 ) {
+                    System.out.println( "Successfully shut down "
+                            + "a process." );
+                }
+                else {
+                    // stop when grep fails to find a matching process
+                    System.out.println( "Failed to shut down a process. "
+                            + "Exiting . . ." );
+                    break;
+                }
+            } catch( RuntimeException e ) {
+                throw new IOException( "Runtime exception shutting down "
+                        + "an older Curator process!\n" + e.getMessage() );
+            } catch ( InterruptedException ignored ) { }
         }
 
         // Make sure future Reducers don't think their tools are already running
@@ -444,8 +456,7 @@ public class CuratorReducer
         if( toolsThatMustBeLaunched.contains(toolToRun) ) {
             // Check a file on the local machine (which just acts as a way of
             // communicating across instances of reduce() on a given machine)
-
-            if( !toolHasBeenLaunched() ) {
+            if( !toolHasBeenLaunched( toolToRun ) ) {
                 startTool( toolToRun );
 
                 Thread.sleep( getEstimatedTimeToStart( toolToRun ) );
@@ -455,7 +466,27 @@ public class CuratorReducer
         }
     }
 
-    private boolean toolHasBeenLaunched() {
+    /**
+     * Checks whether a given annotation tool has been launched on this machine.
+     * @param annotator The annotator to check for
+     * @return True if this machine has a flag (simply a file in the file system)
+     *         that indicates it has already launched the annotation tool, or if
+     *         there is a Curator client running on this machine that claims to
+     *         provide the annotator.
+     */
+    private boolean toolHasBeenLaunched( AnnotationMode annotator )
+            throws IOException {
+        // If a Curator running on this machine knows of the annotator, we are
+        // done.
+        try {
+            if( client.listAvailableAnnotators().contains( annotator ) ) {
+                setToolHasBeenLaunched( true );
+                return true;
+            }
+        } catch ( TException ignored ) { }
+
+        // Otherwise (i.e., if no Curator is running or it doesn't know of
+        // the tool), check the flag in the file system.
         File flagInFileSystem = new File( dir.user().toString(),
                 "_annotator_launched" );
         return flagInFileSystem.exists();
