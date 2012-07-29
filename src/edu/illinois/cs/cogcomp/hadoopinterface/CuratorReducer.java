@@ -93,6 +93,7 @@ public class CuratorReducer
 
         // Launch the annotator and the Curator
         try {
+            shutdownPreviousJobsCurator( toolToRun );
             launchAnnotatorIfNecessary( toolToRun );
             context.progress();
             launchCuratorIfNecessary( toolToRun );
@@ -203,6 +204,77 @@ public class CuratorReducer
 
             context.write(inKey, inValue);
         }
+    }
+
+    /**
+     * If a Curator from a previous job is running (i.e., a Curator configured to
+     * use an annotator other than the tool to be run now), shut it and any
+     * annotators down. This performs the same function that CuratorKillerReducer
+     * used to.
+     * @param toolToRun The annotator being run by this Reducer. If a Curator is
+     *                  running on this node and does not provide this annotator,
+     *                  we assume it's from an older job and we shut it down.
+     */
+    private void shutdownPreviousJobsCurator( AnnotationMode toolToRun )
+            throws IOException {
+        try {
+            if( !client.listAvailableAnnotators().contains( toolToRun ) ) {
+                // Command to kill the Curator specifically:
+                //      "jps -l | grep edu.illinois.cs.cogcomp.curator.CuratorServer | cut -d ' ' -f 1 | xargs -n1 kill"
+                //      See here: http://stackoverflow.com/questions/2131874/shell-script-to-stop-a-java-program
+
+                // We should never have more than MAX_RUNNING_TOOLS to kill.
+                int MAX_RUNNING_TOOLS = 5;
+                for( int attempts = 0; attempts < MAX_RUNNING_TOOLS; ++attempts ) {
+                    String killCmd = "jps -l | " + // Get the list of all running Java processes
+                            // Select the first matching process
+                            "grep edu.illinois.cs.cogcomp | head -n 1 | " +
+                            // Split the line on spaces
+                            "cut -d ' ' -f 1 | " +
+                            // Send the first element of the split line
+                            // (i.e., the process ID) to the kill command
+                            "xargs -n1 kill";
+
+                    String[] cmd = {
+                            "/bin/sh",
+                            "-c",
+                            killCmd
+                    };
+
+                    try {
+                        Process p = Runtime.getRuntime().exec(cmd);
+
+                        StreamGobbler err = new StreamGobbler( p.getErrorStream(),
+                                "ERR: ", true );
+                        StreamGobbler out = new StreamGobbler( p.getInputStream(),
+                                "", true );
+                        err.start();
+                        out.start();
+
+                        if( p.waitFor() == 0 ) {
+                            System.out.println( "Successfully shut down "
+                                    + "a process." );
+                        }
+                        else {
+                            // stop when grep fails to find a matching process
+                            System.out.println( "Failed to shut down a process. "
+                                    + "Exiting . . ." );
+                            break;
+                        }
+                    } catch( RuntimeException e ) {
+                        throw new IOException( "Runtime exception shutting down "
+                                + "an older Curator process!\n" + e.getMessage() );
+                    } catch ( InterruptedException ignored ) { }
+                }
+
+            }
+        } catch ( TException ignored ) {
+            // Couldn't list available annotators (probably because the Curator
+            // isn't running at all
+        }
+
+        // Make sure future Reducers don't think their tools are already running
+        CuratorReducer.setToolHasBeenLaunched( false );
     }
 
     /**

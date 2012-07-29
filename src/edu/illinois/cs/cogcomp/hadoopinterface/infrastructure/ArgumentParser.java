@@ -36,7 +36,7 @@ public class ArgumentParser {
             err.append( "<document directory> <mode>\n\tor:\n\t\t" );
             err.append( "-d <document directory> -m <mode> [-out <output " );
             err.append( " directory>] [-maps <number of maps>] [-reduces " );
-            err.append( "<number of reduces>] [-lib /path/to/lib/] [-cleanup] " +
+            err.append( "<number of reduces>] [-lib /path/to/lib/] " +
                     "[-test]\n" );
             err.append( "You tried to pass these parameters:\n\t" );
 
@@ -95,9 +95,6 @@ public class ArgumentParser {
                 else if( args[i].equals("-test") ) {
                     testing = true;
                 }
-                else if( args[i].equals("-cleanup") ) {
-                    cleaning = true;
-                }
                 else if( args[i].equals("-lib") ) {
                     lib = args[ ++i ];
                 }
@@ -144,10 +141,6 @@ public class ArgumentParser {
 
         usage.append("\tRun in testing mode? ");
         usage.append(testing ? "Yes." : "No.");
-        usage.append("\n");
-
-        usage.append("\tRun in cleanup mode? ");
-        usage.append(cleaning ? "Yes." : "No.");
         usage.append("\n");
 
         HadoopInterface.logger.logStatus( usage.toString() );
@@ -212,10 +205,6 @@ public class ArgumentParser {
         return testing;
     }
 
-    public boolean isCleaning() {
-        return cleaning;
-    }
-
     /**
      * @return The directory (local to each Hadoop node) which should be used
      *         as the library during a MapReduce job. Should contain Thrift
@@ -242,5 +231,4 @@ public class ArgumentParser {
     private Integer numMaps;
     private Integer numReduces;
     private boolean testing = false;
-    private boolean cleaning = false;
 }

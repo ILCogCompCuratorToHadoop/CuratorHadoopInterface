@@ -88,14 +88,10 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
             setMapperClass( CuratorMapper.class );
         }
 
-        if( isCleaning() ) {
-            logger.log( "Set reducer to CuratorKillerReducer" );
-            setReducerClass( CuratorKillerReducer.class );
-        }
-        else {
-            logger.log( "Set reducer to CuratorReducer" );
-            setReducerClass( CuratorReducer.class );
-        }
+
+        logger.log( "Set reducer to CuratorReducer" );
+        setReducerClass( CuratorReducer.class );
+
         setNumReduceTasks( numReduces );
 
         // We split the input at the document directory level
