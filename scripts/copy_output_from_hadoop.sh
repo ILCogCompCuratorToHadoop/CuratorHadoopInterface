@@ -17,8 +17,6 @@ echo ""
 
 
 #       Change these variables to the appropriate *absolute paths*      #
-#                Should match exactly the same variables in             #
-#                   batch_master_curator_to_hadoop.sh                   #
 #########################################################################
 
 CURATOR_DIRECTORY=/shared/gargamel/undergrad/tyoun/curator-0.6.9

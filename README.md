@@ -3,7 +3,7 @@
 The Curator-to-Hadoop Interface
 ========================================
 
-Overview (About the Project)
+Project Overview
 ----------------------------------------
 
 This is a tool for interfacing the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) with a [Hadoop](http://hadoop.apache.org/) cluster. The overall goal of the project is to provide an architecture for efficiently processing large text corpora using Hadoop/MapReduce. To contribute to the project, contact @s3cur3.
@@ -20,7 +20,7 @@ This is a tool for interfacing the [Curator](http://cogcomp.cs.illinois.edu/trac
 
 ### Advantages ###
 
-* (Potentially massive) data parallelism, which scales linearly with the size of the Hadoop cluster, in a tool set which has been written to operate in a strictly linear fashion.
+* Data parallelism which scales linearly with the size of the Hadoop cluster, in a tool set written to operate in a strictly linear fashion.
 
 * Pre-processing of large corpora (for instance, after one annotation tool has been upgraded) with little user intervention, freeing up more time to solve research problems.
 
@@ -37,9 +37,13 @@ First make sure you have all the files present in the **Manifest** section, belo
 
 3. Unpack the Hadoop distribution and configure it according to the [official documentation](http://hadoop.apache.org/common/docs/r1.0.3/single_node_setup.html#Prepare+to+Start+the+Hadoop+Cluster). Initially, you probably will want to set up Hadoop as a pseudo-distributed operation.
 
-4. Download and configure the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) (scroll down to the **Download* section). NOTE: Presently you will need to contact @s3cur3 for the custom Curator build.
+4. Download and configure the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) (scroll down to the **Download** section). NOTE: Presently you will need to contact @s3cur3 for the custom Curator build. Don't forget to set your JAVA_HOME configuration!
 
-5. Compile/build... // TODO
+5. Download the [HadoopInterface package](https://github.com/ILCogCompCuratorToHadoop/CuratorHadoopInterface) files from GitHub, including the Java source code and shell scripts.
+
+6. Configure the shell scripting variables in the designated section of each file with your absolute directory paths.
+
+7. Compile/build... // TODO
 
 ### Running a Job ###
 
@@ -63,7 +67,7 @@ To access the Hadoop logs:
 
 4. Click on a Task link. There should be one task per document that you passed in.
 
-5. On the far right of the screen are Task Log links. You will probably want to click the "All" link.
+5. On the far right of the screen are Task Log links. You probably will want to click the "All" link.
 
 6. Scroll through the log you've found!
 
