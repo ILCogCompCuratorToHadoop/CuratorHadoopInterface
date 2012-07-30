@@ -2,7 +2,6 @@ package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions.BadCommandLineUsageException;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions.IllegalModeException;
 import org.apache.hadoop.fs.Path;
 
 /**
@@ -29,15 +28,16 @@ public class ArgumentParser {
             throws BadCommandLineUsageException {
         testing = false;
         lib = "";
+        curatorLoc = "";
 
         if( args.length < 2 ) {
             StringBuilder err = new StringBuilder();
             err.append( "Parameter usage: \n\t\t" );
             err.append( "<document directory> <mode>\n\tor:\n\t\t" );
-            err.append( "-d <document directory> -m <mode> [-out <output " );
+            err.append( "-in <document directory> -m <mode> [-out <output " );
             err.append( " directory>] [-maps <number of maps>] [-reduces " );
-            err.append( "<number of reduces>] [-lib /path/to/lib/] " +
-                    "[-test]\n" );
+            err.append( "<number of reduces>] [-lib /path/to/lib/on/hadoop_nodes] " +
+                    "[-curator /path/on/hadoop_nodes/to/curator] [-test]\n" );
             err.append( "You tried to pass these parameters:\n\t" );
 
             for( String arg : args ) {
@@ -50,34 +50,14 @@ public class ArgumentParser {
             //ToolRunner.printGenericCommandUsage(System.err);
 
             throw new BadCommandLineUsageException( "Wrong number of parameters "
-                    + "from command line. " + err );
-        }
-
-        // "Classic" usage: just directory and mode
-        if( args.length == 2 ) {
-            // Try parsing args[1] as a mode
-            try {
-                mode = AnnotationMode.fromString( args[1] );
-                directory = args[0];
-            } catch( IllegalModeException e ) {
-                try {
-                    // Try parsing args[0] as a mode
-                    mode = AnnotationMode.fromString( args[0] );
-                    directory = args[1];
-                } catch ( IllegalModeException f ) {
-                    // Die if neither args 0 nor 1 make sense as a mode
-                    throw new BadCommandLineUsageException(
-                            "Couldn't make sense of either " + args[0] + " or "
-                            + args[1] + " as an annotation mode.");
-                }
-            }
+                    + "from command line. " + err.toString() );
         }
 
         // More robust usage, specifying which params are which using CL flags
         else {
             for( int i = 0; i < args.length; ++i ) {
                 // Allow either -d ("directory") or -i ("input")
-                if( args[i].equals("-d") || args[i].equals("-i") ) {
+                if( args[i].equals("-d") || args[i].equals("-in") || args[i].equals("-i") ) {
                     directory = args[ ++i ];
                 }
                 else if( args[i].equals("-out") || args[i].equals("-o") ) {
@@ -97,6 +77,9 @@ public class ArgumentParser {
                 }
                 else if( args[i].equals("-lib") ) {
                     lib = args[ ++i ];
+                }
+                else if( args[i].equals("-curator") ) {
+                    curatorLoc = args[ ++i ];
                 }
             }
 
@@ -215,6 +198,15 @@ public class ArgumentParser {
     }
 
     /**
+     * @return The directory (local to each Hadoop node) in which the Curator and
+     *         annotators are installed. This probably ends in something like
+     *         "curator-0.6.9".
+     */
+    public String getCuratorLoc() {
+        return curatorLoc;
+    }
+
+    /**
      * @return The annotation mode parsed from the command line parameters
 
      */
@@ -227,7 +219,9 @@ public class ArgumentParser {
     private String directory;
 
     private String outputDirectory;
+
     private String lib;
+    private String curatorLoc;
     private Integer numMaps;
     private Integer numReduces;
     private boolean testing = false;

@@ -294,6 +294,11 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
             config.set( "libPath", libPath );
         }
 
+        String curatorLoc = argParser.getCuratorLoc();
+        if( !curatorLoc.equals( "" ) ) {
+            config.set( "curatorLoc", curatorLoc );
+        }
+
         AnnotationMode mode = argParser.getMode();
 
         config.set( "annotationMode", mode.toString() );

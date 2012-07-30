@@ -1,8 +1,6 @@
 package edu.illinois.cs.cogcomp.hadoopinterface;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.*;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions
-        .CuratorNotFoundException;
 import edu.illinois.cs.cogcomp.thrift.base.AnnotationFailedException;
 import edu.illinois.cs.cogcomp.thrift.base.ServiceSecurityException;
 import edu.illinois.cs.cogcomp.thrift.base.ServiceUnavailableException;
@@ -37,19 +35,7 @@ public class CuratorReducer
     /**
      * Constructs a CuratorReducer
      */
-    public CuratorReducer() throws CuratorNotFoundException, IOException {
-        Path curatorDir = new Path( userDir, "curator" );
-        Path distDir = new Path( curatorDir, "dist" );
-        distDir.makeQualified( FileSystem.get( new Configuration() ) );
-        dir = new PathStruct( distDir );
-
-        if( !FileSystemHandler.localFileExists( distDir ) ) {
-            throw new CuratorNotFoundException("Curator directory does not exist "
-                    + "at " + distDir.toString() + " on this Hadoop node. "
-                    +"\nCannot continue...");
-
-        }
-
+    public CuratorReducer() {
         // These are the tools that must be started separately from the Curator
         toolsThatMustBeLaunched = new HashSet<AnnotationMode>();
         toolsThatMustBeLaunched.add( AnnotationMode.PARSE );
@@ -84,6 +70,7 @@ public class CuratorReducer
         FileSystem fs = FileSystem.get( context.getConfiguration() );
         this.fsHandler = new FileSystemHandler( fs );
         setEnvVars( context.getConfiguration() );
+        setUpDirectories( context.getConfiguration() );
 
         AnnotationMode toolToRun = AnnotationMode
                 .fromString( context.getConfiguration().get("annotationMode") );
@@ -103,25 +90,15 @@ public class CuratorReducer
 
         // Confirm the launch worked
         logger.logStatus( "Checking if tool can be run." );
-        int numCyclesWaited = 0;
-        while( !toolCanBeRun( toolToRun ) ) {
-            // If the tool isn't ready, we'll wait a bit.
-            logger.logStatus( "Annotator for " + toolToRun.toString()
-                              + " isn't ready. Waiting...");
-
-            Thread.sleep( getEstimatedTimeToStart( toolToRun ) );
-
-            ++numCyclesWaited;
-            if( numCyclesWaited > MAX_ATTEMPTS ) {
-                try {
-                    throw new IOException( toolToRun.toString()
-                            + " cannot be used to " +
-                            "annotate the document. Available annotators: "
-                            + MessageLogger.getPrettifiedList(
-                            client.listAvailableAnnotators() )
-                            + client.describeAnnotations().toString() );
-                } catch ( TException fromListAnnotators ) { }
-            }
+        if( !toolCanBeRun( toolToRun ) ) {
+            try {
+                throw new IOException( toolToRun.toString()
+                        + " cannot be used to " +
+                        "annotate the document. Available annotators: "
+                        + MessageLogger.getPrettifiedList(
+                        client.listAvailableAnnotators() )
+                        + client.describeAnnotations().toString() );
+            } catch ( TException fromListAnnotators ) { }
         }
 
         logger.logStatus( "Beginning document annotation." );
@@ -143,7 +120,9 @@ public class CuratorReducer
 
             // Annotate the document, and do a toooooooon of error handling.
             try {
-                logger.logStatus( "Annotating the document." );
+                logger.logStatus( "Annotating the document that begins \""
+                        + RecordTools.getBeginningOfOriginalText( inValue )
+                        + "\" (has ID " + inValue.getDocumentHash() + ").");
                 client.annotateSingleDoc( inValue, toolToRun );
             } catch (ServiceUnavailableException e) {
                 try {
@@ -203,9 +182,35 @@ public class CuratorReducer
             logger.logStatus( "Finished serializing record "
                     + inValue.getDocumentHash() + " to " + outputDir.toString() );
 
-            shutDownAnnotatorIfNecessary( toolToRun );
-
             context.write(inKey, inValue);
+        }
+    }
+
+    /**
+     * Determines where the Curator is installed based on the job configuration.
+     * @param config The job configuration for this MapReduce job.
+     * @throws IOException
+     */
+    private void setUpDirectories( Configuration config )
+            throws IOException {
+        String specifiedLoc = config.get("curatorLoc");
+        Path curatorDir;
+        if( specifiedLoc != null && !specifiedLoc.equals("") ) {
+            curatorDir = new Path( specifiedLoc );
+        }
+        else {
+            curatorDir = new Path( userDir, "curator" );
+        }
+
+        Path distDir = new Path( curatorDir, "dist" );
+        distDir.makeQualified( FileSystem.get( new Configuration() ) );
+        dir = new PathStruct( distDir );
+
+        if( !FileSystemHandler.localFileExists( distDir ) ) {
+            throw new IOException("Curator directory does not exist "
+                    + "at " + distDir.toString() + " on this Hadoop node. "
+                    +"\nCannot continue...");
+
         }
     }
 
@@ -285,22 +290,30 @@ public class CuratorReducer
             } catch ( InterruptedException ignored ) { }
         }
 
+        // Kill the Charniak parser in particular
+        String killCharniakCmd = "pgrep charniak | xargs -n1 kill";
+        String[] charniakCmd = {
+                "/bin/sh",
+                "-c",
+                killCharniakCmd
+        };
+        try {
+            Process p = Runtime.getRuntime().exec(charniakCmd);
+
+            StreamGobbler err = new StreamGobbler( p.getErrorStream(),
+                    "ERR: ", true );
+            StreamGobbler out = new StreamGobbler( p.getInputStream(),
+                    "", true );
+            err.start();
+            out.start();
+
+            if( p.waitFor() == 0 ) {
+                System.out.println( "Successfully shut down Charniak." );
+            }
+        } catch( Exception ignored ) { }
+
         // Make sure future Reducers don't think their tools are already running
         CuratorReducer.setToolHasBeenLaunched( false );
-    }
-
-    /**
-     * If the annotator is one that needs to be manually shut down after each
-     * annotation, we will do that.
-     * @param annotator The annotator that has just finished its job
-     * @TODO: Write this method!
-     */
-    private void shutDownAnnotatorIfNecessary( AnnotationMode annotator ) {
-        if( annotator.equals( AnnotationMode.PARSE ) ) {
-
-
-        }
-
     }
 
     /**
@@ -462,6 +475,14 @@ public class CuratorReducer
                 Thread.sleep( getEstimatedTimeToStart( toolToRun ) );
 
                 setToolHasBeenLaunched( true );
+            }
+            else { // tool claims to have been launched. Confirm this. . .
+                if( !toolCanBeRun( toolToRun ) ) {
+                    // The tool lied!
+                    setToolHasBeenLaunched( false );
+                    // Retry.
+                    launchAnnotatorIfNecessary( toolToRun );
+                }
             }
         }
     }
@@ -929,7 +950,7 @@ public class CuratorReducer
         private final Path configDir;
     }
 
-    private final PathStruct dir;
+    private PathStruct dir;
     private FileSystemHandler fsHandler;
     private HadoopCuratorClient client;
     private String [] envVarsForRuntimeExec;

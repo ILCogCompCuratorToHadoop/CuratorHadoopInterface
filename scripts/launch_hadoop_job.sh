@@ -12,6 +12,8 @@
 # Where we find the Thrift libraries on the Hadoop nodes (this should
 # probably be local to each machine in your Hadoop cluster)
 LIB_DIR_ON_HADOOP_NODES=/shared/grandpa/opt/lib
+#CURATOR_DIR_ON_HADOOP_NODES=/projects/cogcomp/curator
+CURATOR_DIR_ON_HADOOP_NODES=/shared/gargamel/undergrad/tyoun/curator-0.6.9
 
 # In the output directory, we will place a dir called "serialized" which
 # will store the job's output records
@@ -42,7 +44,7 @@ cd /shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 # Launch MapReduce job on Hadoop cluster
 echo -e "$MSG_COLOR\n\n\nLaunching the mapreduce job on the Hadoop cluster $DEFAULT_COLOR"
 echo -e "using command ./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -lib $LIB_DIR_ON_HADOOP_NODES -reduces 1"
-./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -lib $LIB_DIR_ON_HADOOP_NODES -reduces 1
+./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -lib $LIB_DIR_ON_HADOOP_NODES -reduces 1 -curator $CURATOR_DIR_ON_HADOOP_NODES
 
 echo -e "$MSG_COLOR\n\n\n$ANNOTATION_TOOL_TO_RUN job finished!\n$DEFAULT_COLOR"
 

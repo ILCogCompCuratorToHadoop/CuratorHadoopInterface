@@ -30,7 +30,6 @@
 
 //#define DEBUG_CTS
 
-
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -40,6 +39,7 @@
 #include <iconv.h>
 #include <stdio.h> // ugly, but needed to use iconv
 #include <time.h>
+#include <unistd.h> // for sleep() on *nix machines
 
 #include "GotIter.h"
 #include "Wrd.h"
@@ -68,6 +68,23 @@
 #include "curator_types.h"
 #include "Parser.h" 
 #include "CharniakException.h"
+
+
+/* pthreads boilerplate. */
+/* Linux with glibc:
+ *   _REENTRANT to grab thread-safe libraries
+ *   _POSIX_SOURCE to get POSIX semantics
+ */
+#ifdef __linux__
+#  define _REENTRANT
+#  define _POSIX_SOURCE
+#endif
+
+/* Hack for LinuxThreads */
+#ifdef __linux__
+#  define _P __P
+#endif
+#include <pthread.h>
 
 
 
@@ -108,6 +125,7 @@ class ParserHandler : virtual public ParserIf {
   ParserHandler() {
     // Set the starting time for our activity monitor
     lastAnnotationTime = time( NULL );
+    cout << "Setting initial time of last annotation to " << lastAnnotationTime << endl;
 
     char * argv[6];
     int argc = loadConfig( CONFIG_FILE, argv );
@@ -128,6 +146,10 @@ class ParserHandler : virtual public ParserIf {
 
 
   ParserHandler( string configFile_ ) {
+    // Set the starting time for our activity monitor
+    lastAnnotationTime = time( NULL );
+    cout << "Setting initial time of last annotation to " << lastAnnotationTime << endl;
+
 
     char * argv[6];
     int argc = loadConfig( configFile_.c_str(), argv );
@@ -155,8 +177,12 @@ class ParserHandler : virtual public ParserIf {
    * @return The time of the last annotation performed (may be either the
    *         beginning or end of the last annotation operation)
    */
-  public long getTimeOfLastAnnotation() {
-    return static_cast<long> lastAnnotationTime;
+  long getTimeOfLastAnnotation() {
+    return static_cast<long>(lastAnnotationTime);
+  }
+
+  time_t getTimeOfLastAnnotationInternal() {
+    return lastAnnotationTime;
   }
 
   void getName( string & name_ ) {
@@ -825,9 +851,36 @@ void showTree( const Tree & tree_ )
 }
 
 
+typedef struct {
+  ParserHandler * handler;
+  TSimpleServer * server;
+} thread_info;
 
+/**
+ * A thread to monitor a ParserHandler and shut it down if it is
+ * inactive for too long.
+ */
+void *kill_server_when_ready(void * arg) {
+  cout << "Setting up Charniak inactivity monitor . . ." << endl;
+  sleep(3); // give it time to set up
+  thread_info * info = (thread_info *) arg;
+  ParserHandler * handler = info->handler;
+  TSimpleServer * server = info->server;
 
-
+  double MAX_INACTIVITY_TIME_IN_SECS = 60.0 * 5; // 5 mins
+  int secondsBetweenChecks = 60;
+  double diffInSeconds = difftime( time(NULL), 
+                                   handler->getTimeOfLastAnnotationInternal() );
+  while( diffInSeconds < MAX_INACTIVITY_TIME_IN_SECS  ) {
+    cout << "Charniak has been inactive for " << diffInSeconds << " seconds " << endl;
+    cout << "If it is idle for another " << MAX_INACTIVITY_TIME_IN_SECS - diffInSeconds << " seconds, we will shut it down." << endl;
+    sleep(secondsBetweenChecks);
+    diffInSeconds = difftime( time(NULL), handler->getTimeOfLastAnnotationInternal() );
+  }
+  cout << endl << "Charniak was inactive for too long. Shutting down . . ." << endl;
+  server->stop();
+  exit( 0 );
+}
 
 /**
  * main()
@@ -855,7 +908,26 @@ int main(int argc, char **argv) {
 
 
   TSimpleServer server(processor, serverTransport, transportFactory, protocolFactory);
+
+  // Spawn thread to check inactivity
+  int nthreads = 1;
+  pthread_t threads[1];                /* holds thread info */
+  thread_info parameters[1];
+  int errcode;                                  /* holds pthread error code */
+  int *status;                                  /* holds return code */
+  parameters[0].handler = handler.get();
+  parameters[0].server = &server;
+  parameters[0].server = &server;
+  if (errcode = pthread_create(&threads[0],           /* thread struct             */
+			       NULL,                  /* default thread attributes */
+			       kill_server_when_ready,/* start routine             */
+                               &parameters[0])) {     /* arg to routine            */
+    cout << "Error spawning monitor process!" << endl;
+  }
+
+  cout << "Starting server" << endl;
   server.serve();
+  cout << "Server has finished." << endl;
   return 0;
 }
 
