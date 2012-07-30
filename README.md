@@ -35,9 +35,9 @@ First make sure you have all the files present in the **Manifest** section, belo
 
 2. Download [Hadoop](http://hadoop.apache.org/common/releases.html). This interface has been tested on Hadoop 1.0.3, but should work with previous and future releases as well.
 
-3. Unpack the Hadoop distribution and configure it according to the [official documentation](http://hadoop.apache.org/common/docs/r1.0.3/single_node_setup.html#Prepare+to+Start+the+Hadoop+Cluster). Initially, you probably will want to set up Hadoop as a pseudo-distributed operation.
+3. Unpack the Hadoop distribution and configure it according to the [official documentation](http://hadoop.apache.org/common/docs/r1.0.3/single_node_setup.html#Prepare+to+Start+the+Hadoop+Cluster). The testing version is 1.0.3. Initially, you probably will want to set up Hadoop as a pseudo-distributed operation.
 
-4. Download and configure the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) (scroll down to the **Download** section). NOTE: Presently you will need to contact @s3cur3 for the custom Curator build. Don't forget to set your JAVA_HOME configuration!
+4. Download and configure the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) (scroll down to the **Download** section). The testing version is 0.6.9. NOTE: Presently you will need to contact @s3cur3 for the custom Curator build. Don't forget to set your JAVA_HOME configuration!
 
 5. Download the [HadoopInterface package](https://github.com/ILCogCompCuratorToHadoop/CuratorHadoopInterface) files from GitHub, including the Java source code and shell scripts.
 
@@ -49,9 +49,9 @@ First make sure you have all the files present in the **Manifest** section, belo
 
 1. Make sure that your input files are in Thrift-serialized format, consistent, and organized in a common directory for each job. *Consistent* means that you should be prepared to (re-)run all dependent annotators up to your requested annotation and starting with the lowest common existing annotation in a **random** sample of 25 files in the input directory. It is preferred that all of your documents in a given job have the same existing annotations.
 
-2. Set up MR
+2. From your main Hadoop directory, execute './bin/hadoop jar curator.jar'. // TODO plus batch scripting??
 
-3. Get output
+3. Get output // TODO
 
 ### Examining the Log Files ###
 
