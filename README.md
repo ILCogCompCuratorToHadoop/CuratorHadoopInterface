@@ -6,9 +6,9 @@ The Curator-to-Hadoop Interface
 Overview (About the Project)
 ----------------------------------------
 
-This is a tool for interfacing the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) with a [Hadoop](http://hadoop.apache.org/) cluster. To contribute to the project, contact @s3cur3.
+This is a tool for interfacing the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) with a [Hadoop](http://hadoop.apache.org/) cluster. The overall goal of the project is to provide an architecture for efficiently processing large text corpora using Hadoop/MapReduce. To contribute to the project, contact @s3cur3.
 
-The overall goal of the project is to provide an architecture for efficiently processing large text corpora using Hadoop/MapReduce. This architecture consists of the following:
+### Architecture ###
 
 * New classes, inheriting from the original Curator Client, which include:  
     1. a local client that runs on each node in the Hadoop cluster and waits for input from the Hadoop process manager.
@@ -18,7 +18,7 @@ The overall goal of the project is to provide an architecture for efficiently pr
 
 * A set of scripts to start the Curator in local mode on all nodes in the Hadoop cluster.
 
-Advantages to this system include:
+### Advantages ###
 
 * (Potentially massive) data parallelism, which scales linearly with the size of the Hadoop cluster, in a tool set which has been written to operate in a strictly linear fashion.
 
@@ -27,9 +27,27 @@ Advantages to this system include:
 Getting Started
 ----------------------------------------
 
-Make sure you have all the files present in the [[Manifest]] section.
+First make sure you have all the files present in the **Manifest** section, below. The following guide is written for a GNU/Linux system and will not provide modifications for installing on Mac OSX or Windows.
 
-TODO: Step-by-step guide to go from downloading the package through compiling, setting up a job, getting the output, etc.
+### Installation ###
+
+1. Make sure that Java 1.6.x, ssh, and sshd are installed on your system.
+
+2. Download [Hadoop](http://hadoop.apache.org/common/releases.html). This interface has been tested on Hadoop 1.0.3, but should work with previous and future releases as well.
+
+3. Unpack the Hadoop distribution and configure it according to the [official documentation](http://hadoop.apache.org/common/docs/r1.0.3/single_node_setup.html#Prepare+to+Start+the+Hadoop+Cluster). Initially, you probably will want to set up Hadoop as a pseudo-distributed operation.
+
+4. Download and configure the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) (scroll down to the **Download* section). NOTE: Presently you will need to contact @s3cur3 for the custom Curator build.
+
+5. Compile/build... // TODO
+
+### Running a Job ###
+
+1. Make sure that your input files are in Thrift-serialized format, consistent, and organized in a common directory for each job. *Consistent* means that you should be prepared to (re-)run all dependent annotators up to your requested annotation and starting with the lowest common existing annotation in a **random** sample of 25 files in the input directory. It is preferred that all of your documents in a given job have the same existing annotations.
+
+2. Set up MR
+
+3. Get output
 
 ### Examining the Log Files ###
 
@@ -52,7 +70,7 @@ To access the Hadoop logs:
 Manifest
 ----------------------------------------
 
-Ensure that, in addition to your standard Hadoop and Curator installations, the following files are present in your directories:
+Ensure that, in addition to your standard Hadoop and custom Curator installations on a GNU/Linux system, the following files are present in your directories:
 
 * `hadoop-1.0.3/`
 
@@ -69,13 +87,6 @@ Ensure that, in addition to your standard Hadoop and Curator installations, the 
 
          * `curator-local.sh` modified to add stuff to the class path. Full class path line: `COMPONENT_CLASSPATH=$CURATOR_BASE:$COMPONENTDIR/curator-server.jar:$COMPONENTDIR/illinois-tokenizer-server.jar:$COMPONENTDIR/illinois-pos-server.jar:$COMPONENTDIR/illinois-chunker-server.jar:$COMPONENTDIR/illinois-coref-server.jar:$COMPONENTDIR/stanford-parser-server.jar:$COMPONENTDIR/curator-interfaces.jar:$COMPONENTDIR/illinois-ner-extended-server.jar`
 
-Troubleshooting
-----------------------------------------
-
-* Make sure that you can launch the annotators on the Hadoop node using the same commands you find in the Hadoop logs. For instance, for tools that do not run in local mode (all tools except the tokenizer, POS, Stanford parser, and chunker), each time a Hadoop node annotates its first document using a given annotation, it will print the command it used to launch the annotator. If you cannot use that same command to launch the annotator manually on the Hadoop node, there will be problems.
-
-* If you have issues running the annotation tools in Hadoop (especially the Charniak parser), try passing an additional argument when you launch the job on Hadoop. (To do so, you may have to modify the script that gives the job to the Hadoop Job Handler.) Add the argument `-lib some\_library\_path` to the call to Hadoop. That library path should be an absolute path (i.e., one beginning with `/`), and inside that directory should be the Thrift library files (e.g., `libthrift.so.0`).
-
 Modifications to the Curator
 ----------------------------------------
 
@@ -87,3 +98,9 @@ This package currently requires a custom-built version of the Curator which make
   Curator.Iface (the CuratorHandler), and had it spawn a thread of the `InactiveCuratorKiller` right before calling `server.serve()`.
 * In `[Curator home]/curator-annotators/`: each [annotation type]Server/[annotation type]Handler pair modified to monitor and kill the handler after a period of inactivity, almost identical to the modifications made in 'CuratorServer/CuratorHandler'.
  
+Troubleshooting
+----------------------------------------
+
+* Make sure that you can launch the annotators on the Hadoop node using the same commands you find in the Hadoop logs. For instance, for tools that do not run in local mode (all tools except the tokenizer, POS, Stanford parser, and chunker), each time a Hadoop node annotates its first document using a given annotation, it will print the command it used to launch the annotator. If you cannot use that same command to launch the annotator manually on the Hadoop node, there will be problems.
+
+* If you have issues running the annotation tools in Hadoop (especially the Charniak parser), try passing an additional argument when you launch the job on Hadoop. (To do so, you may have to modify the script that gives the job to the Hadoop Job Handler.) Add the argument `-lib some\_library\_path` to the call to Hadoop. That library path should be an absolute path (i.e., one beginning with `/`), and inside that directory should be the Thrift library files (e.g., `libthrift.so.0`).
