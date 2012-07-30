@@ -10,15 +10,15 @@ This is a tool for interfacing the [Curator](http://cogcomp.cs.illinois.edu/trac
 
 The overall goal of the project is to provide an architecture for efficiently processing large text corpora using Hadoop/MapReduce. This architecture consists of the following:
 
-* New classes inheriting from the original Curator Client include:  
-    1. a local client which runs on each node in the Hadoop cluster and waits for input from the Hadoop process manager.
-    2. a master client which sets up the inputs for the Hadoop cluster and sends batch jobs to the cluster.
+* New classes, inheriting from the original Curator Client, which include:  
+    1. a local client that runs on each node in the Hadoop cluster and waits for input from the Hadoop process manager.
+    2. a master client that sets up the inputs for the Hadoop cluster and sends batch jobs to the cluster.
 	
-* An interface to Hadoop, callable from the Master Curator.
+* An interface to Hadoop, called from the Master Curator.
 
 * A set of scripts to start the Curator in local mode on all nodes in the Hadoop cluster.
 
-The advantages to this system include:
+Advantages to this system include:
 
 * (Potentially massive) data parallelism, which scales linearly with the size of the Hadoop cluster, in a tool set which has been written to operate in a strictly linear fashion.
 
@@ -29,8 +29,7 @@ Getting Started
 
 Make sure you have all the files present in the [[Manifest]] section.
 
-TODO: Step-by-step guide to go from downloading the package through
-compiling, setting up a job, getting the output, etc.
+TODO: Step-by-step guide to go from downloading the package through compiling, setting up a job, getting the output, etc.
 
 ### Examining the Log Files ###
 
@@ -53,8 +52,7 @@ To access the Hadoop logs:
 Manifest
 ----------------------------------------
 
-Ensure that, in addition to your standard Hadoop and Curator
-installations, the following files are present in your directories:
+Ensure that, in addition to your standard Hadoop and Curator installations, the following files are present in your directories:
 
 * `hadoop-1.0.3/`
 
@@ -74,47 +72,18 @@ installations, the following files are present in your directories:
 Troubleshooting
 ----------------------------------------
 
-In general, make sure you can launch the annotators on the Hadoop node
-using the same commands you find in the Hadoop logs. For instance,
-for tools that do not run in local mode (all tools except the
-tokenizer, POS, Stanford parser, and chunker), each time a Hadoop node
-annotates its first document using a given annotation, it will print 
-the command it used to launch the annotator. If you cannot use that same 
-command to launch the annotator manually on the Hadoop node, there will 
-be problems.
+* Make sure that you can launch the annotators on the Hadoop node using the same commands you find in the Hadoop logs. For instance, for tools that do not run in local mode (all tools except the tokenizer, POS, Stanford parser, and chunker), each time a Hadoop node annotates its first document using a given annotation, it will print the command it used to launch the annotator. If you cannot use that same command to launch the annotator manually on the Hadoop node, there will be problems.
 
-If you have issues running the annotation tools in Hadoop (especially
-the Charniak parser), try passing an additional argument when you
-launch the job on Hadoop. (To do so, you may have to modify the script that
-gives the job to the Hadoop Job Handler.) Add the argument 
-`-lib some\_library\_path` to the call to Hadoop. That library path 
-should be an absolute path (i.e., one beginning with `/`), 
-and inside that directory should be the Thrift library files 
-(e.g., `libthrift.so.0`).
+* If you have issues running the annotation tools in Hadoop (especially the Charniak parser), try passing an additional argument when you launch the job on Hadoop. (To do so, you may have to modify the script that gives the job to the Hadoop Job Handler.) Add the argument `-lib some\_library\_path` to the call to Hadoop. That library path should be an absolute path (i.e., one beginning with `/`), and inside that directory should be the Thrift library files (e.g., `libthrift.so.0`).
 
-
-
-Modifications to the existing Curator infrastructure
+Modifications to the Curator
 ----------------------------------------
 
-This package requires a (currently) custom-built version of the
-Curator. This version makes the following modifications:
+This package currently requires a custom-built version of the Curator which makes the following modifications:
 
-- in `[Curator home]/curator-interfaces/curator.thrift`: added
-  `getTimeOfLastAnnotation()` method
-- in `[Curator home]/curator-server/CuratorHandler.java`:
-  added `getTimeOfLastAnnotation()` and modified `performAnnotation()`
-  to update a new private field `lastAnnotationTime`
-- in `[Curator home]/curator-server/CuratorHandler.java`: added the
-  private `InactiveCuratorKiller` class, which periodically queries
-  the `CuratorHandler`'s last annotation time and calls
-  `Runtime.exit()` if the last annotation took place too long
-  ago. Also modified the `runServer()` method's signature to take a
-  Curator.Iface (the CuratorHandler), and had it spawn a thread of the
-  `InactiveCuratorKiller` right before calling `server.serve()`.
-- in `[Curator home]/curator-annotators/`, each
-  [annotation type]Server/[annotation type]Handler pair has been
-  modified to monitor and kill the handler after a period of
-  inactivity, almost identical to the modifications made in the
-  CuratorServer/CuratorHandler.
-  
+* In `[Curator home]/curator-interfaces/curator.thrift`: added `getTimeOfLastAnnotation()` method.
+* In `[Curator home]/curator-server/CuratorHandler.java`: added `getTimeOfLastAnnotation()` and modified `performAnnotation()` to update a new private field `lastAnnotationTime`.
+* In `[Curator home]/curator-server/CuratorHandler.java`: added the private `InactiveCuratorKiller` class, which periodically queries the `CuratorHandler`'s last annotation time and calls `Runtime.exit()` if the last annotation took place too long ago. Also modified the `runServer()` method's signature to take a
+  Curator.Iface (the CuratorHandler), and had it spawn a thread of the `InactiveCuratorKiller` right before calling `server.serve()`.
+* In `[Curator home]/curator-annotators/`: each [annotation type]Server/[annotation type]Handler pair modified to monitor and kill the handler after a period of inactivity, almost identical to the modifications made in 'CuratorServer/CuratorHandler'.
+ 
