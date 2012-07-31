@@ -31,27 +31,37 @@ First make sure you have all the files present in the **Manifest** section, belo
 
 ### Installation ###
 
+If you are running this interface on an existing Hadoop cluster, you can probably skip steps 1-3 below unless you want to install your own copy of Hadoop for local testing. NOTE: If you don't have access to local file storage on each of the nodes in your Hadoop cluster, you may need to create duplicate versions of the Curator build so that each node can run a separate instance. This case is true for the testing version; contact @s3cur3 for specifics.
+
 1. Make sure that Java 1.6.x, ssh, and sshd are installed on your system.
 
 2. Download [Hadoop](http://hadoop.apache.org/common/releases.html). This interface has been tested on Hadoop 1.0.3, but should work with previous and future releases as well.
 
 3. Unpack the Hadoop distribution and configure it according to the [official documentation](http://hadoop.apache.org/common/docs/r1.0.3/single_node_setup.html#Prepare+to+Start+the+Hadoop+Cluster). The testing version is 1.0.3. Initially, you probably will want to set up Hadoop as a pseudo-distributed operation.
 
-4. Download and configure the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) (scroll down to the **Download** section). The testing version is 0.6.9. NOTE: Presently you will need to contact @s3cur3 for the custom Curator build. Don't forget to set your JAVA_HOME configuration!
+4. Download the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) (scroll down to the **Download** section). The testing version is 0.6.9. NOTE: Presently you will need to contact @s3cur3 for the compiled custom Curator build. Alternatively, you could figure out where to overwrite the files stored in `modified_files_in_curator`.
 
-5. Download the [HadoopInterface package](https://github.com/ILCogCompCuratorToHadoop/CuratorHadoopInterface) files from GitHub, including the Java source code and shell scripts.
+5. Compile and/or configure your Curator installation. Don't forget to set your JAVA_HOME configuration!
 
-6. Configure the shell scripting variables in the designated section of each file with your absolute directory paths.
+6. Download the [CuratorHadoopInterface package](https://github.com/ILCogCompCuratorToHadoop/CuratorHadoopInterface) files from GitHub, including the Java source code and shell scripts. You can also get a pre-compiled package by contacting @s3cur3.
 
-7. Compile/build... // TODO
+7. Compile and/or configure your CuratorHadoopInterface installation. You can compile by simply typing `ant` from the `CuratorHadoopInterface` root directory. 
+
+8. In the `scripts` folder, edit the shell scripting variables in the designated section of each file with your directory paths.
+
+9. Compile `CuratorHadoopInterface/src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/JobHandler.java` into a JAR file. You will probably want to store this JAR in a separate `JobHandler` folder on the same level as `HadoopInterface` and `curator`.
+
+10. Congratulations, you've installed Hadoop, Curator, and the Curator-Hadoop interface!
 
 ### Running a Job ###
 
+The Curator-Hadoop interface takes input and produces output in a Thrift-serialized file format. Please contact @s3cur3 or (eventually) visit the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) webpage to acquire a file reader for this format.
+
 1. Make sure that your input files are in Thrift-serialized format, consistent, and organized in a common directory for each job. *Consistent* means that you should be prepared to (re-)run all dependent annotators up to your requested annotation and starting with the lowest common existing annotation in a **random** sample of 25 files in the input directory. It is preferred that all of your documents in a given job have the same existing annotations.
 
-2. From your main Hadoop directory, execute `./bin/hadoop jar curator.jar`. // TODO plus batch scripting??
+2. From your `JobHandler` directory, execute `java -jar JobHandler.jar REQUESTED_ANNOTATION /absolute/path/to/input_dir` with the optional third parameter of `STARTING_ANNOTATION`. For example, to run the tokenizer and the part of speech parser, you would execute `java -jar JobHandler.jar POS /home/jdoe/job123`. The program will automatically detect existing annotations in the input files via random sampling, so if your files are inconsistent (or if you're running into dependency errors), you may want to specify the minimum starting annotation as `java -jar JobHandler.jar POS /home/jdoe/job123 TOKEN`.
 
-3. Locate your newly annotated files, in Thrift-serialized format (and automatically cached in the Master Curator's database), in a folder copied to your original input directory. The output folder will be named in the form `ANNOTATION_output`, e.g. `.../input_job123/POS_output/`.
+3. Locate your newly annotated files, in Thrift-serialized format (and automatically cached in the Master Curator's database), in a folder copied to your original input directory. The output folder will be named in the form `ANNOTATION_output`, e.g. `.../job123/POS_output/`.
 
 ### Examining the Log Files ###
 
@@ -108,3 +118,5 @@ Troubleshooting
 * Make sure that you can launch the annotators on the Hadoop node using the same commands you find in the Hadoop logs. For instance, for tools that do not run in local mode (all tools except the tokenizer, POS, Stanford parser, and chunker), each time a Hadoop node annotates its first document using a given annotation, it will print the command it used to launch the annotator. If you cannot use that same command to launch the annotator manually on the Hadoop node, there will be problems.
 
 * If you have issues running the annotation tools in Hadoop (especially the Charniak parser), try passing an additional argument when you launch the job on Hadoop. (To do so, you may have to modify the script that gives the job to the Hadoop Job Handler.) Add the argument `-lib some\_library\_path` to the call to Hadoop. That library path should be an absolute path (i.e., one beginning with `/`), and inside that directory should be the Thrift library files (e.g., `libthrift.so.0`).
+
+* If you are using the JobHandler wrapper class and having problems with the automatic dependency handling, you can force a particular starting annotation by specifying it as a third parameter: `java -jar JobHandler.jar REQUESTED_ANNOTATION /absolute/path/to/input_dir STARTING_ANNOTATION`.
