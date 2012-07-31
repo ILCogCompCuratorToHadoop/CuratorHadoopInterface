@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# TODO outdated!
 # Usage (after configuring the directory variables below):
 #    ./batch_job_master_script ANNOTATION_TOOL_TO_RUN path/to/your_input_directory raw
 # Example: ./batch_hadoop_to_master_curator.sh TOKENIZER /shared/gargamel/undergrad/tyoun/curator-0.6.9/dist/client/job123 raw
@@ -24,7 +25,7 @@ HADOOP_DIRECTORY=/hadoop
 PATH_IN_HADOOP=$1           # The 1st parameter from the command line:
                             # the location of the output serialized 
                             # records in HDFS
-DESTINATION_IN_LOCAL=$2     # The place to whiche we should copy the 
+DESTINATION_IN_LOCAL=$2     # The place to which we should copy the 
                             # Hadoop job's output. Should be an absolute 
                             # path on the local disk.
 

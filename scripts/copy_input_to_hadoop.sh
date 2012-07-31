@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# TODO outdated!
 # Usage (after configuring the directory variables below):
 #    ./batch_job_master_script ANNOTATION_TOOL_TO_RUN path/to/your_input_directory raw
 # Example: ./batch_job_master_script.sh TOKENIZER /shared/gargamel/undergrad/tyoun/curator-0.6.9/dist/client/job123 raw
