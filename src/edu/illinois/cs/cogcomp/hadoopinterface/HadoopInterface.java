@@ -30,6 +30,10 @@ import java.io.IOException;
  *          $ ./bin/hadoop jar CuratorHadoopInterface.jar -i input_dir -m parse
  * @example (After compiling this program to a JAR)
  *          $ ./bin/hadoop jar CuratorHadoopInterface.jar -i input_dir -m verb_srl -test
+ * @example (When running the Curator from a shared network location on the
+ *          Reduce nodes)
+ *          $ ./bin/hadoop jar CuratorHadoopInterface.jar -i input_dir -m TOKEN
+ *              -out output_dir -reduces 10 -curator /path/to/curator-0.6.9 -shared
  * @precondition (Required by the CuratorReducer)
  *               The Hadoop node running this reduce() operation has a complete,
  *               compiled Curator distribution located (on the local file system)

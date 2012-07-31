@@ -14,6 +14,8 @@ import org.apache.thrift.TException;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.util.*;
 
 /**
@@ -31,7 +33,6 @@ import java.util.*;
 public class CuratorReducer
         extends Reducer<Text, HadoopRecord, Text, HadoopRecord> {
     public static final String userDir = System.getProperty( "user.home" );
-
     /**
      * Constructs a CuratorReducer
      */
@@ -70,7 +71,7 @@ public class CuratorReducer
         FileSystem fs = FileSystem.get( context.getConfiguration() );
         this.fsHandler = new FileSystemHandler( fs );
         setEnvVars( context.getConfiguration() );
-        setUpDirectories( context.getConfiguration() );
+        setUpCuratorDirs( context.getConfiguration() );
 
         AnnotationMode toolToRun = AnnotationMode
                 .fromString( context.getConfiguration().get("annotationMode") );
@@ -191,17 +192,89 @@ public class CuratorReducer
      * @param config The job configuration for this MapReduce job.
      * @throws IOException
      */
-    private void setUpDirectories( Configuration config )
+    private void setUpCuratorDirs( Configuration config )
             throws IOException {
         String specifiedLoc = config.get("curatorLoc");
-        Path curatorDir;
-        if( specifiedLoc != null && !specifiedLoc.equals("") ) {
-            curatorDir = new Path( specifiedLoc );
-        }
-        else {
-            curatorDir = new Path( userDir, "curator" );
+        Path curatorDir = null;
+
+        // If the Curator directory is shared . . .
+        if(  config.get("curatorLocIsShared") != null
+                && !config.get("curatorLocIsShared").equals("") ) {
+            // Curator resides on a shared (networked) disk. There will be many
+            // Curator directories instead of just one (named [specifiedLoc]_1,
+            // [specifiedLoc]_2, etc.). We need to "lock" one of those, or wait
+            // for one to become unlocked.
+
+            // TODO: [long term] Change this code if more nodes may exist!
+            final int maxCuratorInstallations = 2;
+            final String curatorLockName = "CURATOR_IS_IN_USE";
+
+            // We use each node's mac address as an identifier
+            // TODO: [long term] When MRv2 is ready for use, YARN can provide a node ID instead
+            InetAddress ip = InetAddress.getLocalHost();
+            NetworkInterface network = NetworkInterface.getByInetAddress(ip);
+            String thisNodesMacAddress =
+                    Arrays.toString( network.getHardwareAddress() );
+
+            // First we check all Curator directories for this node's
+            // signature lock
+            File curatorToTest;
+            final long timeUntilLockIsStale = 1000 * 60 * 60; // 1 hour
+            for( int i = 0; i < maxCuratorInstallations; i++ ) {
+                curatorToTest = new File( specifiedLoc + "_" + i );
+                File curatorLock = new File( curatorToTest, curatorLockName );
+
+                if( curatorLock.exists() ) {
+                    // If the lock is stale, destroy it
+                    if( System.currentTimeMillis() - curatorLock.lastModified() >
+                            timeUntilLockIsStale ) {
+                        logger.log( "Found a stale lock in Curator directory "
+                                    + curatorToTest.toString() + ". Deleting it..." );
+                        curatorLock.delete();
+                    }
+
+                    // If the lock contains our mac address, it means we locked it
+                    // (thus, we are allowed to use this directory)
+                    String lockContents =
+                            LocalFileSystemHandler.readFileToString( curatorLock );
+                    if( lockContents.contains( thisNodesMacAddress ) ) {
+                            curatorDir = new Path( curatorToTest.toString() );
+                            this.curatorLock = curatorLock;
+                    }
+                }
+            }
+
+            Random rng = new Random();
+            int count = 0;
+            while( curatorDir == null ) {
+                curatorToTest = new File( specifiedLoc + "_"
+                        + rng.nextInt(maxCuratorInstallations) );
+                File curatorLock = new File( curatorToTest, curatorLockName );
+
+                // If this copy of Curator exists and is not locked . . .
+                if( curatorToTest.isDirectory() && !curatorLock.exists() ) {
+                    // Lock it!
+                    LocalFileSystemHandler.writeStringToFile( curatorLock,
+                            thisNodesMacAddress, true );
+                    this.curatorLock = curatorLock;
+                    curatorDir = new Path( curatorToTest.toString() );
+                    logger.logStatus( "Found that Curator at "
+                            + curatorDir.toString() + " is unused." );
+                }
+
+                ++count;
+            }
+
+        } else { // Normal, node-local Curator
+            if( specifiedLoc != null && !specifiedLoc.equals("") ) {
+                curatorDir = new Path( specifiedLoc );
+            }
+            else {
+                curatorDir = new Path( userDir, "curator" );
+            }
         }
 
+        logger.logStatus( "Using Curator at " + curatorDir.toString() + "." );
         Path distDir = new Path( curatorDir, "dist" );
         distDir.makeQualified( FileSystem.get( new Configuration() ) );
         dir = new PathStruct( distDir );
@@ -228,7 +301,9 @@ public class CuratorReducer
         try {
             if( !client.listAvailableAnnotators().contains( toolToRun ) ) {
                 shutdownAllLocalNLPTools();
-
+                if( curatorLock != null ) {
+                    curatorLock.delete();
+                }
             }
         } catch ( TException ignored ) {
             // Couldn't list available annotators (probably because the Curator
@@ -314,6 +389,7 @@ public class CuratorReducer
 
         // Make sure future Reducers don't think their tools are already running
         CuratorReducer.setToolHasBeenLaunched( false );
+        curatorLock.delete();
     }
 
     /**
@@ -862,7 +938,6 @@ public class CuratorReducer
         out.start();
     }
 
-
     /**
      * Returns the log location on the local node for the specified annotation
      * tool.
@@ -897,6 +972,7 @@ public class CuratorReducer
         }
     }
 
+
     /**
      * @return The location, on the local file system, of the Curator log file
      */
@@ -909,6 +985,7 @@ public class CuratorReducer
      * directories by providing a centralized, write-once data structure.
      */
     private class PathStruct {
+
         /**
          * Constructs all the Path objects used by the Reducer (which are located
          * relative to the `dist` directory)
@@ -923,7 +1000,6 @@ public class CuratorReducer
             configDir = new Path( distDir, "configs" );
             this.userDir = new Path( CuratorReducer.userDir );
         }
-
         public Path dist() {
             return distDir;
         }
@@ -931,10 +1007,10 @@ public class CuratorReducer
         public Path log() {
             return logDir;
         }
+
         public Path bin() {
             return binDir;
         }
-
         public Path config() {
             return configDir;
         }
@@ -944,13 +1020,14 @@ public class CuratorReducer
         }
 
         private final Path userDir;
+
         private final Path distDir;
         private final Path logDir;
         private final Path binDir;
         private final Path configDir;
     }
-
     private PathStruct dir;
+
     private FileSystemHandler fsHandler;
     private HadoopCuratorClient client;
     private String [] envVarsForRuntimeExec;
@@ -959,4 +1036,5 @@ public class CuratorReducer
     private Set<AnnotationMode> toolsThatMustBeLaunched;
     private static final MessageLogger logger = HadoopInterface.logger;
     private static final int MAX_ATTEMPTS = 10;
+    private File curatorLock; // locks the installation of Curator we are using
 }

@@ -37,7 +37,8 @@ public class ArgumentParser {
             err.append( "-in <document directory> -m <mode> [-out <output " );
             err.append( " directory>] [-maps <number of maps>] [-reduces " );
             err.append( "<number of reduces>] [-lib /path/to/lib/on/hadoop_nodes] " +
-                    "[-curator /path/on/hadoop_nodes/to/curator] [-test]\n" );
+                    "[-curator /path/on/hadoop_nodes/to/curator] [-shared]" +
+                    " [-test]\n" );
             err.append( "You tried to pass these parameters:\n\t" );
 
             for( String arg : args ) {
@@ -74,6 +75,9 @@ public class ArgumentParser {
                 }
                 else if( args[i].equals("-test") ) {
                     testing = true;
+                }
+                else if( args[i].equals("-shared") ) {
+                    shared = true;
                 }
                 else if( args[i].equals("-lib") ) {
                     lib = args[ ++i ];
@@ -214,6 +218,18 @@ public class ArgumentParser {
         return mode;
     }
 
+    /**
+     * @return True if the reduce() nodes are not launching the Curator from a
+     *         local, private directory and are instead launching it on from a
+     *         shared (presumably networked) disk. In this case, it is your
+     *         responsibility to create many copies of the Curator directory
+     *         named [original Curator directory name]_1,
+     *         [original Curator directory name]_2, and so on.
+     */
+    public boolean isShared() {
+        return shared;
+    }
+
     private AnnotationMode mode;
 
     private String directory;
@@ -221,8 +237,10 @@ public class ArgumentParser {
     private String outputDirectory;
 
     private String lib;
+
     private String curatorLoc;
     private Integer numMaps;
     private Integer numReduces;
     private boolean testing = false;
+    private boolean shared;
 }

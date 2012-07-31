@@ -300,6 +300,11 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
             config.set( "curatorLoc", curatorLoc );
         }
 
+        // If the location the Curator is stored at is a shared (network) location
+        if( argParser.isShared() ) {
+            config.set( "curatorLocIsShared", "true" );
+        }
+
         AnnotationMode mode = argParser.getMode();
 
         config.set( "annotationMode", mode.toString() );

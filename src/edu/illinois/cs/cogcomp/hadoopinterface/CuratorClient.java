@@ -707,7 +707,7 @@ public class CuratorClient {
                 System.out.println( "Couldn't find " + tokens + " annotation!" );
             }
 
-            client.performAnnotation(r, "pos", true);
+            client.provide("pos", r.getRawText(), false);
             transport.close();
 
             // Confirm it worked
