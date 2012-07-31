@@ -104,7 +104,8 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
 
         // Turn off speculative execution, because DFS doesn't handle
         // multiple writers to the same file.
-        setSpeculativeExecution( false );
+        // TODO: [long term] This is not supported in Hadoop v0.20. If we ever upgrade, turn it on.
+        //setSpeculativeExecution( false );
     }
 
     /**

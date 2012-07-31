@@ -1,6 +1,5 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.input;
 
-import edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.FileSystemHandler;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
@@ -27,9 +26,7 @@ import java.util.Set;
  * @author Tyler Young
  */
 public class DirectorySplit extends InputSplit implements Writable {
-    public DirectorySplit() throws IOException {
-        HadoopInterface.logger.logError(
-                "Someone called the DirectorySplit's zero-arg constructor. (?)");
+    public DirectorySplit() {
     }
 
     /**

@@ -17,16 +17,16 @@ echo ""
 
 
 #       Change these variables to the appropriate *absolute paths*      #
+#                Should match exactly the same variables in             #
+#                   batch_master_curator_to_hadoop.sh                   #
 #########################################################################
 
-CURATOR_DIRECTORY=/project/cogcomp/curator-0.6.9
-HADOOP_DIRECTORY=/hadoop
-PATH_IN_HADOOP=$1           # The 1st parameter from the command line:
-                            # the location of the output serialized 
-                            # records in HDFS
-DESTINATION_IN_LOCAL=$2     # The place to whiche we should copy the 
-                            # Hadoop job's output. Should be an absolute 
-                            # path on the local disk.
+CURATOR_DIRECTORY=/shared/gargamel/undergrad/tyoun/curator-0.6.9
+HADOOP_DIRECTORY=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
+INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized
+PATH_IN_HADOOP=$1                   # The 2nd parameter from the command line
+DESTINATION_IN_LOCAL=$2             # Should be an absolute path on the
+                                    # local disk
 
 # If you're logging the output of this script to a file (instead of 
 # just reading it on the command line), you might want
@@ -44,6 +44,10 @@ ERROR_COLOR='\e[0;31m'
 cd $HADOOP_DIRECTORY
 
 
+
+
+
+
 set +e # Do *not* exit the script if a command fails (so we can give
        # useful suggestions to the user)
 
@@ -59,7 +63,6 @@ fi
 
 echo -e "$MSG_COLOR\nCreating output directory $DESTINATION_IN_LOCAL $DEFAULT_COLOR"
 mkdir $DESTINATION_IN_LOCAL
-chmod 777 $DESTINATION_IN_LOCAL
 
 # Do the actual copy operation
 # TODO: Make this a distributed Hadoop job

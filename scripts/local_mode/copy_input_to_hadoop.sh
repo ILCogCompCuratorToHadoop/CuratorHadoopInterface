@@ -18,24 +18,19 @@ echo ""
 #       Change these variables to the appropriate *absolute paths*      #
 #########################################################################
 
-CURATOR_DIRECTORY=/project/cogcomp/curator-0.6.9
-HADOOP_DIRECTORY=/hadoop
-# This is where we will store the serialized forms of our records before
-# sending them to Hadoop.
-STAGING_DIRECTORY=/scratch/tyoun
+CURATOR_DIRECTORY=/shared/gargamel/undergrad/tyoun/curator-0.6.9
+HADOOP_DIRECTORY=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
+INTERMEDIATE_OUTPUT=$HADOOP_DIRECTORY/serialized
+# In the output directory, we will place a dir called "serialized" which
+# will store the job's output records
+OUTPUT=/shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 INPUT_PATH=$1                   # The 1st parameter from the command line 
                                 #   (must be a local path to be copied to 
                                 #   HDFS)
 MODE=$2                         # 2nd parameter from CL should be "serial" 
                                 #   or "raw"
-DESTINATION_FOR_INPUT_IN_HADOOP=$3 # The directory in HDFS in which we 
-                                   # will put our job's input Records
+DESTINATION_FOR_INPUT_IN_HADOOP=$3
 
-# If you need to specify more fully the location in HDFS to which we 
-# copy our input, do so here. By default, we copy the directory named
-# $DESTINATION_FOR_INPUT_IN_HADOOP to the Hadoop working directory
-# (which should be, but might not be, /home/[your user name]/ in HDFS).
-PREFIX_TO_HADOOP_DIR=/home/tyoun
 
 
 # If you're logging the output of this script to a file (instead of 
@@ -52,12 +47,6 @@ ERROR_COLOR='\e[0;31m'
 BASEDIR=$(dirname $0) # location of this script file
 
 set -e # Exit the script if any command fails
-
-# Fix the DESTINATION_FOR_INPUT_IN_HADOOP variable if user wants a prefix
-# If the prefix is not null (empty)
-if [ -n "$PREFIX_TO_HADOOP_DIR" ]; then
-    DESTINATION_FOR_INPUT_IN_HADOOP=$PREFIX_TO_HADOOP_DIR/$DESTINATION_FOR_INPUT_IN_HADOOP
-fi
 
 echo -e "$MSG_COLOR\n\n\nYou said your copy of Curator is located here: $CURATOR_DIRECTORY"
 echo "You requested we run the annotation tool $ANNOTATION_TOOL_TO_RUN on your input"
@@ -101,8 +90,7 @@ if [ "$MODE" != "serial" ]; then # if we're working with raw text files...
     # records from the text in the input directory
     echo -e "$MSG_COLOR\n\n\nLaunching the master curator client:$DEFAULT_COLOR"
     cd client
-    ./runclient.sh -host localhost -port 9010 -in $INPUT_PATH -out $STAGING_DIRECTORY -mode PRE
-    chmod -R 777 $STAGING_DIRECTORY
+    ./runclient.sh -host localhost -port 9010 -in $INPUT_PATH -out $INTERMEDIATE_OUTPUT -mode PRE
 
     echo -e "$MSG_COLOR\n\nShutting down locally running Curator. $DEFAULT_COLOR"
     # Get list of currently running Java procs | find the Curator server | split on spaces (?) | send the first thing (i.e., the process ID) to the kill command
@@ -115,7 +103,7 @@ if [ "$MODE" != "serial" ]; then # if we're working with raw text files...
     ./bin/hadoop dfs -rmr $DESTINATION_FOR_INPUT_IN_HADOOP
     ./bin/hadoop dfs -mkdir $DESTINATION_FOR_INPUT_IN_HADOOP
     set -e # Exit the script if any command fails
-    ./bin/hadoop dfs -copyFromLocal $STAGING_DIRECTORY/* $DESTINATION_FOR_INPUT_IN_HADOOP
+    ./bin/hadoop dfs -copyFromLocal $INTERMEDIATE_OUTPUT/* $DESTINATION_FOR_INPUT_IN_HADOOP
     echo -e "$MSG_COLOR\nCopied successfully. $DEFAULT_COLOR"
 
 

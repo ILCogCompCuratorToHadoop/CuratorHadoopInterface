@@ -13,8 +13,11 @@ package edu.illinois.cs.cogcomp.hadoopinterface;
 
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.CuratorJob;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.MessageLogger;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.tests.DummyInputCreator;
-import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.tests.FileSystemHandlerTest;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.tests
+        .DummyInputCreator;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.tests
+        .FileSystemHandlerTest;
+import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import org.apache.hadoop.fs.Path;
 
 import java.io.IOException;
@@ -48,6 +51,9 @@ public class HadoopInterface {
      */
     public static void main( String[] argv )
             throws IOException, ClassNotFoundException, InterruptedException {
+        // Make sure the JAR has access to the classes we will need!
+        Record r = new Record();
+
         logger.beginWritingToDisk();
         logger.logLocation();
         logger.logStatus( "Setting up job.\n\n" );

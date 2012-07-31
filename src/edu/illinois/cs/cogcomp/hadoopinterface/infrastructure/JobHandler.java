@@ -41,6 +41,7 @@ import java.util.*;
  *               how we connect to Hadoop (in all scripts in the scripts
  *               directory).
  *
+ * @TODO Add check to make sure that the input directory is real (else throw useful error)
  * @author Lisa Bao
  * @author Tyler Young
  */

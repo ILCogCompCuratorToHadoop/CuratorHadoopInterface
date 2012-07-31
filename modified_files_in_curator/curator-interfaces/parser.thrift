@@ -23,6 +23,10 @@ service Parser extends base.BaseService {
    * Parses the Record.
    **/
   base.Forest parseRecord(1:curator.Record record) throws (1:base.AnnotationFailedException ex),
+
+  /** Returns the (standard Unix milliseconds) time of last annotation 
+   activity (which may be the beginning or end of the last annotation performed).*/
+  i64 getTimeOfLastAnnotation(),
 }
 
 /**

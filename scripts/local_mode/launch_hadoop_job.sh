@@ -9,12 +9,11 @@
 #       Change these variables to the appropriate *absolute paths*      #
 #########################################################################
 
-# The location of the Hadoop installation (where we launch jobs from)
-HADOOP_DIRECTORY=/hadoop
 # Where we find the Thrift libraries on the Hadoop nodes (this should
 # probably be local to each machine in your Hadoop cluster)
-#LIB_DIR_ON_HADOOP_NODES=/shared/grandpa/opt/lib
-CURATOR_DIR_ON_HADOOP_NODES=/project/cogcomp/curator-0.6.9
+LIB_DIR_ON_HADOOP_NODES=/shared/grandpa/opt/lib
+#CURATOR_DIR_ON_HADOOP_NODES=/projects/cogcomp/curator
+CURATOR_DIR_ON_HADOOP_NODES=/shared/gargamel/undergrad/tyoun/curator-0.6.9
 
 # In the output directory, we will place a dir called "serialized" which
 # will store the job's output records
@@ -25,11 +24,6 @@ INPUT_DIR_IN_HDFS=$2            # The 2nd parameter from the command line:
                                 #   the location to take input from
 OUTPUT_DIR_IN_HDFS=$3           # The location we should write output to
 
-# If you need to specify more fully the location in HDFS in which we 
-# do I/O, do so here. By default, we assume the INPUT and OUTPUT 
-# directories to within the Hadoop working directory
-# (which should be, but might not be, /home/[your user name]/ in HDFS).
-PREFIX_TO_HADOOP_DIRS=/home/tyoun
 
 # If you're logging the output of this script to a file (instead of 
 # just reading it on the command line), you might want
@@ -45,22 +39,13 @@ ERROR_COLOR='\e[0;31m'
 
 set -e # Exit the script if any command fails
 
-# Fix the INPUT_DIR_IN_HDFS and OUTPUT_DIR_IN_HDFS variables if user 
-# wants a prefix
-# If the prefix is not null (empty)
-if [ -n "$PREFIX_TO_HADOOP_DIRS" ]; then
-    INPUT_DIR_IN_HDFS=$PREFIX_TO_HADOOP_DIRS/$INPUT_DIR_IN_HDFS
-    OUTPUT_DIR_IN_HDFS=$PREFIX_TO_HADOOP_DIRS/$OUTPUT_DIR_IN_HDFS
-fi
-
 # Go to the Hadoop directory
-cd $HADOOP_DIRECTORY
+cd /shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 
 # Launch MapReduce job on Hadoop cluster
 echo -e "$MSG_COLOR\n\n\nLaunching the mapreduce job on the Hadoop cluster $DEFAULT_COLOR"
-echo -e "using command ./bin/hadoop jar /project/cogcomp/HadoopInterface/HadoopInterface.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -reduces 8 -curator $CURATOR_DIR_ON_HADOOP_NODES"
-./bin/hadoop jar /project/cogcomp/HadoopInterface/HadoopInterface.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -reduces 8 -curator $CURATOR_DIR_ON_HADOOP_NODES
-#-lib $LIB_DIR_ON_HADOOP_NODES
+echo -e "using command ./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -lib $LIB_DIR_ON_HADOOP_NODES -reduces 1"
+./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -lib $LIB_DIR_ON_HADOOP_NODES -reduces 1 -curator $CURATOR_DIR_ON_HADOOP_NODES
 
 echo -e "$MSG_COLOR\n\n\n$ANNOTATION_TOOL_TO_RUN job finished!\n$DEFAULT_COLOR"
 
