@@ -57,8 +57,9 @@ fi
 cd $HADOOP_DIRECTORY
 
 # Launch MapReduce job on Hadoop cluster
+## TODO: Change number of reduces!!
 echo -e "$MSG_COLOR\n\n\nLaunching the mapreduce job on the Hadoop cluster $DEFAULT_COLOR"
-CMD="bin/hadoop jar /project/cogcomp/HadoopInterface/HadoopInterface.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -reduces 8 -curator $CURATOR_DIR_ON_HADOOP_NODES" #-lib $LIB_DIR_ON_HADOOP_NODES
+CMD="bin/hadoop jar /project/cogcomp/HadoopInterface/HadoopInterface.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -reduces 3 -curator $CURATOR_DIR_ON_HADOOP_NODES -shared" #-lib $LIB_DIR_ON_HADOOP_NODES
 echo -e "using command $CMD"
 ./$CMD
 

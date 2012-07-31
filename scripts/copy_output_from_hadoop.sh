@@ -20,7 +20,7 @@ echo ""
 #       Change these variables to the appropriate *absolute paths*      #
 #########################################################################
 
-CURATOR_DIRECTORY=/project/cogcomp/curator-0.6.9
+CURATOR_DIRECTORY=/project/cogcomp/curator-0.6.9_1
 HADOOP_DIRECTORY=/hadoop
 PATH_IN_HADOOP=$1           # The 1st parameter from the command line:
                             # the location of the output serialized 

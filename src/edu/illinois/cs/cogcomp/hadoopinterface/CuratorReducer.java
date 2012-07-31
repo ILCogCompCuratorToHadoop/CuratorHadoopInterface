@@ -33,6 +33,9 @@ import java.util.*;
 public class CuratorReducer
         extends Reducer<Text, HadoopRecord, Text, HadoopRecord> {
     public static final String userDir = System.getProperty( "user.home" );
+    private static final String curatorLockName = "CURATOR_IS_IN_USE";
+    private String thisNodesMacAddress;
+
     /**
      * Constructs a CuratorReducer
      */
@@ -68,6 +71,7 @@ public class CuratorReducer
                         Iterable<HadoopRecord> inValues,
                         Context context )
             throws IOException, InterruptedException {
+        logger.log( "Beginning reduce() . . ." );
         FileSystem fs = FileSystem.get( context.getConfiguration() );
         this.fsHandler = new FileSystemHandler( fs );
         setEnvVars( context.getConfiguration() );
@@ -206,8 +210,7 @@ public class CuratorReducer
             // for one to become unlocked.
 
             // TODO: [long term] Change this code if more nodes may exist!
-            final int maxCuratorInstallations = 2;
-            final String curatorLockName = "CURATOR_IS_IN_USE";
+            final int maxCuratorInstallations = 3;
 
             // We use each node's mac address as an identifier
             // TODO: [long term] When MRv2 is ready for use, YARN can provide a node ID instead
@@ -219,6 +222,7 @@ public class CuratorReducer
             // First we check all Curator directories for this node's
             // signature lock
             File curatorToTest;
+            // TODO: [long term] If jobs can be expected to last more than 1 hour, extend this!
             final long timeUntilLockIsStale = 1000 * 60 * 60; // 1 hour
             for( int i = 0; i < maxCuratorInstallations; i++ ) {
                 curatorToTest = new File( specifiedLoc + "_" + i );
@@ -238,31 +242,35 @@ public class CuratorReducer
                     String lockContents =
                             LocalFileSystemHandler.readFileToString( curatorLock );
                     if( lockContents.contains( thisNodesMacAddress ) ) {
-                            curatorDir = new Path( curatorToTest.toString() );
-                            this.curatorLock = curatorLock;
+                        curatorDir = new Path( curatorToTest.toString() );
+                        this.curatorLock = curatorLock;
+                        logger.log( "Found a currently-running Curator on this "
+                                    + "node at " + curatorToTest.toString() );
                     }
                 }
             }
 
+            // If we didn't find a Curator directory with our signature lock
+            // (that is, if we still haven't found a curatorDir to use), try
+            // them at random.
             Random rng = new Random();
             int count = 0;
             while( curatorDir == null ) {
                 curatorToTest = new File( specifiedLoc + "_"
                         + rng.nextInt(maxCuratorInstallations) );
-                File curatorLock = new File( curatorToTest, curatorLockName );
 
-                // If this copy of Curator exists and is not locked . . .
-                if( curatorToTest.isDirectory() && !curatorLock.exists() ) {
-                    // Lock it!
-                    LocalFileSystemHandler.writeStringToFile( curatorLock,
-                            thisNodesMacAddress, true );
-                    this.curatorLock = curatorLock;
+                if( lockCurator( curatorToTest ) ) {
                     curatorDir = new Path( curatorToTest.toString() );
                     logger.logStatus( "Found that Curator at "
                             + curatorDir.toString() + " is unused." );
+                } else {
+                    logger.logStatus( "Found that Curator at "
+                            + curatorToTest.toString() + " is in use." );
+                    ++count;
+                    if( count > 5*maxCuratorInstallations ) {
+                        throw new IOException("Couldn't find a Curator to use...");
+                    }
                 }
-
-                ++count;
             }
 
         } else { // Normal, node-local Curator
@@ -287,6 +295,30 @@ public class CuratorReducer
         }
     }
 
+    private boolean lockCurator( File curatorDir ) throws IOException {
+        // We use each node's mac address as an identifier
+        // TODO: [long term] When MRv2 is ready for use, YARN can provide a node ID instead
+        if( thisNodesMacAddress == null ) {
+            InetAddress ip = InetAddress.getLocalHost();
+            NetworkInterface network = NetworkInterface.getByInetAddress(ip);
+            thisNodesMacAddress = Arrays.toString( network.getHardwareAddress() );
+        }
+
+        File curatorLock = new File( curatorDir, curatorLockName );
+        // If this copy of Curator exists and is not locked . . .
+        if( curatorDir.isDirectory() && !curatorLock.exists() ) {
+            // Lock it!
+            curatorLock.createNewFile();
+            curatorLock.setWritable(true);
+            LocalFileSystemHandler.writeStringToFile( curatorLock,
+                    thisNodesMacAddress, true );
+
+            this.curatorLock = curatorLock;
+            return true;
+        }
+        return false;
+    }
+
     /**
      * If a Curator from a previous job is running (i.e., a Curator configured to
      * use an annotator other than the tool to be run now), shut it and any
@@ -301,9 +333,6 @@ public class CuratorReducer
         try {
             if( !client.listAvailableAnnotators().contains( toolToRun ) ) {
                 shutdownAllLocalNLPTools();
-                if( curatorLock != null ) {
-                    curatorLock.delete();
-                }
             }
         } catch ( TException ignored ) {
             // Couldn't list available annotators (probably because the Curator

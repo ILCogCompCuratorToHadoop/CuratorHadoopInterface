@@ -19,7 +19,7 @@ echo ""
 #       Change these variables to the appropriate *absolute paths*      #
 #########################################################################
 
-CURATOR_DIRECTORY=/project/cogcomp/curator-0.6.9
+CURATOR_DIRECTORY=/project/cogcomp/curator-0.6.9_0
 HADOOP_DIRECTORY=/hadoop
 # This is where we will store the serialized forms of our records before
 # sending them to Hadoop.
