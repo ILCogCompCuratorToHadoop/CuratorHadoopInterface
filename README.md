@@ -49,9 +49,9 @@ First make sure you have all the files present in the **Manifest** section, belo
 
 1. Make sure that your input files are in Thrift-serialized format, consistent, and organized in a common directory for each job. *Consistent* means that you should be prepared to (re-)run all dependent annotators up to your requested annotation and starting with the lowest common existing annotation in a **random** sample of 25 files in the input directory. It is preferred that all of your documents in a given job have the same existing annotations.
 
-2. From your main Hadoop directory, execute './bin/hadoop jar curator.jar'. // TODO plus batch scripting??
+2. From your main Hadoop directory, execute `./bin/hadoop jar curator.jar`. // TODO plus batch scripting??
 
-3. Locate your newly annotated files, in Thrift-serialized format (and automatically cached in the Master Curator's database), in a folder copied to your original input directory. The output folder will be named in the form 'ANNOTATION_output', e.g. '.../input_job123/POS_output/'.
+3. Locate your newly annotated files, in Thrift-serialized format (and automatically cached in the Master Curator's database), in a folder copied to your original input directory. The output folder will be named in the form `ANNOTATION_output`, e.g. `.../input_job123/POS_output/`.
 
 ### Examining the Log Files ###
 
