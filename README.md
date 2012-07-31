@@ -31,7 +31,7 @@ First make sure you have all the files present in the **Manifest** section, belo
 
 ### Installation ###
 
-If you are running this interface on an existing Hadoop cluster, you can probably skip steps 1-3 below unless you want to install your own copy of Hadoop for local testing. NOTE: If you don't have access to local file storage on each of the nodes in your Hadoop cluster, you may need to create duplicate versions of the Curator build so that each node can run a separate instance. This case is true for the testing version; contact @s3cur3 for specifics.
+If you are running this interface on an existing Hadoop cluster, you can probably skip steps 1-3 below unless you want to install your own copy of Hadoop for local testing. NOTE: If you don't have access to local file storage on each of the nodes in your Hadoop cluster, you may need to create duplicate versions of the Curator build so that each node can run a separate instance. This case is true for the testing version and requires additional config options, such as the `-shared` flag being passed into Hadoop; contact @s3cur3 for specifics.
 
 1. Make sure that Java 1.6.x, ssh, and sshd are installed on your system.
 
