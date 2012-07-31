@@ -51,7 +51,7 @@ First make sure you have all the files present in the **Manifest** section, belo
 
 2. From your main Hadoop directory, execute './bin/hadoop jar curator.jar'. // TODO plus batch scripting??
 
-3. Locate your newly annotated files, in Thrift-serialized format (and automatically cached in the Master Curator's database), in your previously specified output directory. This directory path was specified as a parameter in the copy_output_from_hadoop shell script. // TODO does user pass this into JobHandler?
+3. Locate your newly annotated files, in Thrift-serialized format (and automatically cached in the Master Curator's database), in a folder copied to your original input directory. The output folder will be named in the form 'ANNOTATION_output', e.g. '.../input_job123/POS_output/'.
 
 ### Examining the Log Files ###
 
