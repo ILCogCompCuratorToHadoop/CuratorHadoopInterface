@@ -33,7 +33,6 @@ src/edu/illinois/cs/cogcomp/archive/
 *.dmg
 *.gz
 *.iso
-*.jar
 *.rar
 *.tar
 *.zip
@@ -106,3 +105,11 @@ src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/AbstractFSHandler.jav
 src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/SampleFileSystemHandler.java
 
 src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/TestFileSystemHandler.java
+
+lib/MarkdownDoclet-3.0.jar
+
+MarkdownDoclet-3.0.jar
+
+modified_files_in_curator/annotators/illinoisSRL-3.0.3.jar/mydeploy.sh
+
+modified_files_in_curator/annotators/illinoisSRL-3.0.3.jar/pom.xml
