@@ -67,7 +67,7 @@ If you are running this interface on an existing Hadoop cluster, you can probabl
 
     * `client` (contains our `CuratorClient.class`)
 
-10. Congratulations, you've installed Hadoop, Curator, and the Curator-Hadoop interface!
+Congratulations, you've installed Hadoop, Curator, and the Curator-Hadoop interface!
 
 ### Running a Job ###
 
@@ -89,7 +89,7 @@ To access the Hadoop logs:
 
 2. Your jobs will show up there, under the list of Running, Completed, or Failed jobs. Click on the job ID of the job you're interested in.
 
-3. Click on the **reduce** link. (All the interesting work our program does occurs in the Reduce phase, so that's the only place to check for logs.)
+3. Click on the **Reduce** link. (All the interesting work our program does occurs in the Reduce phase, so that's the only place to check for logs.)
 
 4. Click on a **Task** link. There should be one task per document that you passed in.
 
