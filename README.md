@@ -33,7 +33,7 @@ First make sure you have all the files present in the **Manifest** section, belo
 
 ### Installation ###
 
-If you are running this interface on an existing Hadoop cluster, you can probably skip steps 1-3 below unless you want to install your own copy of Hadoop for local (pseudo-distributed) testing. **Note**: If you don't have access to local file storage on each of the nodes in your Hadoop cluster, you may need to create duplicate versions of the Curator build on some shared network location (accessible from each Hadoop node) so that each node can run a separate instance. This is the case for the version tested at UIUC, and it requires additional configuration on your end. See the section [Configuring Curator without Installing Software on Hadoop Nodes][] for more information.
+If you are running this interface on an existing Hadoop cluster, you can probably skip steps 1-3 below unless you want to install your own copy of Hadoop for local (pseudo-distributed) testing. **Note**: If you don't have access to local file storage on each of the nodes in your Hadoop cluster, you may need to create duplicate versions of the Curator build on some shared network location (accessible from each Hadoop node) so that each node can run a separate instance. This is the case for the version tested at UIUC, and it requires additional configuration on your end. See the section **Configuring Curator without Installing Software on Hadoop Nodes** below for more information.
 
 1. Make sure that Java 1.6.x, ssh, and sshd are installed on your system.
 
@@ -41,7 +41,7 @@ If you are running this interface on an existing Hadoop cluster, you can probabl
 
 3. Unpack the Hadoop distribution and configure it according to the [official documentation](http://hadoop.apache.org/common/docs/r1.0.3/single_node_setup.html#Prepare+to+Start+the+Hadoop+Cluster). Initially, you probably will want to set up Hadoop as a pseudo-distributed operation.
 
-4. Download the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) (scroll down to the **Download** section). The testing version is 0.6.9. **Note**: A few minor changes are required to each of the annotators you plan to use, as well as to the Curator itself (on the Hadoop cluster, all tools must shut themselves down if they are idle for too long). You can either build the Curator using the files stored in `modified_files_in_curator` or contact [Tyler Young][] for the compiled custom Curator build.
+4. Download the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) (scroll down to the **Download** section). The testing version is 0.6.9. **Note**: A few minor changes are required to each ofs the annotators you plan to use, as well as to the Curator itself (on the Hadoop cluster, all tools must shut themselves down if they are idle for too long). You can either build the Curator using the files stored in `modified_files_in_curator` or contact [Tyler Young][] for the compiled custom Curator build.
 
 5. Compile and/or configure your Curator installation. Don't forget to set your JAVA_HOME environment variable!
 
@@ -53,25 +53,25 @@ If you are running this interface on an existing Hadoop cluster, you can probabl
 
 9. Compile `CuratorHadoopInterface/src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/JobHandler.java` into a JAR file. You will probably want to store this JAR in a separate `JobHandler` folder on the same level as `HadoopInterface` and `curator`. For reference, our directory structure looks like this:
 
-    * `HadoopInterface`
+* `HadoopInterface`
+
+    * `HadoopInterface.jar`
 	
-	    * `HadoopInterface.jar`
-		
-	* `JobHandler`
-	
-	    * `JobHandler.jar`
-		* `lib`
-		* `scripts`
-	
-	* `curator-0.6.9/dist`
-	
-	    * `client` (contains our `CuratorClient.class`)
+* `JobHandler`
+
+    * `JobHandler.jar`
+	* `lib`
+	* `scripts`
+
+* `curator-0.6.9/dist`
+
+    * `client` (contains our `CuratorClient.class`)
 
 10. Congratulations, you've installed Hadoop, Curator, and the Curator-Hadoop interface!
 
 ### Running a Job ###
 
-The Curator-Hadoop interface takes input and produces output in a Thrift-serialized file format. By default, it will launch a locally-running Curator that will read in those Thrift-serialized records and adds them to the Curator's database. One day, you may be able to visit the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) webpage to acquire a file reader for this format.
+The Curator-Hadoop interface takes input and produces output in a Thrift-serialized file format. By default, it will launch a locally-running Curator that will read in those Thrift-serialized records and add them to the Curator's database. One day, you may be able to visit the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) webpage to acquire a file reader for this format.
 
 1. Make sure that your input files are in Thrift-serialized format, consistent, and organized in a common directory for each job. *Consistent* means that you should be prepared to (re-)run all dependent annotators up to your requested annotation and starting with the lowest common existing annotation in a *random* sample of 25 files in the input directory. It is preferred that all of your documents in a given job have the same existing annotations.
 
@@ -91,9 +91,9 @@ To access the Hadoop logs:
 
 3. Click on the **reduce** link. (All the interesting work our program does occurs in the Reduce phase, so that's the only place to check for logs.)
 
-4. Click on a Task link. There should be one task per document that you passed in.
+4. Click on a **Task** link. There should be one task per document that you passed in.
 
-5. On the far right of the screen are Task Log links. You probably will want to click the "All" link.
+5. On the far right of the screen are Task Log links. You probably will want to click the **All** link.
 
 6. Scroll through the log you've found!
 
@@ -119,8 +119,8 @@ This package currently requires a custom-built version of the Curator which make
 * In `[Curator home]/curator-server/CuratorHandler.java`: added `getTimeOfLastAnnotation()` and modified `performAnnotation()` to update a new private field `lastAnnotationTime`.
 * In `[Curator home]/curator-server/CuratorHandler.java`: added the private `InactiveCuratorKiller` class, which periodically queries the `CuratorHandler`'s last annotation time and calls `Runtime.exit()` if the last annotation took place too long ago. Also modified the `runServer()` method's signature to take a
   Curator.Iface (the CuratorHandler), and had it spawn a thread of the `InactiveCuratorKiller` right before calling `server.serve()`.
-* In `[Curator home]/curator-annotators/`: each [annotation type]Server/[annotation type]Handler pair modified to monitor and kill the handler after a period of inactivity, almost identical to the modifications made in 'CuratorServer/CuratorHandler'.
- 
+* In `[Curator home]/curator-annotators/`: each Server/Handler pair modified to monitor and kill the handler after a period of inactivity, almost identical to the modifications made in `CuratorServer/CuratorHandler`.
+
 Troubleshooting
 ----------------------------------------
 
@@ -154,5 +154,4 @@ Then, you must also modify the line of `launch_hadoop_job.sh` that assigns `LAUN
 
 	LAUNCH_HADOOP_COMMAND="bin/hadoop jar /project/cogcomp/HadoopInterface/HadoopInterface.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -reduces 3 -curator $CURATOR_DIR_ON_HADOOP_NODES -shared"
 
-With that done, when you launch a job using the JobHandler, each node involved in the MapReduce job will automatically figure out which copy of the Curator is available for its use and "lock" that copy so that only that node can use it (for the time being, of course). Those locks will be ignored once they are about an hour old (that is, we will assume the machine that locked that copy of the Curator is no longer using it), but if you run into trouble with locked copies, you may have to manually delete the lock files between jobs. The `cleanup.sh` script does this on our installation.
-
+With that done, when you launch a job using the JobHandler, each node involved in the MapReduce job will automatically figure out which copy of the Curator is available for its use and "lock" that copy so that only that node can use it (for the time being, of course). Those locks will be ignored once they are about an hour old--i.e., we will assume the machine locking that copy of the Curator is no longer using it--but if you run into trouble with locked copies, you may have to manually delete the lock files between jobs using the `cleanup.sh` script.
