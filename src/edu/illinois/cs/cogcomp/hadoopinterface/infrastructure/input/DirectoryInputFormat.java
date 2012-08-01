@@ -50,8 +50,8 @@ public class DirectoryInputFormat extends InputFormat< Text, HadoopRecord> {
 
         HadoopInterface.logger.log( "Found " + filesInInputDir.size()
                 + " documents in the input directory. "
-                + " These are as follows: "
-                + HadoopInterface.logger.getPrettifiedList(filesInInputDir) );
+                + " One of these is named: "
+                + filesInInputDir.get(4).toString() );
 
 
         // For each document directory in the directory . . .

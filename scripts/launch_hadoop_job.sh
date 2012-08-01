@@ -39,6 +39,22 @@ MSG_COLOR='\e[0;36m'     # Cyan. Might also try dark gray (1;30), green
 DEFAULT_COLOR='\e[0m'    # Reset to normal
 ERROR_COLOR='\e[0;31m'
 
+NUM_HADOOP_NODES=62 # The number of nodes in the Hadoop cluster (used
+                    # to calculate the number of reduce tasks)
+MAPRED_TASKTRACKER_REDUCE_TASKS_MAXIMUM=2 # The Hadoop task tracker's
+                                          # max reduce tasks setting.
+                                          # Implementation dependent!
+
+# Note: 
+## The right number of reduces seems to be 
+## 0.95 or 1.75 * (nodes * mapred.tasktracker.tasks.maximum). At 0.95 
+## all of the reduces can launch immediately and start transfering map 
+## outputs as the maps finish. At 1.75 the faster nodes will finish their 
+## first round of reduces and launch a second round of reduces doing a 
+## much better job of load balancing.
+# Source: http://wiki.apache.org/hadoop/HowManyMapsAndReduces
+NUM_REDUCE_TASKS=1.75*$NUM_HADOOP_NODES*$MAPRED_TASKTRACKER_REDUCE_TASKS_MAXIMUM
+
 #########################################################################
 #                       No need to edit below here                      #
 
@@ -57,9 +73,8 @@ fi
 cd $HADOOP_DIRECTORY
 
 # Launch MapReduce job on Hadoop cluster
-## TODO: Change number of reduces!!
 echo -e "$MSG_COLOR\n\n\nLaunching the mapreduce job on the Hadoop cluster $DEFAULT_COLOR"
-LAUNCH_HADOOP_COMMAND="bin/hadoop jar /project/cogcomp/HadoopInterface/HadoopInterface.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -reduces 3 -curator $CURATOR_DIR_ON_HADOOP_NODES -shared" #-lib $LIB_DIR_ON_HADOOP_NODES
+LAUNCH_HADOOP_COMMAND="bin/hadoop jar /project/cogcomp/HadoopInterface/HadoopInterface.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -reduces $NUM_REDUCE_TASKS -curator $CURATOR_DIR_ON_HADOOP_NODES -shared" #-lib $LIB_DIR_ON_HADOOP_NODES
 echo -e "using command $CMD"
 ./$LAUNCH_HADOOP_COMMAND
 

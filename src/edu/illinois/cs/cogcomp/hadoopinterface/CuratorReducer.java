@@ -26,7 +26,12 @@ import java.util.*;
  *
  * @precondition The Hadoop node running this reduce() operation has a complete,
  *               compiled Curator distribution located (on the local file system)
- *               at `~/curator/dist/`.
+ *               at `~/curator/dist/` <em>or</em> you have specified where the
+ *               Curator can be found using the "-curator" flag when calling
+ *               the HadoopInterface (probably in your launch script).
+ * @TODO: Extract a class to handle the launching of the NLP tools
+ * @TODO: Don't check that tools are running via flags in the file system.
+ *        Instead, inspect processes using pgrep and jps command-line tools.
  * @author Tyler A. Young
  * @author Lisa Y. Bao
  */
@@ -210,7 +215,10 @@ public class CuratorReducer
             // for one to become unlocked.
 
             // TODO: [long term] Change this code if more nodes may exist!
-            final int maxCuratorInstallations = 3;
+            // Note: we have 64 "nodes" in the cluster, but only 32 physical
+            // machines, and thus a max of 32 copies of the Curator/NLP tools
+            // running at a given time!
+            final int maxCuratorInstallations = 32;
 
             // We use each node's mac address as an identifier
             // TODO: [long term] When MRv2 is ready for use, YARN can provide a node ID instead

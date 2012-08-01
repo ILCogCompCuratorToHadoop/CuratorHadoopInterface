@@ -71,6 +71,13 @@ public class JobHandler {
 
         // Check input
         File inputDir = new File( inputDirAsString );
+
+        if( !inputDir.isDirectory() ) {
+            throw new IOException( "You passed " + inputDirAsString
+                    + " in as the job input directory, but it doesn't appear"
+                    + "to be a directory at all. Aborting . . ." );
+        }
+
         // If we find no files to sample, throw an error
         if( getSampleFileFromDir( inputDir ) == null ) {
             throw new IOException( "ERROR! The given directory "
@@ -495,10 +502,15 @@ public class JobHandler {
      *                 get exactly this number, but may fail to do so if there
      *                 are not that many matching files in the directory)
      * @return A list containing files selected at random from the directory. May
-     *         be empty if there were no files.
+     *         be empty if there were no files (or if what you passed in as the
+     *         directory wasn't a directory at all!).
      */
     private static List<File> getSampleFilesFromDir( File directory,
                                                      int numFiles ) {
+        if( directory.listFiles() == null ) {
+            return new ArrayList<File>();
+        }
+
         // We actually have to use the copy constructor here, because the List
         // returned from Arrays.asList is immutable!
         List<File> allFiles =
