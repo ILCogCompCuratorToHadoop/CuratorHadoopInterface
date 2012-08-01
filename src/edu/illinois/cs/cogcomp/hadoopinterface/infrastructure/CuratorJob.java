@@ -11,6 +11,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
@@ -69,7 +70,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
     }
 
     /**
-     * Sets up the fields inherited from JobConf in the standard way for a
+     * Sets up the fields inherited from Job in the standard way for a
      * Curator job.
      */
     private void configureJob() {
@@ -105,7 +106,7 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
         // Turn off speculative execution, because DFS doesn't handle
         // multiple writers to the same file.
         // TODO: [long term] This is not supported in Hadoop v0.20. If we ever upgrade, turn it on.
-        //setSpeculativeExecution( false );
+        //setReduceSpeculativeExecution( false );
     }
 
     /**
@@ -267,7 +268,12 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
      * @return A configured Configuration option.
      */
     private static Configuration getBaselineConfiguration( String[] args ) {
-        Configuration config = new Configuration();
+        // TODO: [long-term] Hadoop v0.20 only supports JobConf's method of
+        // setting speculative execution. If we ever upgrade, change to use
+        // Configuration instead of JobConf!
+        // Configuration config = new Configuration();
+        JobConf config = new JobConf();
+        config.setReduceSpeculativeExecution( false );
 
         ArgumentParser argParser = new ArgumentParser(args);
 

@@ -214,11 +214,21 @@ public class CuratorReducer
             // [specifiedLoc]_2, etc.). We need to "lock" one of those, or wait
             // for one to become unlocked.
 
+            // Lots of nodes will be competing for access to the same Curator.
+            // Let's wait a variable amount of time to give everyone a fighting
+            // chance at safely getting a lock.
+            Random rng = new Random();
+            try {
+                // Sleep somewhere between 0 and 30 seconds.
+                Thread.sleep( rng.nextInt(1000*30) );
+            } catch ( InterruptedException ignored ) { }
+
+
             // TODO: [long term] Change this code if more nodes may exist!
             // Note: we have 64 "nodes" in the cluster, but only 32 physical
-            // machines, and thus a max of 32 copies of the Curator/NLP tools
-            // running at a given time!
-            final int maxCuratorInstallations = 32;
+            // machines, and thus a max of 32 copies (plus 1 for the local,
+            // Master version) of the Curator/NLP tools running at a given time!
+            final int maxCuratorInstallations = 33;
 
             // We use each node's mac address as an identifier
             // TODO: [long term] When MRv2 is ready for use, YARN can provide a node ID instead
@@ -226,6 +236,18 @@ public class CuratorReducer
             NetworkInterface network = NetworkInterface.getByInetAddress(ip);
             String thisNodesMacAddress =
                     Arrays.toString( network.getHardwareAddress() );
+
+            logger.log("My mac address is " + thisNodesMacAddress);
+
+            // Confirm this machine can access the shared directories!
+            File testFile1 = new File( specifiedLoc + "_1" );
+            File testFile2 = new File( specifiedLoc + "_2" );
+            File testFile3 = new File( specifiedLoc + "_3" );
+            if( !testFile1.isDirectory() && !testFile2.isDirectory()
+                    && !testFile3.isDirectory() ) {
+                throw new IOException( "It looks like this machine is unable " +
+                        "to access the shared Curator directories. Aborting..." );
+            }
 
             // First we check all Curator directories for this node's
             // signature lock
@@ -237,23 +259,35 @@ public class CuratorReducer
                 File curatorLock = new File( curatorToTest, curatorLockName );
 
                 if( curatorLock.exists() ) {
-                    // If the lock is stale, destroy it
+                    // If the lock is stale, overwrite it and claim this Curator
                     if( System.currentTimeMillis() - curatorLock.lastModified() >
                             timeUntilLockIsStale ) {
                         logger.log( "Found a stale lock in Curator directory "
-                                    + curatorToTest.toString() + ". Deleting it..." );
-                        curatorLock.delete();
-                    }
-
-                    // If the lock contains our mac address, it means we locked it
-                    // (thus, we are allowed to use this directory)
-                    String lockContents =
-                            LocalFileSystemHandler.readFileToString( curatorLock );
-                    if( lockContents.contains( thisNodesMacAddress ) ) {
-                        curatorDir = new Path( curatorToTest.toString() );
-                        this.curatorLock = curatorLock;
-                        logger.log( "Found a currently-running Curator on this "
+                                    + curatorToTest.toString()
+                                    + ". Removing it and using this Curator." );
+                        LocalFileSystemHandler.writeStringToFile( curatorLock,
+                                thisNodesMacAddress, true );
+                        break;
+                    } else {
+                        // If the lock contains our mac address, it means we
+                        // locked it (thus, we are allowed to use this directory)
+                        String lockContents =
+                                LocalFileSystemHandler.readFileToString( curatorLock );
+                        if( lockContents.contains( thisNodesMacAddress ) ) {
+                            curatorDir = new Path( curatorToTest.toString() );
+                            this.curatorLock = curatorLock;
+                            curatorLock.setLastModified( System.currentTimeMillis() );
+                            logger.log( "Found a currently-running Curator on this "
                                     + "node at " + curatorToTest.toString() );
+                            break;
+                        }
+                    }
+                } else { // No lock exists. Let's try claiming this directory.
+                    if( lockCurator( curatorToTest ) ) {
+                        logger.log( "Found a usable copy of Curator at "
+                                    + curatorToTest.toString() );
+                        curatorDir = new Path( curatorToTest.toString() );
+                        break;
                     }
                 }
             }
@@ -261,7 +295,6 @@ public class CuratorReducer
             // If we didn't find a Curator directory with our signature lock
             // (that is, if we still haven't found a curatorDir to use), try
             // them at random.
-            Random rng = new Random();
             int count = 0;
             while( curatorDir == null ) {
                 curatorToTest = new File( specifiedLoc + "_"
@@ -280,7 +313,6 @@ public class CuratorReducer
                     }
                 }
             }
-
         } else { // Normal, node-local Curator
             if( specifiedLoc != null && !specifiedLoc.equals("") ) {
                 curatorDir = new Path( specifiedLoc );
@@ -317,13 +349,16 @@ public class CuratorReducer
         if( curatorDir.isDirectory() && !curatorLock.exists() ) {
             // Lock it!
             curatorLock.createNewFile();
-            curatorLock.setWritable(true);
+            curatorLock.setWritable(true, false);
             LocalFileSystemHandler.writeStringToFile( curatorLock,
                     thisNodesMacAddress, true );
 
             this.curatorLock = curatorLock;
             return true;
         }
+        logger.log( "Curator at " + curatorDir + " was locked. " +
+                "Curator dir is a directory? " + Boolean.toString( curatorDir.isDirectory() )
+                + " Lock exists? " + curatorLock.exists() );
         return false;
     }
 

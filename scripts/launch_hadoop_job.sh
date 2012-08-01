@@ -39,11 +39,6 @@ MSG_COLOR='\e[0;36m'     # Cyan. Might also try dark gray (1;30), green
 DEFAULT_COLOR='\e[0m'    # Reset to normal
 ERROR_COLOR='\e[0;31m'
 
-NUM_HADOOP_NODES=62 # The number of nodes in the Hadoop cluster (used
-                    # to calculate the number of reduce tasks)
-MAPRED_TASKTRACKER_REDUCE_TASKS_MAXIMUM=2 # The Hadoop task tracker's
-                                          # max reduce tasks setting.
-                                          # Implementation dependent!
 
 # Note: 
 ## The right number of reduces seems to be 
@@ -53,7 +48,9 @@ MAPRED_TASKTRACKER_REDUCE_TASKS_MAXIMUM=2 # The Hadoop task tracker's
 ## first round of reduces and launch a second round of reduces doing a 
 ## much better job of load balancing.
 # Source: http://wiki.apache.org/hadoop/HowManyMapsAndReduces
-NUM_REDUCE_TASKS=1.75*$NUM_HADOOP_NODES*$MAPRED_TASKTRACKER_REDUCE_TASKS_MAXIMUM
+# NUM_REDUCE_TASKS=1.75 * [our number of Hadoop nodes] * [our max mapred tasks]
+# NUM_REDUCE_TASKS=1.75 * 62 * 2
+NUM_REDUCE_TASKS=20
 
 #########################################################################
 #                       No need to edit below here                      #
