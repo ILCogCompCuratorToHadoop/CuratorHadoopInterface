@@ -245,8 +245,15 @@ public class CuratorReducer
             File testFile3 = new File( specifiedLoc + "_3" );
             if( !testFile1.isDirectory() && !testFile2.isDirectory()
                     && !testFile3.isDirectory() ) {
-                throw new IOException( "It looks like this machine is unable " +
-                        "to access the shared Curator directories. Aborting..." );
+                StringBuilder msg = new StringBuilder( );
+                msg.append( "It looks like this machine is unable to access " );
+                msg.append( "the shared Curator directories. \n" );
+                msg.append( "Is /scratch/test accessible? " );
+                File scratch = new File("/scratch/test");
+                msg.append( scratch.isDirectory() ? "Yes" : "No" );
+                msg.append( "?\nAborting..." );
+
+                throw new IOException( msg.toString() );
             }
 
             // First we check all Curator directories for this node's
@@ -267,6 +274,8 @@ public class CuratorReducer
                                     + ". Removing it and using this Curator." );
                         LocalFileSystemHandler.writeStringToFile( curatorLock,
                                 thisNodesMacAddress, true );
+                        this.curatorLock = curatorLock;
+                        curatorDir = new Path( curatorToTest.toString() );
                         break;
                     } else {
                         // If the lock contains our mac address, it means we

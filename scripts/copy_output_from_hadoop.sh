@@ -29,6 +29,12 @@ DESTINATION_IN_LOCAL=$2     # The place to which we should copy the
                             # Hadoop job's output. Should be an absolute 
                             # path on the local disk.
 
+# If you need to specify more fully the location in HDFS to which we 
+# copy our input, do so here. By default, we copy the directory named
+# $DESTINATION_FOR_INPUT_IN_HADOOP to the Hadoop working directory
+# (which should be, but might not be, /home/[your user name]/ in HDFS).
+PREFIX_TO_HADOOP_DIR=/home/tyoun
+
 # If you're logging the output of this script to a file (instead of 
 # just reading it on the command line), you might want
 # to comment out these colors for a more readable plain text file.
@@ -64,7 +70,7 @@ chmod 777 $DESTINATION_IN_LOCAL
 
 # Do the actual copy operation
 # TODO: Make this a distributed Hadoop job
-./bin/hadoop fs -copyToLocal $PATH_IN_HADOOP $DESTINATION_IN_LOCAL
+./bin/hadoop fs -copyToLocal $PREFIX_TO_HADOOP_DIR/$PATH_IN_HADOOP $DESTINATION_IN_LOCAL
 
 # If the copy to local failed . . . 
 if [[ $? -ne 0 ]] ; then

@@ -579,9 +579,11 @@ public class CuratorClient {
                 msg.append( RecordTools.getBeginningOfOriginalText( r ) );
                 msg.append( "', whose hash is " );
                 msg.append( r.getIdentifier() ) ;
-                msg.append( ".\n\nHowever, we know of " );
+                msg.append( ".\nHowever, we know of " );
                 msg.append( newNumViews );
-                msg.append( " views. Updating the database accordingly." );
+                msg.append( " views, being: " );
+                msg.append( RecordTools.getAnnotationsString( r ) );
+                msg.append( "\nUpdating the database accordingly." );
                 System.out.println( msg.toString() );
 
                 try {

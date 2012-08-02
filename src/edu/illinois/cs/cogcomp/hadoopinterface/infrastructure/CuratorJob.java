@@ -277,6 +277,13 @@ public class CuratorJob extends org.apache.hadoop.mapreduce.Job {
 
         ArgumentParser argParser = new ArgumentParser(args);
 
+        // This is embarrassing. In shared mode, around 20% of our nodes are
+        // completely unable to access the shared Curator directories, so they
+        // will *always* fail.
+        if( argParser.isShared() ) {
+            config.setMaxReduceTaskFailuresPercent( 40 );
+        }
+
         String inputDirectory = argParser.getDirectory();
         if( argParser.isTesting() ) {
             // Randomly assign input directory, since we will generate the input

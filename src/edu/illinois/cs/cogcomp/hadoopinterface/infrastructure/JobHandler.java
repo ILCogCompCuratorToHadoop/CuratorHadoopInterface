@@ -166,9 +166,10 @@ public class JobHandler {
                             + localDirectoryToCopyFrom
                             + "\nto the Hadoop cluster.");
 
+        File fileVersion = new File( localDirectoryToCopyFrom );
         StringBuilder fileCopyCmd = new StringBuilder();
         fileCopyCmd.append( "scripts/copy_input_to_hadoop.sh " );
-        fileCopyCmd.append( localDirectoryToCopyFrom );
+        fileCopyCmd.append( fileVersion.toString() );
 
         if( inputIsSerializedRecords ) {
             fileCopyCmd.append( " serial " );
