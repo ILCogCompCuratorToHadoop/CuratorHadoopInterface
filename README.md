@@ -47,7 +47,7 @@ If you are running this interface on an existing Hadoop cluster, you can probabl
 
 6. Download the [CuratorHadoopInterface package](https://github.com/ILCogCompCuratorToHadoop/CuratorHadoopInterface) files from GitHub, including the Java source code and shell scripts. You can also get a pre-compiled package by contacting [Tyler Young][].
 
-7. Compile and/or configure your CuratorHadoopInterface installation. You can compile by simply typing `ant` from the `CuratorHadoopInterface` root directory. 
+7. Compile and/or configure your CuratorHadoopInterface installation. You can compile by simply typing `ant` from the `CuratorHadoopInterface` root directory. Any problems you encounter are most likely the result of missing dependencies (easily found on the web, or, if they're unessential, removed from the Ant build). If you're having trouble building, make sure all the Hadoop dependencies are in your include path. This may include everything in the Hadoop distribution's `lib` directory.
 
 8. In the `scripts` folder, edit the shell scripting variables in the designated section of each file with your directory paths.
 
@@ -73,11 +73,36 @@ Congratulations, you've installed Hadoop, Curator, and the Curator-Hadoop interf
 
 The Curator-Hadoop interface takes input and produces output in a Thrift-serialized file format. By default, it will launch a locally-running Curator that will read in those Thrift-serialized records and add them to the Curator's database. One day, you may be able to visit the [Curator](http://cogcomp.cs.illinois.edu/trac/wiki/Curator) webpage to acquire a file reader for this format.
 
-1. Make sure that your input files are in Thrift-serialized format, consistent, and organized in a common directory for each job. *Consistent* means that you should be prepared to (re-)run all dependent annotators up to your requested annotation and starting with the lowest common existing annotation in a *random* sample of 25 files in the input directory. It is preferred that all of your documents in a given job have the same existing annotations.
+First, make sure that your input files are in Thrift-serialized format, consistent, and organized in a common directory for each job. *Consistent* means that you should be prepared to (re-)run all dependent annotators up to your requested annotation and starting with the lowest common existing annotation in a *random* sample of 25 files in the input directory. It is preferred that all of your documents in a given job have the same existing annotations.
 
-2. From your `JobHandler` directory, execute `java -jar JobHandler.jar REQUESTED_ANNOTATION /absolute/path/to/input_dir` with the optional third parameter of `STARTING_ANNOTATION`. For example, to run the tokenizer and the part of speech parser, you would execute `java -jar JobHandler.jar POS /home/jdoe/job123`. The program will automatically detect existing annotations in the input files via random sampling, so if your files are inconsistent (or if you're running into dependency errors), you may want to specify the minimum starting annotation as `java -jar JobHandler.jar POS /home/jdoe/job123 TOKEN`.
+The preferred method of launching is to use the JobHandler, compiled as a JAR by the Ant build. When using the JobHandler, you simply need to pass it the annotation you want performed on the documents and the directory containing your input (which may be either new raw text or the output serialized records from a previous Hadoop job). The command looks like this:
 
-3. Locate your newly annotated files, in Thrift-serialized format (and automatically cached in the your locally-running Curator's database), in a folder copied to your original input directory. The output folder will be named in the form `ANNOTATION_output`, e.g. `.../job123/POS_output/`.
+    java -jar JobHandler.jar REQUESTED_ANNOTATION /home/jdoe/job123
+
+Note that the program will automatically detect existing annotations in the input files via random sampling, so if your files are inconsistent (or if you're running into dependency errors), you may want to specify the minimum starting annotation through an optional third parameter: 
+
+	java -jar JobHandler.jar POS /home/jdoe/job123 TOKEN
+	
+The JobHandler JAR will rely on the `scripts` directory being in its same directory, like this:
+
+* `my_job_handler_directory/`
+    * `JobHandler.jar`
+    * `scripts/`
+        * `copy_input_to_hadoop.sh`
+        * `copy_output_from_hadoop.sh`
+        * `launch_hadoop_job.sh`
+
+You'll have to modify those scripts to point to the CuratorHadoopInterface.jar and your Hadoop directory---at the top of each SH file, you'll find a subset of the following variables:
+
+* `CURATOR_DIRECTORY`: The location of the Curator on the local machine (will be used to serialize/deserialize Records).
+* `HADOOP_DIRECTORY`: The location of the Hadoop installation on this machine. If you need to SSH to a machine to submit the job to Hadoop, you'll need to modify the script more significantly.
+* `STAGING_DIRECTORY`: This is where we will store the serialized forms of our records on the local machine before sending them to Hadoop.
+* `PREFIX_TO_HADOOP_DIR`: If you need to specify more fully the location in HDFS to which we copy our input, do so here. By default, we copy the directory named $DESTINATION_FOR_INPUT_IN_HADOOP to the Hadoop working directory (which should be, but might not be, /home/[your user name]/ in HDFS).
+* `CURATOR_DIR_ON_HADOOP_NODES`: The location (local to each Hadoop node) of the Curator.
+* `OUTPUT`: In the output directory, we will place a directory called "serialized" which will store the Hadoop MapReduce job's output records
+* `NUM_REDUCE_TASKS` The desired number of Reduce tasks for the MapReduce job. The optimality of this value depends primarily on the number of nodes in use.
+
+Finally, locate your newly annotated files in Thrift-serialized format (and automatically cached in the your locally-running Curator's database) in a folder copied to your original input directory. The output folder will be named in the form `ANNOTATION_output`, e.g. `.../job123/POS_output/`.
 
 ### Examining the Log Files ###
 
