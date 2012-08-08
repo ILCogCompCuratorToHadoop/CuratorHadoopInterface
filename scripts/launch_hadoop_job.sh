@@ -13,7 +13,7 @@
 HADOOP_DIRECTORY=/hadoop
 # Where we find the Thrift libraries on the Hadoop nodes (this should
 # probably be local to each machine in your Hadoop cluster)
-#LIB_DIR_ON_HADOOP_NODES=/shared/grandpa/opt/lib
+LIB_DIR_ON_HADOOP_NODES=/project/cogcomp/thrift_lib
 CURATOR_DIR_ON_HADOOP_NODES=/project/cogcomp/curator-0.6.9
 
 # In the output directory, we will place a dir called "serialized" which
@@ -50,7 +50,7 @@ ERROR_COLOR='\e[0;31m'
 # Source: http://wiki.apache.org/hadoop/HowManyMapsAndReduces
 # NUM_REDUCE_TASKS=1.75 * [our number of Hadoop nodes] * [our max mapred tasks]
 # NUM_REDUCE_TASKS=1.75 * 62 * 2
-NUM_REDUCE_TASKS=20
+NUM_REDUCE_TASKS=117
 
 #########################################################################
 #                       No need to edit below here                      #
@@ -71,7 +71,7 @@ cd $HADOOP_DIRECTORY
 
 # Launch MapReduce job on Hadoop cluster
 echo -e "$MSG_COLOR\n\n\nLaunching the mapreduce job on the Hadoop cluster $DEFAULT_COLOR"
-LAUNCH_HADOOP_COMMAND="bin/hadoop jar /project/cogcomp/HadoopInterface/HadoopInterface.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -reduces $NUM_REDUCE_TASKS -curator $CURATOR_DIR_ON_HADOOP_NODES -shared" #-lib $LIB_DIR_ON_HADOOP_NODES
+LAUNCH_HADOOP_COMMAND="bin/hadoop jar /project/cogcomp/HadoopInterface/HadoopInterface.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -reduces $NUM_REDUCE_TASKS -curator $CURATOR_DIR_ON_HADOOP_NODES -shared -lib $LIB_DIR_ON_HADOOP_NODES"
 echo -e "using command $CMD"
 ./$LAUNCH_HADOOP_COMMAND
 

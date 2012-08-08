@@ -260,6 +260,14 @@ public class JobHandler {
             }
         } // END else
 
+        // Tokenizer, POS, and chunker jobs are now able to run together.
+        if( depsToRun.contains( AnnotationMode.CHUNK ) ) {
+            depsToRun.remove( AnnotationMode.POS );
+            depsToRun.remove( AnnotationMode.TOKEN );
+        }
+        else if( depsToRun.contains( AnnotationMode.POS ) ) {
+            depsToRun.remove( AnnotationMode.TOKEN );
+        }
 
         // Inform the user what dependencies we need
         if( depsToRun.size() == 0 ) {

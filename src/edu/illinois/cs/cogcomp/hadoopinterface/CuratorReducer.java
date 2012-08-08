@@ -158,7 +158,7 @@ public class CuratorReducer
                 throw new IOException(msg);
             } catch (AnnotationFailedException e) {
                 String msg = "Failed attempting annotation "
-                        + toolToRun.toString() + ".\n" + e.getReason();
+                        + toolToRun.toString() + ".\nReason: " + e.getReason();
                 logger.logError( msg );
                 throw new IOException(msg);
             } catch ( ServiceSecurityException e ) {
@@ -191,8 +191,6 @@ public class CuratorReducer
             // Pass Curator output back to Hadoop as Record
             logger.logStatus( "Finished serializing record "
                     + inValue.getDocumentHash() + " to " + outputDir.toString() );
-
-            context.write(inKey, inValue);
         }
     }
 
@@ -218,10 +216,10 @@ public class CuratorReducer
             // Let's wait a variable amount of time to give everyone a fighting
             // chance at safely getting a lock.
             Random rng = new Random();
-            try {
+            /*try {
                 // Sleep somewhere between 0 and 30 seconds.
                 Thread.sleep( rng.nextInt(1000*30) );
-            } catch ( InterruptedException ignored ) { }
+            } catch ( InterruptedException ignored ) { }       */
 
 
             // TODO: [long term] Change this code if more nodes may exist!
@@ -259,9 +257,10 @@ public class CuratorReducer
             // First we check all Curator directories for this node's
             // signature lock
             File curatorToTest;
-            // TODO: [long term] If jobs can be expected to last more than 1 hour, extend this!
+            // TODO: [long term] If jobs can be expected to last more than 1 hour,
+            // extend this!
             final long timeUntilLockIsStale = 1000 * 60 * 60; // 1 hour
-            for( int i = 0; i < maxCuratorInstallations; i++ ) {
+            for( int i = 3; i < maxCuratorInstallations; i++ ) {
                 curatorToTest = new File( specifiedLoc + "_" + i );
                 File curatorLock = new File( curatorToTest, curatorLockName );
 
@@ -782,8 +781,15 @@ public class CuratorReducer
         String fileName = "annotators-local-" + runningTool.toString() + ".xml";
         Path configLoc = new Path( dir.config(), fileName );
 
+        // Remove old configuration files (probably not necessary
+        /*if( FileSystemHandler.localFileExists( configLoc ) ) {
+            logger.log("Deleting old configuration file " + fileName );
+            FileSystemHandler.deleteLocal( configLoc );
+        }*/
+
         // If the config file doesn't exist, go ahead and create it.
         if( !FileSystemHandler.localFileExists( configLoc ) ) {
+            logger.log("Creating configuration file " + fileName );
             StringBuilder file = new StringBuilder();
             file.append( "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n" );
             file.append( "<curator-annotators>\n" );
@@ -791,25 +797,41 @@ public class CuratorReducer
 
             // Make the tokenizer available to all configurations, as it is
             // memory-light enough not to slow anything down
-            file.append( "<annotator>\n" );
-            file.append( "    <type>multilabeler</type>\n" );
-            file.append( "    <field>sentences</field>\n" );
-            file.append( "    <field>tokens</field>\n" );
-            file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisTokenizerHandler</local>\n");
-            file.append( "</annotator>\n" );
-
-            if( !runningTool.equals( AnnotationMode.TOKEN )
-                    && !runningTool.equals( AnnotationMode.SENTENCE ) ) {
-
+            Set<AnnotationMode> toolsToRunSimultaneously =
+                    new HashSet<AnnotationMode>();
+            toolsToRunSimultaneously.add( AnnotationMode.TOKEN );
+            toolsToRunSimultaneously.add( AnnotationMode.SENTENCE );
+            toolsToRunSimultaneously.add( AnnotationMode.POS );
+            toolsToRunSimultaneously.add( AnnotationMode.CHUNK );
+            if( toolsToRunSimultaneously.contains( runningTool ) ) {
+                file.append( "<annotator>\n" );
+                file.append( "    <type>multilabeler</type>\n" );
+                file.append( "    <field>sentences</field>\n" );
+                file.append( "    <field>tokens</field>\n" );
+                file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisTokenizerHandler</local>\n");
+                file.append( "</annotator>\n" );
+                file.append( "<annotator>\n" );
+                file.append( "    <type>labeler</type>\n" );
+                file.append( "    <field>pos</field>\n" );
+                file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisPOSHandler</local>\n" );
+                file.append( "    <requirement>sentences</requirement>\n" );
+                file.append( "    <requirement>tokens</requirement>\n" );
+                file.append( "</annotator>\n" );
+                file.append( "<annotator>\n" );
+                file.append( "    <type>labeler</type>\n" );
+                file.append( "    <field>chunk</field>\n" );
+                file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisChunkerHandler</local>\n" );
+                file.append( "    <requirement>sentences</requirement>\n" );
+                file.append( "    <requirement>tokens</requirement>\n" );
+                file.append( "    <requirement>pos</requirement>\n" );
+                file.append( "</annotator>\n" );
+            }
+            else {
                 file.append( "<annotator>\n" );
                 switch (runningTool) {
+                    case TOKEN:  // Handled above; placed here for completeness
+                    case POS:
                     case CHUNK:
-                        file.append( "    <type>labeler</type>\n" );
-                        file.append( "    <field>chunk</field>\n" );
-                        file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisChunkerHandler</local>\n" );
-                        file.append( "    <requirement>sentences</requirement>\n" );
-                        file.append( "    <requirement>tokens</requirement>\n" );
-                        file.append( "    <requirement>pos</requirement>\n" );
                         break;
                     case COREF:
                         file.append( "    <type>clustergenerator</type>\n" );
@@ -822,8 +844,10 @@ public class CuratorReducer
                         break;
                     case NER:
                         file.append( "    <type>labeler</type>\n" );
-                        file.append( "    <field>ner-ext</field>\n" );   // added "-ext"
-                        file.append( "    <host>localhost:9093</host>\n" ); // changed to non-local
+                        // Note that since our config names it with "-ext", we
+                        // need to request the annotation as "ner-ext", not "ner"
+                        file.append( "    <field>ner-ext</field>\n" );
+                        file.append( "    <host>localhost:9093</host>\n" );
                         break;
                     case NOM_SRL:
                         file.append( "    <type>parser</type>\n" );
@@ -849,16 +873,6 @@ public class CuratorReducer
                         file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.StanfordParserHandler</local>\n" );
                         file.append( "    <requirement>tokens</requirement>\n" );
                         file.append( "    <requirement>sentences</requirement>\n" );
-                        break;
-                    case POS:
-                        file.append( "    <type>labeler</type>\n" );
-                        file.append( "    <field>pos</field>\n" );
-                        file.append( "    <local>edu.illinois.cs.cogcomp.annotation.handler.IllinoisPOSHandler</local>\n" );
-                        file.append( "    <requirement>sentences</requirement>\n" );
-                        file.append( "    <requirement>tokens</requirement>\n" );
-                        break;
-                    case TOKEN:
-                        // Handled above; placed here for consistency
                         break;
                     case VERB_SRL:
                         file.append( "    <type>parser</type>\n" );
@@ -893,7 +907,7 @@ public class CuratorReducer
 
     /**
      * Runs the shell script required to launch the indicated annotation tool.
-     * If this script is not found in your Curator directory (i.e., at
+     * If this script is not found in your Curator directory (e.g., at
      * `~/curator/dist/scripts/launch_annotator_on_this_node.sh`), we'll simply
      * create it.
      * @param toolToLaunch The annotation tool to launch (more accurately,

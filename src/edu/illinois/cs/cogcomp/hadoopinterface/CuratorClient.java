@@ -182,6 +182,10 @@ public class CuratorClient {
      * that the toBeAnnotated record will not be modified---treat it as a
      * potentially in/out parameter, but rely on the returned record for the
      * canonical updated version.
+     *
+     * Note that it is up to you to ensure that either the Record provides the
+     * required annotations (the dependencies), or your Curator is able to
+     * provide all dependencies.
      * @param toBeAnnotated The record that should have an annotation performed
      *                      on it
      * @param annotator The annotator to run on the record
@@ -195,22 +199,8 @@ public class CuratorClient {
             throws ServiceUnavailableException, TException,
             AnnotationFailedException, ServiceSecurityException {
         MessageLogger logger = HadoopInterface.logger;
-        if( !RecordTools.meetsDependencyReqs( toBeAnnotated, annotator ) ) {
-            StringBuilder msg = new StringBuilder();
-            msg.append( "Cannot annotate document with the provided annotations. " );
-            msg.append( "It is missing dependencies. We require " );
-            msg.append( MessageLogger.getPrettifiedList(
-                    new ArrayList<AnnotationMode>(
-                            (Collection<AnnotationMode>)
-                                    annotator.getDependencies() ) ) );
-            msg.append( " but you provided " );
-            msg.append( RecordTools.getAnnotationsString( toBeAnnotated ) );
-            throw new AnnotationFailedException( msg.toString() );
-        }
-        else {
-            logger.logStatus( "Record provides annotations: "
-                    + RecordTools.getAnnotationsString( toBeAnnotated ) );
-        }
+        logger.logStatus( "Record provides annotations: "
+                + RecordTools.getAnnotationsString( toBeAnnotated ) );
 
         try {
             if( !transport.isOpen() ) {
@@ -230,7 +220,7 @@ public class CuratorClient {
             HadoopInterface.logger.logStatus( "Calling provide for "
                                               + annotator.toString() + "..." );
             // NOTE: forceUpdate must be false or else we will also try to
-            // update the dependencies, leading to a fiery death.
+            // update the dependencies, potentially leading to a fiery death.
             toBeAnnotated = client.provide( annotator.toCuratorString(),
                                             toBeAnnotated.getRawText(),
                                             false );
@@ -609,7 +599,7 @@ public class CuratorClient {
                 msg.append( "\n\nWe have no new data on the document that begins '" );
                 msg.append( RecordTools.getBeginningOfOriginalText( r ) );
                 msg.append( "', whose hash is " );
-                msg.append( r.getIdentifier() ) ;
+                msg.append( r.getIdentifier() );
                 msg.append( ". We have " );
                 msg.append( newNumViews );
                 msg.append( " views for it.\nNo database update is necessary, " );
@@ -617,7 +607,7 @@ public class CuratorClient {
                 msg.append( "your jobs on this machine (in which case it's expected).\n" );
                 msg.append( "Views we now know of: ");
                 msg.append( RecordTools.getAnnotationsString( r ) );
-                msg.append( "\nOld views we knew of: ");
+                msg.append( "\nViews the Curator already knew of: ");
                 msg.append( RecordTools.getAnnotationsString( old ) );
                 System.out.println( msg.toString() );
             }
