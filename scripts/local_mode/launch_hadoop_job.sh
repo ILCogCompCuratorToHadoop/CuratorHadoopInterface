@@ -33,6 +33,18 @@ MSG_COLOR='\e[0;36m'     # Cyan. Might also try dark gray (1;30), green
 DEFAULT_COLOR='\e[0m'    # Reset to normal
 ERROR_COLOR='\e[0;31m'
 
+# Note: 
+## The right number of reduces seems to be 
+## 0.95 or 1.75 * (nodes * mapred.tasktracker.tasks.maximum). At 0.95 
+## all of the reduces can launch immediately and start transfering map 
+## outputs as the maps finish. At 1.75 the faster nodes will finish their 
+## first round of reduces and launch a second round of reduces doing a 
+## much better job of load balancing.
+# Source: http://wiki.apache.org/hadoop/HowManyMapsAndReduces
+# NUM_REDUCE_TASKS=1.75 * [our number of Hadoop nodes] * [our max mapred tasks]
+# NUM_REDUCE_TASKS=1.75 * 62 * 2
+NUM_REDUCE_TASKS=20
+
 #########################################################################
 #                       No need to edit below here                      #
 
@@ -44,8 +56,9 @@ cd /shared/gargamel/undergrad/tyoun/hadoop-1.0.3
 
 # Launch MapReduce job on Hadoop cluster
 echo -e "$MSG_COLOR\n\n\nLaunching the mapreduce job on the Hadoop cluster $DEFAULT_COLOR"
-echo -e "using command ./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -lib $LIB_DIR_ON_HADOOP_NODES -reduces 1"
-./bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -lib $LIB_DIR_ON_HADOOP_NODES -reduces 1 -curator $CURATOR_DIR_ON_HADOOP_NODES
+CMD="bin/hadoop jar curator.jar edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface -d $INPUT_DIR_IN_HDFS -m $ANNOTATION_TOOL_TO_RUN -out $OUTPUT_DIR_IN_HDFS -lib $LIB_DIR_ON_HADOOP_NODES -reduces $NUM_REDUCE_TASKS -curator $CURATOR_DIR_ON_HADOOP_NODES"
+echo -e "using command $CMD"
+./$CMD
 
 echo -e "$MSG_COLOR\n\n\n$ANNOTATION_TOOL_TO_RUN job finished!\n$DEFAULT_COLOR"
 

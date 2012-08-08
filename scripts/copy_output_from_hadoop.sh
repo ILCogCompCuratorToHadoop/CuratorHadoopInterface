@@ -28,6 +28,12 @@ PATH_IN_HADOOP=$1           # The 1st parameter from the command line:
 DESTINATION_IN_LOCAL=$2     # The place to which we should copy the 
                             # Hadoop job's output. Should be an absolute 
                             # path on the local disk.
+TESTING=$3 # If the 3rd param from the CL is "-test", we will have the
+           # locally-running Curator verify that the annotations it has
+           # received are the same ones it gets itself.
+           # NOTE: Unless you modify the script below, we will launch
+           # *all* annotators when launching in test mode. *Only* do
+           # this on a machine with lots of RAM (24 GB or more?).
 
 # If you need to specify more fully the location in HDFS to which we 
 # copy our input, do so here. By default, we copy the directory named
@@ -93,14 +99,44 @@ set -e
 # Have Master Curator read in the updated Records and update the database accordingly
 echo -e "$MSG_COLOR\n\n\nRe-launching the master Curator and asking it"
 echo -e "to reconstruct the serialized records we got from Hadoop. $DEFAULT_COLOR"
+
 cd $CURATOR_DIRECTORY/dist
-./bin/curator.sh --annotators configs/annotators-empty.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null
-sleep 3s
+
+# Set up variables used to launch the CuratorClient
+LIBDIR=$CURATOR_DIRECTORY/dist/lib
+COMPONENTDIR=$CURATOR_BASE/components
+COMPONENT_CLASSPATH=.:$COMPONENTDIR/curator-interfaces.jar:$COMPONENTDIR/curator-server.jar:CuratorClientDependencies.jar
+LIB_CLASSPATH=$LIBDIR/libthrift.jar:$LIBDIR/logback-classic-0.9.17.jar:$LIBDIR/logback-core-0.9.17.jar:$LIBDIR/slf4j-api-1.5.8.jar:$LIBDIR/curator-client-0.6.jar:$LIBDIR/curator-interfaces.jar
+
+# If the user specified the "-test" flag, we launch all annotators on the local
+# machine. The CuratorClient will have the Curator verify all annotations.
+if [ "$TESTING" == "-test" ]; then
+    ./startServers.sh
+    echo "Since we're in testing mode, we're going to wait 3 minutes for the servers to start."
+    sleep 1m
+    echo "Waiting 2 more minutes..."
+    sleep 1m
+    echo "Waiting 1 more minute..."
+    sleep 1m
+else
+    ./bin/curator.sh --annotators configs/annotators-empty.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null
+    sleep 3s
+fi
+
 cd client
+# If this isn't working, make sure you have a CuratorClient.class file in the 
+# edu/illinois/cs/cogcomp/hadoopinterface/ directory
+# Note: argument -Xmx[number] used to specify the maximum size, in bytes, 
+#     of the memory allocation pool. 
 # NOTE: From Hadoop, we copy some directory (named, e.g., "TOKEN").
 #       That directory goes into DESTINATION_IN_LOCAL, so the actual
 #       directory we need to work with is $DESTINATION_IN_LOCAL/$PATH_IN_HADOOP.
-./runclient.sh -host localhost -port 9010 -in $DESTINATION_IN_LOCAL/$PATH_IN_HADOOP -mode POST
+ARGS="-cp $CLASSPATH -Xmx512m edu.illinois.cs.cogcomp.hadoopinterface.CuratorClient -host localhost -port 9010 -in $DESTINATION_IN_LOCAL/$PATH_IN_HADOOP -mode POST"
+if [ "$TESTING" == "-test" ]; then
+    ARGS="$ARGS -test"
+fi
+echo "Launching server with command: java $ARGS"
+java $ARGS
 
 # Kill the Curator server
 echo -e "$MSG_COLOR\n\nShutting down the master Curator. $DEFAULT_COLOR"

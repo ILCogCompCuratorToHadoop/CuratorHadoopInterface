@@ -383,6 +383,10 @@ public class CuratorReducer
             throws IOException {
         try {
             if( !client.listAvailableAnnotators().contains( toolToRun ) ) {
+                logger.log( "Found a Curator running on this machine, but it"
+                            + "doesn't know of the annotator for " + toolToRun
+                            + ". Shutting it down, so we can start a new "
+                            + "instance." );
                 shutdownAllLocalNLPTools();
             }
         } catch ( TException ignored ) {
@@ -469,7 +473,9 @@ public class CuratorReducer
 
         // Make sure future Reducers don't think their tools are already running
         CuratorReducer.setToolHasBeenLaunched( false );
-        curatorLock.delete();
+        if( curatorLock != null ) {
+            curatorLock.delete();
+        }
     }
 
     /**

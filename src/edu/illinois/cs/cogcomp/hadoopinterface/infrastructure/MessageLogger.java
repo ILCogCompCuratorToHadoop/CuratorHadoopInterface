@@ -1,7 +1,6 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
-import org.apache.hadoop.fs.Path;
-
+import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -37,8 +36,8 @@ public class MessageLogger
      */
     public MessageLogger( boolean alsoLogToStdOut ) {
         this.printToStdOut = alsoLogToStdOut;
-        Path logDir = new Path( "logs" );
-        logLocation = new Path( logDir, "0_curator_interface_log_" +
+        File logDir = new File( "logs" );
+        logLocation = new File( logDir, "0_curator_interface_log_" +
                                         getTimeAndDateNoSpaces() + ".txt" );
         backlog = "";
         delayWritingToDisk = true;
@@ -146,7 +145,7 @@ public class MessageLogger
 
         if( !delayWritingToDisk ) {
             try {
-                FileSystemHandler.writeFileToLocal( message, logLocation, true );
+                LocalFileSystemHandler.writeStringToFile( logLocation, message, true );
             } catch( IOException e ) {
                 System.out.println("I/O error in logging to file!");
             }
@@ -186,7 +185,7 @@ public class MessageLogger
     }
     private boolean printToStdOut;
     private boolean delayWritingToDisk;
-    private Path logLocation;
+    private File logLocation;
     private String backlog;
 
     private boolean backlogIsTruncated;

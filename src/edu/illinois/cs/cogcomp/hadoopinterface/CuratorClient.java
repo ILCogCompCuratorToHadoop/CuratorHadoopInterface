@@ -189,13 +189,19 @@ public class CuratorClient {
      * @param toBeAnnotated The record that should have an annotation performed
      *                      on it
      * @param annotator The annotator to run on the record
+     * @param forceUpdate True if we should re-run *both* the requested annotation
+     *                    and all its dependencies. False if we should simply use
+     *                    any annotations for this record that already exist,
+     *                    either in the Curator's database or the Record itself.
+     *                    When in doubt, make this false.
      * @return A version of the input record updated to include the new
      *         annotation type.
      * @throws AnnotationFailedException If the record being returned was for
      *                                   some reason not actually updated with
      *                                   the requested annotation type.
      */
-    public Record annotate( Record toBeAnnotated, AnnotationMode annotator )
+    public Record annotate( Record toBeAnnotated, AnnotationMode annotator,
+                            boolean forceUpdate )
             throws ServiceUnavailableException, TException,
             AnnotationFailedException, ServiceSecurityException {
         MessageLogger logger = HadoopInterface.logger;
@@ -223,7 +229,7 @@ public class CuratorClient {
             // update the dependencies, potentially leading to a fiery death.
             toBeAnnotated = client.provide( annotator.toCuratorString(),
                                             toBeAnnotated.getRawText(),
-                                            false );
+                                            forceUpdate );
         } finally {
             if( transport.isOpen() ) {
                 transport.close();
@@ -245,6 +251,36 @@ public class CuratorClient {
         }
 
         return toBeAnnotated;
+    }
+
+
+    /**
+     * Run the indicated annotator on the record to be annotated. Returns the
+     * updated version of that record. Note, however, that there is no guarantee
+     * that the toBeAnnotated record will not be modified---treat it as a
+     * potentially in/out parameter, but rely on the returned record for the
+     * canonical updated version.
+     *
+     * Note that it is up to you to ensure that either the Record provides the
+     * required annotations (the dependencies), or your Curator is able to
+     * provide all dependencies.
+     *
+     * This version of annotate() will *not* force an update---if annotations for
+     * the view you requested (or any dependencies of that view) already exist in
+     * either this record or the Curator's database, we will use those.
+     * @param toBeAnnotated The record that should have an annotation performed
+     *                      on it
+     * @param annotator The annotator to run on the record
+     * @return A version of the input record updated to include the new
+     *         annotation type.
+     * @throws AnnotationFailedException If the record being returned was for
+     *                                   some reason not actually updated with
+     *                                   the requested annotation type.
+     */
+    public Record annotate( Record toBeAnnotated, AnnotationMode annotator )
+            throws ServiceUnavailableException, TException,
+            ServiceSecurityException, AnnotationFailedException {
+        return annotate( toBeAnnotated, annotator, false );
     }
 
     /**
@@ -615,6 +651,58 @@ public class CuratorClient {
     }
 
     /**
+     * Used for testing. We take every record in the input list and request the
+     * locally-running Curator to re-run each annotation provided thereby.
+     * We inform the user if any of the Hadoop-provided annotations do not match
+     * the locally-provided ones.
+     */
+    public void verifyRecords() throws TException, ServiceUnavailableException,
+            ServiceSecurityException, AnnotationFailedException {
+        printInfoOnKnownAnnotators();
+
+        for( Record r : newInputRecords ) {
+            System.out.println( "Examining record which begins \""
+                                + RecordTools.getBeginningOfOriginalText(r)
+                                + "\", whose hash ID is " + r.getIdentifier() );
+            String originalText = r.getRawText();
+            Record verification = RecordTools.generateNew( originalText );
+
+            // Grab the views now, before calling annotate (in the unlikely event
+            // that this verification is being run on the same machine the Hadoop
+            // stuff was run on, we might overwrite Hadoop's version of the
+            // annotations, as we'll be forcing an update of all views
+            Map<String, Clustering> clusterViews = r.getClusterViews();
+            Map<String, Forest> forestViews = r.getParseViews();
+            Map<String, Labeling> labelViews = r.getLabelViews();
+
+            for( AnnotationMode anno : RecordTools.getAnnotationsList( r ) ) {
+                try {
+                    if( !transport.isOpen() ) {
+                        transport.open();
+                    }
+                    verification = annotate( verification, anno, true );
+                } finally {
+                    if( transport.isOpen() ) {
+                        transport.close();
+                    }
+                }
+            }
+
+            if( !clusterViews.equals( verification.getClusterViews() ) ) {
+                System.out.println( "\tCluster views do not all match!" );
+            }
+
+            if( !forestViews.equals( verification.getParseViews() ) ) {
+                System.out.println( "\tParse views do not all match!" );
+            }
+
+            if( !labelViews.equals( verification.getLabelViews() ) ) {
+                System.out.println( "\tLabel views do not all match!" );
+            }
+        }
+    }
+
+    /**
      * The main method for the external, "master" Curator client.
      * @param commandLineArgs  String arguments from the command line. Should
      *                         contain the host name for the (already-running)
@@ -664,7 +752,13 @@ public class CuratorClient {
             theClient.addRecordsFromJobDirectory( args.getInputDir(), false );
 
             if( theClient.getNumInputRecords() > 0 ) {
-                theClient.informDatabaseOfUpdatedRecords();
+                if( testing) {
+                    System.out.println( "Since we're in test mode, we will "
+                            + "verify the records match what's expected." );
+                    theClient.verifyRecords();
+                } else {
+                    theClient.informDatabaseOfUpdatedRecords();
+                }
             }
             else {
                 throw new EmptyInputException( "Found no serialized Records in "

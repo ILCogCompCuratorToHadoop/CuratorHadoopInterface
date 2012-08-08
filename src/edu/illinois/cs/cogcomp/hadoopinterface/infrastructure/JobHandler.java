@@ -1,6 +1,8 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
 import com.sun.istack.internal.Nullable;
+import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions
+        .IllegalModeException;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
 import org.apache.thrift.TException;
 
@@ -28,6 +30,10 @@ import java.util.*;
  * @example java -jar JobHandler.jar WIKI /home/jsmith/input_text_file_dir POS
  *          (If you know for certain that your documents should be run through
  *          the POS tagger first.)
+ * @example java -jar JobHandler.jar WIKI /home/jsmith/input_text_file_dir -test
+ *          (If you want the locally-running Curator to verify that it gets all
+ *          the same annotations. You almost assuredly should *not* use this
+ *          with large document collections.)
  * @precondition The following files/directories are in place on this machine:
  *
  * <ul>
@@ -64,10 +70,38 @@ public class JobHandler {
      *
      *             The third argument must be either a starting annotation
      *             (dependency), or empty.
+     *
+     *             If you want the locally-running Curator to
      */
     public static void main(String[] argv) throws Exception {
-        AnnotationMode requestedAnnotation = AnnotationMode.fromString( argv[0] );
-        String inputDirAsString = argv[1];
+        // Parse arguments
+        ArrayList<String> argList = new ArrayList<String>( Arrays.asList(argv) );
+        boolean testing = false;
+        if( argList.contains( "-test" ) || argList.contains( "-testing" ) ) {
+            testing = true;
+            argList.remove( "-test" );
+        }
+
+        AnnotationMode requestedAnnotation = null;
+        AnnotationMode forcedFirstAnnotation = null;
+        String inputDirAsString = null;
+        for( String arg : argList ) {
+            if( requestedAnnotation == null ) {
+                try {
+                    requestedAnnotation = AnnotationMode.fromString( arg );
+                } catch( IllegalModeException ignored ) { }
+            }
+            else { // already found the requested annotation.
+                // If we can parse another annotation, it must be because the
+                // user wants to force us to start at a different annotation
+                try {
+                    forcedFirstAnnotation = AnnotationMode.fromString( arg );
+                } catch( IllegalModeException wasntAnAnnotationMode ) {
+                    // Must be the input directory!
+                    inputDirAsString = arg;
+                }
+            }
+        }
 
         // Check input
         File inputDir = new File( inputDirAsString );
@@ -102,7 +136,7 @@ public class JobHandler {
 
         // Determine dependencies
         List<AnnotationMode> depsToRun =
-                determineDependencies( argv, requestedAnnotation,
+                determineDependencies( requestedAnnotation, forcedFirstAnnotation,
                                        inputDir, inputIsSerializedRecords );
 
 
@@ -114,7 +148,7 @@ public class JobHandler {
 
 
         // Annotate the documents for each new, intermediate dependency
-        String inputToThisJob = "first_serialized_input";
+        String inputToThisJob = locationOfInitialInputInHDFS;
         for( AnnotationMode dependencyToGet : depsToRun ) {
             String outputFromThisJob = dependencyToGet.toString();
 
@@ -142,7 +176,7 @@ public class JobHandler {
         // Copy the output files (serialized records) from HDFS to the local disk,
         // and add them to a locally-running Curator's database
         // Uses the copy_output_from_hadoop.sh script
-        copyOutputFromHadoop( inputDirAsString, finalOutputInHadoop );
+        copyOutputFromHadoop( inputDirAsString, finalOutputInHadoop, testing );
 
         System.out.println("\n\nJob completed successfully!\n\n");
     } // END OF MAIN
@@ -196,11 +230,14 @@ public class JobHandler {
     }
 
     /**
-     * This method is a bit of a cludge. Based on the command line parameters, it
-     * gets the list of annotations that need to be performed before running the
+     * Gets the list of annotations that need to be performed before running the
      * annotation requested by the user.
-     * @param argv The command line arguments
      * @param requestedAnnotation The annotation requested by the user
+     * @param forcedFirstAnnotation The annotation the user wants us to run first
+     *                              (forcing us to assume all dependencies prior
+     *                              to that have been satisfied). If the user has
+     *                              not requested such an annotation, pass in
+     *                              null.
      * @param inputDirAsFile The input directory (on the local machine) in which
      *                       we will find the documents to be annotated (either
      *                       raw text or serialized records).
@@ -213,21 +250,19 @@ public class JobHandler {
      * @throws TException
      */
     private static List<AnnotationMode> determineDependencies(
-            String[] argv, AnnotationMode requestedAnnotation,
+            AnnotationMode requestedAnnotation,
+            AnnotationMode forcedFirstAnnotation,
             File inputDirAsFile, boolean inputIsSerializedRecords )
             throws IOException, TException {
         System.out.println( "\nGetting the list of dependencies to run.\n");
         List<AnnotationMode> dependencies = requestedAnnotation.getDependencies();
         List<AnnotationMode> depsToRun = new ArrayList<AnnotationMode>();
 
-        if( argv.length == 3 ) { // if we have 3 arguments
-            // The user-specified first annotation tool to run
-            // (i.e., the lowest-level tool to be run)
-            AnnotationMode minAnnotation = AnnotationMode.fromString( argv[2] );
-
+        if( forcedFirstAnnotation != null ) {
             // We assume that all records already meet the dependency
             // requirements to run the user-specified minAnnotation
-            ArrayList<AnnotationMode> minDeps = minAnnotation.getDependencies();
+            ArrayList<AnnotationMode> minDeps =
+                    forcedFirstAnnotation.getDependencies();
 
             // remove the annotations that the user has guaranteed exist
             // from the list of annotations to be run
@@ -236,10 +271,9 @@ public class JobHandler {
                 depsToRun.remove(a);
             }
         }
-        else { // only have 2 arguments from command line
+        else { // Up to us to determine what to run first
             // We take a random sample of the files in the input and inspect
             // them for annotations
-
             Set<AnnotationMode> existingAnnos = new HashSet<AnnotationMode>();
             if( inputIsSerializedRecords ) {
                 existingAnnos = getCommonAnnotations( inputDirAsFile );
@@ -249,7 +283,7 @@ public class JobHandler {
                         + existingAnnos.toString()
                         + "\n" );
             }
-            // Note: At this point, if we have raw text, existingAnnos is empty
+            // Note: At this point, if we have only raw text, existingAnnos is empty
 
             // compare existing annotations to those in the dependencies list and
             // add annotations to our to-do list as necessary
@@ -261,11 +295,13 @@ public class JobHandler {
         } // END else
 
         // Tokenizer, POS, and chunker jobs are now able to run together.
-        if( depsToRun.contains( AnnotationMode.CHUNK ) ) {
+        if( depsToRun.contains( AnnotationMode.CHUNK )
+                || requestedAnnotation.equals( AnnotationMode.CHUNK ) ) {
             depsToRun.remove( AnnotationMode.POS );
             depsToRun.remove( AnnotationMode.TOKEN );
         }
-        else if( depsToRun.contains( AnnotationMode.POS ) ) {
+        else if( depsToRun.contains( AnnotationMode.POS )
+                || requestedAnnotation.equals( AnnotationMode.POS ) ) {
             depsToRun.remove( AnnotationMode.TOKEN );
         }
 
@@ -338,20 +374,34 @@ public class JobHandler {
      *                               we should copy the output
      * @param directoryInHDFSToCopyFrom The location in HDFS from which we should
      *                                  copy the output
+     * @param testing True if we should verify that the output is the same as what
+     *                is available from a local (non-Hadoop) version of the
+     *                Curator. Useful for ensuring we haven't done something
+     *                significant wrong in the Hadoop implementation.
      * @throws Exception
      */
     private static void copyOutputFromHadoop( String localDirectoryToCopyTo,
-                                              String directoryInHDFSToCopyFrom )
+                                              String directoryInHDFSToCopyFrom,
+                                              boolean testing )
             throws Exception {
         String finalOutputInLocal = localDirectoryToCopyTo + "/output";
         System.out.println( "\nCopying your serialized records from \n\t"
-                + directoryInHDFSToCopyFrom + "\non the Hadoop cluster back to the local "
-                + "machine, into the directory\n\t" + finalOutputInLocal );
-
+                + directoryInHDFSToCopyFrom + "\non the Hadoop cluster back to "
+                + "the local machine, into the directory\n\t"
+                + finalOutputInLocal );
 
         String copyOutputCmd = "scripts/copy_output_from_hadoop.sh "
                 + directoryInHDFSToCopyFrom + " "
                 + finalOutputInLocal;
+
+        if( testing ) {
+            System.out.println( "\nAs you sent in the testing flag, we will "
+                    + "have the locally-running Curator attempt the "
+                    + "same annotations and verify that they match." );
+            copyOutputCmd += " -test";
+        }
+
+        System.out.println( "Using the command: " + copyOutputCmd );
         Process copyOutputProc = Runtime.getRuntime().exec( copyOutputCmd );
 
         // Capture the output and write it to a file

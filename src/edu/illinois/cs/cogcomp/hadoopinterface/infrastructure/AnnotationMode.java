@@ -23,6 +23,8 @@ public enum AnnotationMode {
      * @return The AnnotationMode enumerated type version of the input string
      *         (e.g., if you passed in "tokenizer", you get back
      *         AnnotationMode.PARSE)
+     * @throws IllegalModeException If the string cannot be parsed as an
+     *         annotation mode
      */
     public static AnnotationMode fromString( final String s ) {
         try { 
