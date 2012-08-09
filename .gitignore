@@ -31,10 +31,6 @@ curator-0.6.9/dist/logback.xml
 
 out/
 
-src/META-INF/MANIFEST.MF
-
-src/edu/illinois/cs/cogcomp/archive/
-
 # Compiled source #
 ###################
 *.com
@@ -75,28 +71,13 @@ ehthumbs.db
 Thumbs.db
 
 .#README.md
-
-curatorhadoopinterface.properties
-
-curatorhadoopinterface.xml
-
 .MessageLog.txt.crc
 
 MessageLog.txt
 
-META-INF/MANIFEST.MF
-
 scripts/.#launch_curator_on_this_node.sh
 
 c/edu/cs/illinois/cogcomp/hadoopinterface/infrastructure/Record.java
-
-c/edu/cs/illinois/cogcomp/hadoopinterface/infrastructure/Record.java
-
-c/edu/cs/illinois/cogcomp/hadoopinterface/infrastructure/Record.java
-
-src/edu/cs/illinois/cogcomp/hadoopinterface/takeNewRawInputFilesFromDirectory.java
-
-src/edu/cs/illinois/cogcomp/hadoopinterface/takeNewRawInputFilesFromDirectory.java
 
 src/edu/cs/illinois/cogcomp/hadoopinterface/takeNewRawInputFilesFromDirectory.java
 
@@ -105,29 +86,5 @@ logs/.0_curator_interface_log_11.42.26.AM.txt.crc
 logs/0_curator_interface_log_11.42.26.AM.txt
 
 scripts/.#batch_job_master_script.sh
-
-src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/AbstractFSHandler.java
-
-src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/AbstractFSHandler.java
-
-src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/TestFileSystemHandler.java
-
-src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/AbstractFSHandler.java
-
-src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/SampleFileSystemHandler.java
-
-src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/AbstractFSHandler.java
-
-src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/SampleFileSystemHandler.java
-
-src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/TestFileSystemHandler.java
-
-lib/MarkdownDoclet-3.0.jar
-
-MarkdownDoclet-3.0.jar
-
-modified_files_in_curator/annotators/illinoisSRL-3.0.3.jar/mydeploy.sh
-
-modified_files_in_curator/annotators/illinoisSRL-3.0.3.jar/pom.xml
 
 scripts/working_vs_not

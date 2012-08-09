@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Class-Path: lib/curator-interfaces.jar lib/curator-server.jar lib/libthrift-0.4.jar lib/slf4j-api-1.5.8.jar lib/slf4j-simple-1.5.8.jar
+Main-Class: edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface
+

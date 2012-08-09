@@ -633,11 +633,11 @@ public class CuratorReducer
             // Check a file on the local machine (which just acts as a way of
             // communicating across instances of reduce() on a given machine)
             if( !toolHasBeenLaunched( toolToRun ) ) {
+                setToolHasBeenLaunched( true );
+
                 startTool( toolToRun );
 
                 Thread.sleep( getEstimatedTimeToStart( toolToRun ) );
-
-                setToolHasBeenLaunched( true );
             }
             else { // tool claims to have been launched. Confirm this. . .
                 if( !toolCanBeRun( toolToRun ) ) {
@@ -662,17 +662,27 @@ public class CuratorReducer
             throws IOException {
         // If a Curator running on this machine knows of the annotator, we are
         // done.
+        StringBuilder msg = new StringBuilder( "Checking if " );
+        msg.append( annotator );
+        msg.append( " is running. Is it in the list of available annotators? " );
         try {
             if( client.listAvailableAnnotators().contains( annotator ) ) {
                 setToolHasBeenLaunched( true );
+                msg.append( "Yes." );
+                logger.log( msg.toString() );
                 return true;
             }
         } catch ( TException ignored ) { }
 
+        msg.append( "No.\n" );
+
         // Otherwise (i.e., if no Curator is running or it doesn't know of
         // the tool), check the flag in the file system.
-        File flagInFileSystem = new File( dir.user().toString(),
-                "_annotator_launched" );
+        File flagInFileSystem = new File( userDir, "_annotator_launched" );
+
+        msg.append( "Does the flag in the file system say it's running? " );
+        msg.append( flagInFileSystem.exists() );
+        logger.log( msg.toString() );
         return flagInFileSystem.exists();
     }
 
@@ -996,22 +1006,23 @@ public class CuratorReducer
             cmd.append( configs );
             cmd.append( "/ner.conll.config" );
 
-            StringBuilder cmd2 = new StringBuilder( );
+            // Use one command or the other (either Ontonotes or Conll)
+            /*StringBuilder cmd2 = new StringBuilder( );
             cmd2.append( scriptLocation.toString() );
             cmd2.append( " nerontonotes " ); // some ID
             cmd2.append( ++port );
             cmd2.append( " " );
             cmd2.append( configs );
-            cmd2.append( "/ner.ontonotes.config" );
+            cmd2.append( "/ner.ontonotes.config" );*/
 
             logger.logStatus( "Launching NER annotator on node with "
                     + "command \n\t" + cmd.toString()
-                    + "\n\t" + cmd2.toString() );
+                    /*+ "\n\t" + cmd2.toString()*/ );
 
             spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
                     cmd.toString(), envVarsForRuntimeExec, dirToLaunchAgainst ) );
-            spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
-                    cmd2.toString(), envVarsForRuntimeExec, dirToLaunchAgainst ) );
+            /*spawnedAnnotatorProcesses.add( Runtime.getRuntime().exec(
+                    cmd2.toString(), envVarsForRuntimeExec, dirToLaunchAgainst ) );*/
 
         }
         // Charniak parser is also launched differently
