@@ -49,6 +49,8 @@ If you are running this interface on an existing Hadoop cluster, you can probabl
 
 7. Compile and/or configure your CuratorHadoopInterface installation. You can compile by simply typing `ant` from the `CuratorHadoopInterface` root directory. Any problems you encounter are most likely the result of missing dependencies (easily found on the web, or, if they're unessential, removed from the Ant build). If you're having trouble building, make sure all the Hadoop dependencies are in your include path. This may include everything in the Hadoop distribution's `lib` directory.
 
+	* Note: in order to successfully run the Ant build, you'll need to modify the `build.properties` file that Ant places in the `CuratorHadoopInterface` root directory. Specifically, make sure that the `jdk.home.1.6` variable points to your JDK installation.
+
 8. In the `scripts` folder, edit the shell scripting variables in the designated section of each file with your directory paths.
 
 9. Compile `CuratorHadoopInterface/src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/JobHandler.java` into a JAR file. You will probably want to store this JAR in a separate `JobHandler` folder on the same level as `HadoopInterface` and `curator`. For reference, our directory structure looks like this:
