@@ -136,7 +136,8 @@ public class CuratorReducer
                 client.annotateSingleDoc( inValue, toolToRun );
             } catch (ServiceUnavailableException e) {
                 try {
-                    String msg = toolToRun.toString()
+                    String msg = toolToRun.toString() + " (a.k.a. '"
+                            + toolToRun.toCuratorString() + "')"
                             + " annotations are not available.\nReason: "
                             + e.getReason() + "\nWe know of these annotations: "
                             + client.describeAnnotations().toString();
@@ -850,9 +851,9 @@ public class CuratorReducer
                         break;
                     case NER:
                         file.append( "    <type>labeler</type>\n" );
-                        // Note that since our config names it with "-ext", we
-                        // need to request the annotation as "ner-ext", not "ner"
-                        file.append( "    <field>ner-ext</field>\n" );
+                        // Note that since our config names it without "-ext", we
+                        // need to request the annotation as "ner", not "ner-ext"
+                        file.append( "    <field>ner</field>\n" );
                         file.append( "    <host>localhost:9093</host>\n" );
                         break;
                     case NOM_SRL:
