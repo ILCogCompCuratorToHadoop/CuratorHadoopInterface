@@ -655,6 +655,7 @@ public class CuratorClient {
      * locally-running Curator to re-run each annotation provided thereby.
      * We inform the user if any of the Hadoop-provided annotations do not match
      * the locally-provided ones.
+     * @TODO: Refactor this. This is awful. Sorry about that.
      */
     public void verifyRecords() throws TException, ServiceUnavailableException,
             ServiceSecurityException, AnnotationFailedException {
@@ -791,9 +792,57 @@ public class CuratorClient {
                 // Check NER
                 String ner = AnnotationMode.NER.toCuratorString();
                 Labeling oldNER = labelViews.get(ner);
-                Labeling newToken = verification.getLabelViews().get(ner);
-                System.out.println("Do the tokenization views match? ");
-                if( oldNER.equals(newToken) ) {
+                Labeling newNER = verification.getLabelViews().get(ner);
+                System.out.println("Do the NER views match? ");
+                if( oldNER.equals(newNER) ) {
+                    System.out.println("\tYes!");
+                }
+                else {
+                    System.out.println("\tNo!");
+                }
+
+                // Check POS
+                String pos = AnnotationMode.POS.toCuratorString();
+                Labeling oldPOS = labelViews.get(pos);
+                Labeling newPOS = verification.getLabelViews().get(pos);
+                System.out.println("Do the POS views match? ");
+                if( oldPOS.equals(newPOS) ) {
+                    System.out.println("\tYes!");
+                }
+                else {
+                    System.out.println("\tNo!");
+                }
+
+                // Check chunker
+                String chunk = AnnotationMode.CHUNK.toCuratorString();
+                Labeling oldChunk = labelViews.get(chunk);
+                Labeling newChunk = verification.getLabelViews().get(chunk);
+                System.out.println("Do the chunking views match? ");
+                if( oldChunk.equals(newChunk) ) {
+                    System.out.println("\tYes!");
+                }
+                else {
+                    System.out.println("\tNo!");
+                }
+
+                // Check Wikifier
+                String wiki = AnnotationMode.WIKI.toCuratorString();
+                Labeling oldWiki = labelViews.get(wiki);
+                Labeling newWiki = verification.getLabelViews().get(wiki);
+                System.out.println("Do the Wikifier views match? ");
+                if( oldWiki.equals(newWiki) ) {
+                    System.out.println("\tYes!");
+                }
+                else {
+                    System.out.println("\tNo!");
+                }
+
+                // Check sentences
+                String sent = AnnotationMode.SENTENCE.toCuratorString();
+                Labeling oldSent = labelViews.get(sent);
+                Labeling newSent = verification.getLabelViews().get(sent);
+                System.out.println("Do the sentence views match? ");
+                if( oldSent.equals(newSent) ) {
                     System.out.println("\tYes!");
                 }
                 else {
