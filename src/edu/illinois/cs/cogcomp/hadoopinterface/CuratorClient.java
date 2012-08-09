@@ -697,10 +697,66 @@ public class CuratorClient {
 
             if( !clusterViews.equals( verification.getClusterViews() ) ) {
                 System.out.println( "\tCluster views do not all match!" );
+
+                // Check the Cluster views individually
+                Clustering oldCoref = clusterViews.get("coref");
+                Clustering newCoref = verification.getClusterViews().get("coref");
+                System.out.println("Do the Coref views match? ");
+                if( oldCoref.equals(newCoref) ) {
+                    System.out.println("\tYes!");
+                }
+                else {
+                    System.out.println("\tNo!");
+                }
             }
 
             if( !forestViews.equals( verification.getParseViews() ) ) {
                 System.out.println( "\tParse views do not all match!" );
+
+                // Check Stanford Parse
+                String stanford = AnnotationMode.STANFORD_PARSE.toCuratorString();
+                Forest oldStanfordParse = forestViews.get(stanford);
+                Forest newStanfordParse = verification.getParseViews().get(stanford);
+                System.out.println("Do the Stanford Parse views match? ");
+                if( oldStanfordParse.equals(newStanfordParse) ) {
+                    System.out.println("\tYes!");
+                }
+                else {
+                    System.out.println("\tNo!");
+                }
+
+                // Check Stanford Dependencies
+                Forest oldStanfordDep = forestViews.get("stanfordDep");
+                Forest newStanfordDep = verification.getParseViews().get("stanfordDep");
+                System.out.println("Do the Stanford Dependencies views match? ");
+                if( oldStanfordDep.equals(newStanfordDep) ) {
+                    System.out.println("\tYes!");
+                }
+                else {
+                    System.out.println("\tNo!");
+                }
+
+                String verbSRL = AnnotationMode.VERB_SRL.toCuratorString();
+                Forest oldVerbSRL = forestViews.get(verbSRL);
+                Forest newVerbSRL = verification.getParseViews().get(verbSRL);
+                System.out.println("Do the Verb SRL views match? ");
+                if( oldVerbSRL.equals(newVerbSRL) ) {
+                    System.out.println("\tYes!");
+                }
+                else {
+                    System.out.println("\tNo!");
+                }
+
+                String nomSRL = AnnotationMode.NOM_SRL.toCuratorString();
+                Forest oldNomSRL = forestViews.get(nomSRL);
+                Forest newNomSRL = verification.getParseViews().get(nomSRL);
+                System.out.println("Do the Nominal SRL views match? ");
+                if( oldNomSRL.equals(newNomSRL) ) {
+                    System.out.println("\tYes!");
+                }
+                else {
+                    System.out.println("\tNo!");
+                }
             }
 
             if( !labelViews.equals( verification.getLabelViews() ) ) {

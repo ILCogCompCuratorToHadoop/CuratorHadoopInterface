@@ -101,14 +101,20 @@ public class CuratorReducer
         // Confirm the launch worked
         logger.logStatus( "Checking if tool can be run." );
         if( !toolCanBeRun( toolToRun ) ) {
-            try {
-                throw new IOException( toolToRun.toString()
-                        + " cannot be used to " +
-                        "annotate the document. Available annotators: "
-                        + MessageLogger.getPrettifiedList(
-                        client.listAvailableAnnotators() )
-                        + client.describeAnnotations().toString() );
-            } catch ( TException fromListAnnotators ) { }
+            // Could have been launched and we haven't given it enough time.
+            Thread.sleep( getEstimatedTimeToStart(toolToRun) );
+
+            // Yep. Two tests before we die.
+            if( !toolCanBeRun( toolToRun ) ) {
+                try {
+                    throw new IOException( toolToRun.toString()
+                            + " cannot be used to " +
+                            "annotate the document. Available annotators: "
+                            + MessageLogger.getPrettifiedList(
+                            client.listAvailableAnnotators() )
+                            + client.describeAnnotations().toString() );
+                } catch ( TException fromListAnnotators ) { }
+            }
         }
 
         logger.logStatus( "Beginning document annotation." );
@@ -639,14 +645,6 @@ public class CuratorReducer
 
                 Thread.sleep( getEstimatedTimeToStart( toolToRun ) );
             }
-            else { // tool claims to have been launched. Confirm this. . .
-                if( !toolCanBeRun( toolToRun ) ) {
-                    // The tool lied!
-                    setToolHasBeenLaunched( false );
-                    // Retry.
-                    launchAnnotatorIfNecessary( toolToRun );
-                }
-            }
         }
     }
 
@@ -713,9 +711,9 @@ public class CuratorReducer
      *         tool to be running
      */
     private long getEstimatedTimeToStart( AnnotationMode toolToRun ) {
-        long timeForSmallModels = 3000; // 3 secs
-        long timeForMidModels = 10000; // 10 secs
-        long timeForLargeModels = 90000; // 90 secs
+        long timeForSmallModels = 3*1000; // 3 secs
+        long timeForMidModels = 10*1000; // 10 secs
+        long timeForLargeModels = 90*1000; // 90 secs
         switch ( toolToRun ) {
             case CHUNK:
                 return timeForMidModels; // By my estimates, takes about 5 secs
@@ -770,18 +768,16 @@ public class CuratorReducer
 
         logger.logStatus( "Launching Curator on node with "
                 + "command \n\t" + launchScript.toString() );
-        Process p = Runtime.getRuntime().exec( launchScript.toString(),
-                                               envVarsForRuntimeExec );
-        spawnedCuratorProcesses.add( p );
+        spawnedCuratorProcesses.add( Runtime.getRuntime().exec(
+                launchScript.toString(), envVarsForRuntimeExec ) );
 
         // Handle the output from the Curator (we don't want to print it, but
         // we can't just leave the output stream there, as it can cause deadlock
         // in some OS's implementations)
         File curatorLog = new File( getCuratorLogLocation().toString() );
-        StreamGobbler err = new StreamGobbler( p.getErrorStream(),
-                "Curator ERR: ", false, curatorLog );
-        StreamGobbler out = new StreamGobbler( p.getInputStream(),
-                "Curator: ", false, curatorLog );
+        Process p = spawnedCuratorProcesses.get( 0 );
+        StreamGobbler err = new StreamGobbler( p.getErrorStream(), "Curator ERR: " );
+        StreamGobbler out = new StreamGobbler( p.getInputStream(), "Curator: ");
 
         err.start();
         out.start();
@@ -983,9 +979,6 @@ public class CuratorReducer
             cmd.append( scriptLocation.toString() );
             cmd.append( " -p " );
             cmd.append( port );
-            cmd.append( " >& " );
-            cmd.append( getLogLocation( toolToLaunch ).toString() );
-            cmd.append( " &" );
 
             logger.logStatus( "Launching " + toolToLaunch.toString()
                               + " annotator on node with command \n\t"
