@@ -736,6 +736,7 @@ public class CuratorClient {
                     System.out.println("\tNo!");
                 }
 
+                // Check Verb SRL
                 String verbSRL = AnnotationMode.VERB_SRL.toCuratorString();
                 Forest oldVerbSRL = forestViews.get(verbSRL);
                 Forest newVerbSRL = verification.getParseViews().get(verbSRL);
@@ -747,6 +748,7 @@ public class CuratorClient {
                     System.out.println("\tNo!");
                 }
 
+                // Check Nominal SRL
                 String nomSRL = AnnotationMode.NOM_SRL.toCuratorString();
                 Forest oldNomSRL = forestViews.get(nomSRL);
                 Forest newNomSRL = verification.getParseViews().get(nomSRL);
@@ -757,10 +759,46 @@ public class CuratorClient {
                 else {
                     System.out.println("\tNo!");
                 }
+
+                // Check Charniak parse
+                String charniak = AnnotationMode.PARSE.toCuratorString();
+                Forest oldCharniak = forestViews.get(charniak);
+                Forest newCharniak = verification.getParseViews().get(charniak);
+                System.out.println("Do the Charniak views match? ");
+                if( oldCharniak.equals(newCharniak) ) {
+                    System.out.println("\tYes!");
+                }
+                else {
+                    System.out.println("\tNo!");
+                }
             }
 
             if( !labelViews.equals( verification.getLabelViews() ) ) {
                 System.out.println( "\tLabel views do not all match!" );
+
+                // Check Tokenizer
+                String token = AnnotationMode.TOKEN.toCuratorString();
+                Labeling oldToken = labelViews.get(token);
+                Labeling newToken = verification.getLabelViews().get(token);
+                System.out.println("Do the tokenization views match? ");
+                if( oldToken.equals(newToken) ) {
+                    System.out.println("\tYes!");
+                }
+                else {
+                    System.out.println("\tNo!");
+                }
+
+                // Check NER
+                String ner = AnnotationMode.NER.toCuratorString();
+                Labeling oldNER = labelViews.get(ner);
+                Labeling newToken = verification.getLabelViews().get(ner);
+                System.out.println("Do the tokenization views match? ");
+                if( oldNER.equals(newToken) ) {
+                    System.out.println("\tYes!");
+                }
+                else {
+                    System.out.println("\tNo!");
+                }
             }
         }
     }
