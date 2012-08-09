@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 # A script to rearrange output from the Ant build of the CuratorHadoopInterface into the recommended directory structure specified in the README.
 # You must run this script from its original location in the scripts directory!
