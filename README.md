@@ -51,13 +51,13 @@ If you are running this interface on an existing Hadoop cluster, you can probabl
 
 * Note: In order to successfully run the Ant build, you'll need to modify the `build.properties` file that Ant places in the `CuratorHadoopInterface` root directory. Specifically, make sure that the `jdk.home.1.6` variable points to your JDK installation.
 
-8. In the `scripts` folder, edit the shell scripting variables in the designated section of each file with your directory paths.
+8. In the `scripts` directory, edit the shell scripting variables in the designated section of each file with your directory paths.
 
-9. Compile `CuratorHadoopInterface/src/edu/illinois/cs/cogcomp/hadoopinterface/infrastructure/JobHandler.java` into a JAR file (this should be done for you using the Ant build). You will probably want to store this JAR in a separate `JobHandler` folder on the same level as `HadoopInterface` and `curator`. For reference, our directory structure looks like this:
+9. Run `directory_restructure.sh` from the `scripts` directory of your Ant build's root directory. The script will create the following directory structure in the parent of your current directory:
 
-* `HadoopInterface`
+* `CuratorHadoopInterface`
 
-    * `HadoopInterface.jar`
+    * `CuratorHadoopInterface.jar`
 	
 * `JobHandler`
 
@@ -65,9 +65,15 @@ If you are running this interface on an existing Hadoop cluster, you can probabl
 	* `lib`
 	* `scripts`
 
-* `curator-0.6.9/dist`
+* `curator-0.6.9/dist` (should already be installed from previous step)
 
     * `client` (contains our `CuratorClient.class`)
+	
+* ILCogCompCuratorToHadoop-CuratorHadoopInterface (run `ant` from here)
+
+	* `out` (output of Ant build)
+	* `scripts`
+		* `directory_restructure.sh` (run this)
 
 Congratulations, you've installed Hadoop, Curator, and the Curator-Hadoop interface!
 
