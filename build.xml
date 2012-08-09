@@ -120,10 +120,10 @@
     <pathelement location="${javac2.home}/asm-commons.jar"/>
     <pathelement location="${javac2.home}/jgoodies-forms.jar"/>
   </path>
-  <target name="register.custom.compilers">
+  <!--<target name="register.custom.compilers">
     <taskdef name="javac2" classname="com.intellij.ant.Javac2" classpathref="javac2.classpath"/>
     <taskdef name="instrumentIdeaExtensions" classname="com.intellij.ant.InstrumentIdeaExtensions" classpathref="javac2.classpath"/>
-  </target>
+  </target>-->
   
   <!-- Modules -->
   
@@ -172,7 +172,6 @@
     <jar destfile="${temp.jar.path.CuratorHadoopInterface.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
       <zipfileset file="${basedir}/src/META-INF/MANIFEST.MF" prefix="META-INF"/>
       <zipfileset dir="${curatorhadoopinterface.output.dir}"/>
-      <zipfileset src="${idea.home}/lib/junit-4.10.jar"/>
       <zipfileset src="${basedir}/lib/hadoop-core-1.0.3.jar"/>
       <zipfileset src="${basedir}/lib/commons-logging-api-1.0.4.jar"/>
       <zipfileset src="${basedir}/lib/commons-logging-1.1.1.jar"/>

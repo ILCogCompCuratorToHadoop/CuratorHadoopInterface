@@ -64,7 +64,12 @@ echo -e "$MSG_COLOR\nCopying the results of the MapReduce job back to the local 
 if [ -e $DESTINATION_IN_LOCAL ]; then
     echo -e "$ERROR_COLOR\nOutput directory $DESTINATION_IN_LOCAL already exists.$DEFAULT_COLOR"
     echo -e "\tMoving your old version up one directory."
-    mv $DESTINATION_IN_LOCAL $DESTINATION_IN_LOCAL/../old_output
+    for i in {1..100}; do
+	POTENTIAL_MV="$DESTINATION_IN_LOCAL/../old_output$i"
+	if [ ! -e $POTENTIAL_MV ]; then
+	    mv $DESTINATION_IN_LOCAL $POTENTIAL_MV
+	fi
+    done
 fi
 
 echo -e "$MSG_COLOR\nCreating output directory $DESTINATION_IN_LOCAL $DEFAULT_COLOR"
@@ -113,8 +118,8 @@ if [ "$TESTING" == "-test" ]; then
     sleep 1m
     echo "Waiting 2 more minutes..."
     sleep 1m
-    echo "Waiting 1 more minute..."
-    sleep 1m
+    #echo "Waiting 1 more minute..."
+    #sleep 1m
 else
     ./bin/curator.sh --annotators configs/annotators-empty.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null
     sleep 3s
@@ -132,7 +137,7 @@ ARGS="-cp $OUR_CLASSPATH -Xmx512m edu.illinois.cs.cogcomp.hadoopinterface.Curato
 if [ "$TESTING" == "-test" ]; then
     ARGS="$ARGS -test"
 fi
-echo "Launching server with command: java $ARGS"
+echo "Launching Curator Client with command: java $ARGS"
 java $ARGS
 
 

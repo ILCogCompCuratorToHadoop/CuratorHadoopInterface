@@ -204,7 +204,7 @@ public class CuratorClient {
                             boolean forceUpdate )
             throws ServiceUnavailableException, TException,
             AnnotationFailedException, ServiceSecurityException {
-        MessageLogger logger = HadoopInterface.logger;
+        MessageLogger logger = new MessageLogger();
         logger.logStatus( "Record provides annotations: "
                 + RecordTools.getAnnotationsString( toBeAnnotated ) );
 
@@ -219,12 +219,12 @@ public class CuratorClient {
             // TODO: [Long-term] Fix the performAnnotation() function!!
             if( !annotator.equals( AnnotationMode.TOKEN )
                     && !annotator.equals( AnnotationMode.SENTENCE ) ) {
-                HadoopInterface.logger.logStatus( "Storing record..." );
+                logger.logStatus( "Storing record..." );
                 client.storeRecord( toBeAnnotated );
             }
 
-            HadoopInterface.logger.logStatus( "Calling provide for "
-                                              + annotator.toString() + "..." );
+            logger.logStatus( "Calling provide for " + annotator.toString()
+                              + "..." );
             // NOTE: forceUpdate must be false or else we will also try to
             // update the dependencies, potentially leading to a fiery death.
             toBeAnnotated = client.provide( annotator.toCuratorString(),
@@ -236,7 +236,7 @@ public class CuratorClient {
             }
         }
 
-        HadoopInterface.logger.logStatus( "Ensuring we got the annotation..." );
+        logger.logStatus( "Ensuring we got the annotation..." );
         if( !RecordTools.hasAnnotation( toBeAnnotated, annotator ) ) {
             throw new AnnotationFailedException(
                     "The Curator job ran without error, but for some reason, we "
@@ -681,6 +681,13 @@ public class CuratorClient {
                         transport.open();
                     }
                     verification = annotate( verification, anno, true );
+                } catch( ServiceUnavailableException e ) {
+                    System.out.println( "Failed annotation " + anno + " due to "
+                            + "ServiceUnavailableException. Reason: "
+                            + e.getReason() + "\nAttempting a new, simple "
+                            + "annotation--the sentence 'This is a test.'" );
+                    annotate( RecordTools.generateNew("This is a test."), anno, true);
+                    System.out.println("Succeeded!");
                 } finally {
                     if( transport.isOpen() ) {
                         transport.close();

@@ -89,8 +89,11 @@ if [ "$MODE" != "serial" ]; then # if we're working with raw text files...
     # Launch the Master Curator Client, asking it to serialize the
     # records from the text in the input directory
     echo -e "$MSG_COLOR\n\n\nLaunching the master curator client:$DEFAULT_COLOR"
+    CMD="runclient.sh -host localhost -port 9010 -in $INPUT_PATH -out $INTERMEDIATE_OUTPUT -mode PRE"
+    echo "Using command: $CMD"
     cd client
-    ./runclient.sh -host localhost -port 9010 -in $INPUT_PATH -out $INTERMEDIATE_OUTPUT -mode PRE
+    ./$CMD
+    
 
     echo -e "$MSG_COLOR\n\nShutting down locally running Curator. $DEFAULT_COLOR"
     # Get list of currently running Java procs | find the Curator server | split on spaces (?) | send the first thing (i.e., the process ID) to the kill command
