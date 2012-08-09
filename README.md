@@ -47,9 +47,7 @@ If you are running this interface on an existing Hadoop cluster, you can probabl
 
 6. Download the [CuratorHadoopInterface package](https://github.com/ILCogCompCuratorToHadoop/CuratorHadoopInterface) files from GitHub, including the Java source code and shell scripts. You can also get a pre-compiled package by contacting [Tyler Young][].
 
-7. Compile and/or configure your CuratorHadoopInterface installation. You can compile by simply typing `ant` from the `CuratorHadoopInterface` root directory. Any problems you encounter are most likely the result of missing dependencies (easily found on the web, or, if they're unessential, removed from the Ant build). If you're having trouble building, make sure all the Hadoop dependencies are in your include path. This may include everything in the Hadoop distribution's `lib` directory.
-
-* Note: In order to successfully run the Ant build, you'll need to modify the `build.properties` file that Ant places in the `CuratorHadoopInterface` root directory. Specifically, make sure that the `jdk.home.1.6` variable points to your JDK installation.
+7. Compile and/or configure your CuratorHadoopInterface installation. You can compile by simply typing `ant` from the `CuratorHadoopInterface` root directory. In order to successfully run the Ant build, you'll need to modify the `build.properties` file that Ant places in the `CuratorHadoopInterface` root directory. Specifically, make sure that the `jdk.home.1.6` variable points to your JDK installation.
 
 8. In the `scripts` directory, edit the shell scripting variables in the designated section of each file with your directory paths.
 
@@ -156,6 +154,8 @@ This package currently requires a custom-built version of the Curator which make
 
 Troubleshooting
 ----------------------------------------
+
+* If you encounter problems building the CuratorHadoopInterface code using Ant, they are most likely the result of missing dependencies (easily found on the web or removed from the Ant build if unessential). Make sure all the Hadoop dependencies are in your include path. This may include everything in the Hadoop distribution's `lib` directory.
 
 * Make sure that you can launch the annotators on the Hadoop node using the same commands you find in the Hadoop logs. For instance, for tools that do not run in local mode (all tools except the tokenizer, POS, Stanford parser, and chunker), each time a Hadoop node annotates its first document using a given annotation, it will print the command it used to launch the annotator. If you cannot use that same command to launch the annotator manually on the Hadoop node, there will be problems.
 
