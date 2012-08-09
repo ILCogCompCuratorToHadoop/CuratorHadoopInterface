@@ -68,6 +68,7 @@ if [ -e $DESTINATION_IN_LOCAL ]; then
 	POTENTIAL_MV="$DESTINATION_IN_LOCAL/../old_output$i"
 	if [ ! -e $POTENTIAL_MV ]; then
 	    mv $DESTINATION_IN_LOCAL $POTENTIAL_MV
+	    break
 	fi
     done
 fi
@@ -110,10 +111,13 @@ COMPONENT_CLASSPATH=.:$COMPONENTDIR/curator-interfaces.jar:$COMPONENTDIR/curator
 LIB_CLASSPATH=$LIBDIR/libthrift.jar:$LIBDIR/logback-classic-0.9.17.jar:$LIBDIR/logback-core-0.9.17.jar:$LIBDIR/slf4j-api-1.5.8.jar:$LIBDIR/curator-client-0.6.jar:$LIBDIR/curator-interfaces.jar
 OUR_CLASSPATH=$COMPONENT_CLASSPATH:$LIB_CLASSPATH
 
+CMD=""
 # If the user specified the "-test" flag, we launch all annotators on the local
 # machine. The CuratorClient will have the Curator verify all annotations.
 if [ "$TESTING" == "-test" ]; then
-    ./startServers.sh
+    CMD="startServers.sh"
+    echo "Launching Curator with command $CMD"
+    ./$CMD
     echo "Since we're in testing mode, we're going to wait 3 minutes for the servers to start."
     sleep 1m
     echo "Waiting 2 more minutes..."
@@ -121,9 +125,12 @@ if [ "$TESTING" == "-test" ]; then
     #echo "Waiting 1 more minute..."
     #sleep 1m
 else
-    ./bin/curator.sh --annotators configs/annotators-empty.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null
+    CMD="bin/curator.sh --annotators configs/annotators-empty.xml --port 9010 --threads 10 >& logs/curator.log & >/dev/null"
+    echo "Launching Curator with command $CMD"
+    ./$CMD
     sleep 3s
 fi
+
 
 cd client
 # If this isn't working, make sure you have a CuratorClient.class file in the 

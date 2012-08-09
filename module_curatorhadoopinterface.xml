@@ -70,7 +70,7 @@
     <dirset dir="${module.curatorhadoopinterface.basedir}">
       <include name="src"/>
     </dirset>
-  </path>
+  </path> 
   
   
   <target name="compile.module.curatorhadoopinterface" depends="compile.module.curatorhadoopinterface.production,compile.module.curatorhadoopinterface.tests" description="Compile module CuratorHadoopInterface"/>

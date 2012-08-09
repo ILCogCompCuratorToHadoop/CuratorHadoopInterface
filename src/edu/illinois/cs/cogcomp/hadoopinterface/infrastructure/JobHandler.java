@@ -91,7 +91,8 @@ public class JobHandler {
                     requestedAnnotation = AnnotationMode.fromString( arg );
                 } catch( IllegalModeException ignored ) { }
             }
-            else { // already found the requested annotation.
+            else if( arg.length() < 10 ) { // short enough to be an annotation mode
+                // already found the requested annotation.
                 // If we can parse another annotation, it must be because the
                 // user wants to force us to start at a different annotation
                 try {
@@ -101,7 +102,18 @@ public class JobHandler {
                     inputDirAsString = arg;
                 }
             }
+            else {
+                // Must be the input directory!
+                inputDirAsString = arg;
+            }
         }
+
+        // Inform the user of our interpretation of the arguments
+        System.out.println( "It looks like you're using the following args:\n"
+                + "\tInput directory: " + inputDirAsString + "\n"
+                + "\tRequested annotation: " + requestedAnnotation + "\n"
+                + "\tForced first annotation: " + forcedFirstAnnotation + "\n"
+                + "\tTesting mode? " + Boolean.toString(testing) );
 
         // Check input
         File inputDir = new File( inputDirAsString );

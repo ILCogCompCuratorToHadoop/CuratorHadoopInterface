@@ -1,4 +1,23 @@
-curator-0.6.9/
+curator-0.6.9/curator-annotators/
+curator-0.6.9/curator-clients/
+curator-0.6.9/curator-interfaces/
+curator-0.6.9/curator-server/
+curator-0.6.9/resources/
+curator-0.6.9/INSTALL
+curator-0.6.9/LICENCSE
+curator-0.6.9/README
+curator-0.6.9/bootstrap.sh
+curator-0.6.9/startServers.sh
+curator-0.6.9/build.xml
+curator-0.6.9/dist/bin/
+curator-0.6.9/dist/CharniakServer/
+curator-0.6.9/dist/client/
+curator-0.6.9/dist/client-examples/
+curator-0.6.9/dist/configs/
+curator-0.6.9/dist/docs/
+curator-0.6.9/dist/logs/
+curator-0.6.9/dist/startServers.sh
+curator-0.6.9/dist/logback.xml
 .DS_Store
 
 .idea/
@@ -42,6 +61,7 @@ src/edu/illinois/cs/cogcomp/archive/
 *.log
 *.sql
 *.sqlite
+*.svn
 
 # OS generated files #
 ######################
@@ -57,8 +77,6 @@ Thumbs.db
 .#README.md
 
 curatorhadoopinterface.properties
-
-src/edu/cs/illinois/cogcomp/hadoopinterface/infrastructure/CuratorRecordReader.java
 
 curatorhadoopinterface.xml
 
