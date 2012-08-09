@@ -1,6 +1,6 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
-import com.sun.istack.internal.Nullable;
+import org.jetbrains.annotations.Nullable;
 import edu.illinois.cs.cogcomp.hadoopinterface.HadoopInterface;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;

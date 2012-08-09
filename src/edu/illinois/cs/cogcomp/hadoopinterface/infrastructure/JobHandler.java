@@ -1,6 +1,6 @@
 package edu.illinois.cs.cogcomp.hadoopinterface.infrastructure;
 
-import com.sun.istack.internal.Nullable;
+import org.jetbrains.annotations.Nullable;
 import edu.illinois.cs.cogcomp.hadoopinterface.infrastructure.exceptions
         .IllegalModeException;
 import edu.illinois.cs.cogcomp.thrift.curator.Record;
