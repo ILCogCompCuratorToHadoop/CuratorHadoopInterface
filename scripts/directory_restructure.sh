@@ -5,6 +5,8 @@
 
 echo -e "Copying Ant output into recommended directory structure..."
 
+mkdir ../../CuratorHadoopInterface
+mkdir ../../JobHandler
 cp ../out/artifacts/Jar/CuratorHadoopInterface.jar ../../CuratorHadoopInterface
 cp ../out/artifacts/JobHandler/JobHandler.jar ../../JobHandler
 cp -R ../lib ../../JobHandler
